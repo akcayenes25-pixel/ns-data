@@ -48,7 +48,7 @@
     });
 
     if (!customers.length) {
-      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">&#xDC;lke bulunamadi</div></div>';
+      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">Ülke bulunamadı</div></div>';
       return;
     }
 

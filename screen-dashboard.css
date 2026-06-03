@@ -293,7 +293,7 @@
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .dashboard-table-toolbar {

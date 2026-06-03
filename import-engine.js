@@ -1,11 +1,5 @@
 /* NSDATA - import-engine.js */
 /* Excel import processing — reads xlsx, matches customers/products, builds preview */
-/* Never touches DOM directly — calls callback with preview data */
-
-/* ============================================================
-   MAIN ENTRY POINT
-   Called from screen-orders.js
-   ============================================================ */
 
 function processImportFile(file, customers, products, callback) {
   if (!file) return;
@@ -13,30 +7,26 @@ function processImportFile(file, customers, products, callback) {
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      var data    = new Uint8Array(e.target.result);
+      var data     = new Uint8Array(e.target.result);
       var workbook = XLSX.read(data, { type: 'array' });
-      var sheet   = workbook.Sheets[workbook.SheetNames[0]];
-      var rows    = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-      var preview = _buildPreview(rows, customers, products);
+      var sheet    = workbook.Sheets[workbook.SheetNames[0]];
+      var rows     = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      var preview  = _buildPreview(rows, customers, products);
       callback(preview);
     } catch (err) {
       console.error('Import parse error:', err);
-      showToast('Dosya okunamad&#x131;. Lutfen ge&#xE7;erli bir xlsx dosyasi secin.');
+      showToast('Dosya okunamadi. Lutfen gecerli bir xlsx dosyasi secin.');
     }
   };
   reader.onerror = function() {
-    showToast('Dosya okunamad&#x131;.');
+    showToast('Dosya okunamadi.');
   };
   reader.readAsArrayBuffer(file);
 }
 
-/* ============================================================
-   BUILD PREVIEW
-   ============================================================ */
-
 function _buildPreview(rows, customers, products) {
   var customerNames = customers.map(function(c) { return c.name; });
-  var productNames  = products.map(function(p) { return p.name; });
+  var productNames  = products.map(function(p)  { return p.name; });
 
   var processedRows  = [];
   var customerSet    = {};
@@ -44,24 +34,23 @@ function _buildPreview(rows, customers, products) {
   var unmatchedCount = 0;
 
   rows.forEach(function(row) {
-    // Normalize column names — handle Turkish ERP export
-    var rawCustomer = String(row['CAR&#x130;'] || row['CARI'] || row['Cari'] || row['m&#xFC;&#x15F;teri'] || '').trim();
-    var rawProduct  = String(row['&#xDC;R&#xDC;N'] || row['&#xDC;r&#xFC;n'] || row['&#xFC;r&#xFC;n'] || row['&#xDC;r&#xFC;n'] || '').trim();
-    var rawQty      = row['ADET'] || row['adet'] || row['Adet'] || 0;
-    var rawEuro     = row['EURO'] || row['euro'] || row['Euro'] || 0;
-    var rawMonth    = String(row['AY'] || row['ay'] || '').trim();
-    var rawYear     = row['YIL'] || row['yil'] || 0;
+    // Normalize: try all likely column names from Turkish ERP exports
+    // Keys come from XLSX as raw unicode strings, never as HTML entities
+    var rawCustomer = _col(row, ['CARI', 'Cari', 'cari', 'MUSTERI', 'Musteri', 'musteri',
+                                  'M\u00FCshteri', 'M\u00FC\u015Fteri', 'CUSTOMER', 'Customer']);
+    var rawProduct  = _col(row, ['URUN', 'Urun', 'urun', '\u00DCR\u00DCN', '\u00DCr\u00FCn', '\u00FCr\u00FCn',
+                                  'PRODUCT', 'Product', 'URN']);
+    var rawQty      = _col(row, ['ADET', 'Adet', 'adet', 'QTY', 'Qty', 'qty', 'MIKTAR', 'Miktar']) || 0;
+    var rawEuro     = _col(row, ['EURO', 'Euro', 'euro', 'EUR', 'Eur', 'TUTAR', 'Tutar', 'tutar']) || 0;
 
     if (!rawCustomer || !rawProduct) return;
 
-    // Match customer
-    var customerMatch = _matchName(rawCustomer, customerNames);
+    var customerMatch   = _matchName(rawCustomer, customerNames);
     var matchedCustomer = customerMatch
       ? customers.find(function(c) { return c.name === customerMatch.match; })
       : null;
 
-    // Match product
-    var productMatch = _matchName(rawProduct, productNames);
+    var productMatch   = _matchName(rawProduct, productNames);
     var matchedProduct = productMatch
       ? products.find(function(p) { return p.name === productMatch.match; })
       : null;
@@ -77,8 +66,6 @@ function _buildPreview(rows, customers, products) {
       product_name:  rawProduct,
       qty:           parseNum(rawQty)  || 0,
       euro:          parseNum(rawEuro) || 0,
-      month:         rawMonth,
-      year:          parseNum(rawYear) || 0,
       matched:       matched,
       customer_id:   matchedCustomer ? matchedCustomer.id : null,
       product_id:    matchedProduct  ? matchedProduct.id  : null
@@ -94,11 +81,31 @@ function _buildPreview(rows, customers, products) {
   };
 }
 
-/* ============================================================
-   NAME MATCHING — similarity based
-   ============================================================ */
+// Get first matching column value from a row
+function _col(row, keys) {
+  for (var i = 0; i < keys.length; i++) {
+    var val = row[keys[i]];
+    if (val !== undefined && val !== null && String(val).trim() !== '') {
+      return String(val).trim();
+    }
+  }
+  // Fallback: case-insensitive search across all keys
+  var rowKeys = Object.keys(row);
+  for (var j = 0; j < keys.length; j++) {
+    var needle = keys[j].toUpperCase();
+    for (var k = 0; k < rowKeys.length; k++) {
+      if (rowKeys[k].toUpperCase() === needle) {
+        var v = row[rowKeys[k]];
+        if (v !== undefined && v !== null && String(v).trim() !== '') {
+          return String(v).trim();
+        }
+      }
+    }
+  }
+  return '';
+}
 
 function _matchName(needle, haystack) {
   if (!needle || !haystack.length) return null;
-  return bestMatch(needle, haystack, 0.45);
+  return bestMatch(needle, haystack, 0.40);
 }

@@ -165,7 +165,7 @@
       var link = window.location.origin + '/?profile=' + p.link_token;
       return '<div class="settings-profile-row">' +
         '<span class="settings-profile-name">' + _esc(p.name) + '</span>' +
-        '<span class="settings-profile-link" title="Kopyalamak icin tiklayin" data-link="' + link + '">' + link + '</span>' +
+        '<span class="settings-profile-link" title="Kopyalamak için tıklayın" data-link="' + link + '">' + link + '</span>' +
       '</div>';
     }).join('');
 
@@ -175,7 +175,7 @@
       '</div>' +
       '<div class="settings-section-body">' +
         '<div class="settings-profile-list">' +
-          (profileRows || '<div style="color:var(--color-text-secondary);font-size:14px">Hen&#xFC;z profil yok</div>') +
+          (profileRows || '<div style="color:var(--color-text-secondary);font-size:14px">Henüz profil yok</div>') +
         '</div>' +
         '<div class="settings-add-profile-form">' +
           '<input type="text" id="settings-new-profile-name" placeholder="Profil adi (ornek: Enes - Fas)" style="min-height:48px;font-size:15px" />' +

@@ -18,7 +18,7 @@ var ProductManager = (function() {
     if (product.avg_price_eur !== undefined) {
       var price = parseNum(product.avg_price_eur);
       if (price === null || price < 0.01) {
-        showToast('Fiyat en az 0.01 olmal&#x131;d&#x131;r');
+        showToast('Fiyat en az 0.01 olmalıdır');
         return false;
       }
       product.avg_price_eur = price;
@@ -34,14 +34,14 @@ var ProductManager = (function() {
   async function updatePrice(productId, newPrice) {
     var price = parseNum(newPrice);
     if (price === null || price < 0.01) {
-      showToast('Ge&#xE7;ersiz fiyat');
+      showToast('Geçersiz fiyat');
       return false;
     }
     var ok = await dbUpdateProductPrice(productId, price);
     if (ok) {
       _products = await dbGetProducts();
       emitDataChange('products', {});
-      showToast('Fiyat g&#xFC;ncellendi');
+      showToast('Fiyat güncellendi');
     }
     return ok;
   }

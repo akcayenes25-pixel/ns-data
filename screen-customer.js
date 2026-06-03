@@ -51,7 +51,7 @@
   function _render() {
     var screen = document.getElementById('screen-customer');
     if (!screen || !_state.customer) {
-      if (screen) screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">M&#xFC;&#x15F;teri bulunamadi</div></div>';
+      if (screen) screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">Müşteri bulunamadı</div></div>';
       return;
     }
     screen.innerHTML = _buildHTML();
@@ -120,7 +120,7 @@
           (isLimitCritical(0, 0) ? '' : '') +
         '</div>' +
         '<div class="customer-header-country" id="customer-country-btn" data-country="' + _esc(c.country || '') + '">' +
-          '<span>&#x1F30D;</span> ' + _esc(c.country || '&#xDC;lke yok') +
+          '<span>&#x1F30D;</span> ' + _esc(c.country || 'Ülke yok') +
         '</div>' +
       '</div>' +
       '<div class="customer-header-right">' +
@@ -185,7 +185,7 @@
     }).filter(Boolean).join('');
 
     return '<div class="customer-section-card">' +
-      '<div class="customer-section-header">&#xDC;r&#xFC;n Bazli Dagilim</div>' +
+      '<div class="customer-section-header">Ürün Bazlı Dağılım</div>' +
       '<table class="customer-product-table">' +
         '<thead><tr>' +
           '<th>&#xDC;r&#xFC;n</th><th style="text-align:right">&#xC7;&#x131;kan</th><th style="text-align:right">&#xC7;&#x131;kacak</th>' +
@@ -250,7 +250,7 @@
 
     return '<div style="display:flex;flex-direction:column;gap:var(--space-5)">' +
       '<div class="customer-section-card">' +
-        '<div class="customer-section-header">&#xDC;r&#xFC;n Karmas&#x131;</div>' +
+        '<div class="customer-section-header">Ürün Karması</div>' +
         '<div class="customer-donut-wrap">' +
           svg +
           '<div class="customer-donut-legend">' + legend + '</div>' +
@@ -260,7 +260,7 @@
         '<div class="customer-section-header">Limit Durumu</div>' +
         '<div class="customer-limit-row">' +
           '<div class="customer-limit-box conservative">' +
-            '<span class="customer-limit-label">&#x15E;u an kullanilabilir</span>' +
+            '<span class="customer-limit-label">Şu an kullanılabilir</span>' +
             '<span class="customer-limit-value ' + consClass + '">' + (conservative !== null ? fmtEuro(conservative) : '\u2014') + '</span>' +
           '</div>' +
           '<div class="customer-limit-box optimistic">' +
@@ -287,7 +287,7 @@
       '<div class="customer-section-header">Notlar</div>' +
       (notesHtml
         ? '<div class="customer-notes-list">' + notesHtml + '</div>'
-        : '<div class="customer-notes-empty">Bu m&#xFC;&#x15F;teri icin not yok</div>') +
+        : '<div class="customer-notes-empty">Bu müşteri için not yok</div>') +
     '</div>';
   }
 

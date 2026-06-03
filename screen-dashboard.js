@@ -157,7 +157,7 @@
           '<span>&#x2713;</span> Kesinle&#x15F;en Ciro' +
         '</div>' +
         '<div class="dashboard-metric-value dashboard-confirmed">' + confirmedStr + '</div>' +
-        '<div class="dashboard-metric-sub">Fabrikadan ger&#xE7;ekten sevk edildi</div>' +
+        '<div class="dashboard-metric-sub">Fabrikadan gerçekten sevk edildi</div>' +
       '</div>' +
 
       // Card 2: Expected
@@ -212,7 +212,7 @@
 
     var listHtml = '';
     if (achievers.length === 0) {
-      listHtml = '<div class="dashboard-empty">Henuz hedefini asan m&#xFC;&#x15F;teri yok</div>';
+      listHtml = '<div class="dashboard-empty">Henüz hedefini aşan müşteri yok</div>';
     } else {
       listHtml = '<ul class="dashboard-achiever-list">';
       achievers.forEach(function(a) {
@@ -259,7 +259,7 @@
 
     var listHtml = '';
     if (criticals.length === 0) {
-      listHtml = '<div class="dashboard-empty">Limit sorunu olan m&#xFC;&#x15F;teri yok</div>';
+      listHtml = '<div class="dashboard-empty">Limit sorunu olan müşteri yok</div>';
     } else {
       listHtml = '<ul class="dashboard-limit-list">';
       criticals.forEach(function(c) {

@@ -92,7 +92,7 @@
 
     return _buildToolbar() +
       '<div class="limits-grid">' +
-        (cards || '<div class="limits-empty">M&#xFC;&#x15F;teri bulunamadi</div>') +
+        (cards || '<div class="limits-empty">Müşteri bulunamadı</div>') +
       '</div>';
   }
 
@@ -173,7 +173,7 @@
           'id="limits-balance-' + customerId + '" ' +
           'class="limits-field-input limits-balance-input" ' +
           'data-customer-id="' + customerId + '" ' +
-          'aria-label="Acik bakiye" ' +
+          'aria-label="Açık bakiye" ' +
           'value="' + balanceVal + '" ' +
           'placeholder="0" />' +
       '</div>' +

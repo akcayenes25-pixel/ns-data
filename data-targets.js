@@ -8,8 +8,8 @@ var TargetManager = (function() {
   var _saveTimer = null;
 
   var MONTHS_TR = [
-    'Ocak','Subat','Mart','Nisan','Mayis','Haziran',
-    'Temmuz','Agustos','Eylul','Ekim','Kasim','Aralik'
+    'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+    'Temmuz','Ağustos','Eylül','Ekim','Kasim','Aralik'
   ];
 
   async function load() {

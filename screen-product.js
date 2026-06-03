@@ -40,7 +40,7 @@
 
     var product = _state.productMap[_state.productId];
     if (!product) {
-      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">&#xDC;r&#xFC;n bulunamadi</div></div>';
+      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">Ürün bulunamadı</div></div>';
       return;
     }
 
@@ -130,7 +130,7 @@
     }).join('');
 
     return '<div class="product-section-card">' +
-      '<div class="product-section-header">M&#xFC;&#x15F;teri Siralamas&#x131;</div>' +
+      '<div class="product-section-header">Müşteri Sıralaması</div>' +
       '<table class="product-customer-table">' +
         '<thead><tr>' +
           '<th>#</th><th>M&#xFC;&#x15F;teri</th><th style="text-align:right">&#xC7;&#x131;kan</th>' +
@@ -177,7 +177,7 @@
     }).join('');
 
     return '<div class="product-section-card">' +
-      '<div class="product-section-header">&#xDC;lke Dagil&#x131;m&#x131;</div>' +
+      '<div class="product-section-header">Ülke Dağılımı</div>' +
       '<table class="product-country-table">' +
         '<thead><tr>' +
           '<th>#</th><th>&#xDC;lke</th><th>PAY</th><th style="text-align:right">BEKLENEN</th><th style="text-align:right">%</th>' +

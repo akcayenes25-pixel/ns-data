@@ -13,7 +13,7 @@ var CustomerManager = (function() {
 
   async function upsert(customer) {
     if (!customer.name || !customer.name.trim()) {
-      showToast('M&#xFC;&#x15F;teri adi bos olamaz');
+      showToast('Müşteri adı boş olamaz');
       return false;
     }
     var ok = await dbUpsertCustomer(customer);

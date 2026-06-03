@@ -193,7 +193,7 @@
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
         '<span class="analysis-chart-title">M&#xFC;&#x15F;teri Bazl&#x131; Ciro (Beklenen)</span>' +
-        '<button class="analysis-chart-download" id="analysis-dl-customers" aria-label="Indir">&#x21E9;</button>' +
+        '<button class="analysis-chart-download" id="analysis-dl-customers" aria-label="İndir">&#x21E9;</button>' +
       '</div>' +
       '<div class="analysis-chart-body">' + svg + '</div>' +
     '</div>';
@@ -265,7 +265,7 @@
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
         '<span class="analysis-chart-title">&#xDC;r&#xFC;n Da&#x11F;&#x131;l&#x131;m&#x131;</span>' +
-        '<button class="analysis-chart-download" id="analysis-dl-products" aria-label="Indir">&#x21E9;</button>' +
+        '<button class="analysis-chart-download" id="analysis-dl-products" aria-label="İndir">&#x21E9;</button>' +
       '</div>' +
       '<div class="analysis-chart-body">' +
         '<div class="analysis-donut-wrap">' +
@@ -350,7 +350,7 @@
     customerSummaries.forEach(function(s) {
       var c = _state.customerMap[s.customer_id];
       if (!c) return;
-      var country = c.country || 'Di&#x11F;er';
+      var country = c.country || 'Diğer';
       if (!countryMap[country]) countryMap[country] = 0;
       countryMap[country] += s.expected_eur || 0;
     });

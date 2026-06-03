@@ -1,22 +1,22 @@
 /* NSDATA - export-engine.js */
-/* Excel and PDF export — no DOM reads except for PDF snapshot */
+/* Excel and PDF export */
 
 /* ============================================================
    EXCEL EXPORT — orders
    ============================================================ */
 
 function exportOrdersToExcel(orders, products, customers) {
-  if (typeof XLSX === 'undefined') {
-    showToast('Excel export haz&#x131;rlan&#x131;yor...');
-    return;
-  }
+  if (typeof XLSX === 'undefined') { showToast('Excel yukleniyor...'); return; }
 
   var productMap  = buildProductMap(products);
   var customerMap = buildCustomerMap(customers);
 
-  var wsData = [
-    ['M&#xFC;&#x15F;teri', '&#xDC;lke', '&#xDC;r&#xFC;n', '&#xC7;&#x131;kan Adet', '&#xC7;&#x131;kan Euro', '&#xC7;&#x131;kacak Adet', '&#xC7;&#x131;kacak Euro', 'Toplam Euro', 'Not', 'Son Guncelleme']
-  ];
+  var wsData = [[
+    'Musteri', 'Ulke', 'Urun',
+    'Cikan Adet', 'Cikan Euro',
+    'Cikacak Adet', 'Cikacak Euro',
+    'Toplam Euro', 'Not', 'Son Guncelleme'
+  ]];
 
   orders.forEach(function(order) {
     var customer = customerMap[order.customer_id];
@@ -42,8 +42,6 @@ function exportOrdersToExcel(orders, products, customers) {
   });
 
   var ws = XLSX.utils.aoa_to_sheet(wsData);
-
-  // Column widths
   ws['!cols'] = [
     { wch: 30 }, { wch: 15 }, { wch: 20 },
     { wch: 12 }, { wch: 14 }, { wch: 14 },
@@ -51,15 +49,14 @@ function exportOrdersToExcel(orders, products, customers) {
   ];
 
   var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Sipari&#x15F;ler');
+  XLSX.utils.book_append_sheet(wb, ws, 'Siparisler');
 
-  var now      = new Date();
-  var dateStr  = now.getFullYear() + '-' +
+  var now     = new Date();
+  var dateStr = now.getFullYear() + '-' +
     String(now.getMonth() + 1).padStart(2, '0') + '-' +
     String(now.getDate()).padStart(2, '0');
-  var fileName = 'NSDATA-Sipari&#x15F;ler-' + dateStr + '.xlsx';
 
-  XLSX.writeFile(wb, fileName);
+  XLSX.writeFile(wb, 'NSDATA-Siparisler-' + dateStr + '.xlsx');
   showToast('Excel indirildi');
 }
 
@@ -73,10 +70,10 @@ function exportLimitsToExcel(limits, customers, payments, orders, products, curr
   var productMap  = buildProductMap(products);
   var customerMap = buildCustomerMap(customers);
 
-  var wsData = [
-    ['M&#xFC;&#x15F;teri', '&#xDC;lke', 'Toplam Limit', 'A&#xE7;&#x131;k Bakiye', 'Planlanan &#xC7;&#x131;k&#x131;&#x15F;',
-     'Su An Kullanilabilir', '&#xD6;deme Gelince Kullanilabilir', 'Bu Ayki &#xD6;demeler']
-  ];
+  var wsData = [[
+    'Musteri', 'Ulke', 'Toplam Limit', 'Acik Bakiye', 'Planlanan Cikis',
+    'Su An Kullanilabilir', 'Odeme Gelince Kullanilabilir', 'Bu Ayki Odemeler'
+  ]];
 
   customers.forEach(function(c) {
     var lim = limits.find(function(l) { return l.customer_id === c.id; }) || {};
@@ -121,23 +118,18 @@ function exportLimitsToExcel(limits, customers, payments, orders, products, curr
 
 /* ============================================================
    PDF EXPORT — analysis snapshot
-   Uses browser print API with print-optimized styles
    ============================================================ */
 
 function exportAnalysisPdf() {
-  var printStyles = '<style>' +
+  var styleEl = document.createElement('style');
+  styleEl.id  = 'nsdata-print-style';
+  styleEl.innerHTML =
     'body { font-family: Inter, sans-serif; color: #0F1117; background: #F8F9FC; }' +
     '.main-nav, .app-footer, .analysis-toolbar, .analysis-detail-toggle, button { display: none !important; }' +
     '#screen-analysis { display: flex !important; padding: 20px; }' +
     '.analysis-chart-card { break-inside: avoid; margin-bottom: 16px; }' +
-    '@page { size: A4 landscape; margin: 16mm; }' +
-  '</style>';
-
-  var head = document.querySelector('head');
-  var styleEl = document.createElement('style');
-  styleEl.id  = 'nsdata-print-style';
-  styleEl.innerHTML = printStyles.replace('<style>', '').replace('</style>', '');
-  head.appendChild(styleEl);
+    '@page { size: A4 landscape; margin: 16mm; }';
+  document.head.appendChild(styleEl);
 
   window.print();
 
@@ -146,21 +138,21 @@ function exportAnalysisPdf() {
     if (el) el.remove();
   }, 1000);
 
-  showToast('PDF haz&#x131;rland&#x131;');
+  showToast('PDF hazirlanadi');
 }
 
 /* ============================================================
-   SVG / CHART DOWNLOAD — individual chart as PNG
+   SVG / CHART DOWNLOAD
    ============================================================ */
 
 function downloadChartAsPng(svgElement, filename) {
   if (!svgElement) return;
 
-  var svgData   = new XMLSerializer().serializeToString(svgElement);
-  var svgBlob   = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-  var svgUrl    = URL.createObjectURL(svgBlob);
-  var img       = new Image();
-  var scale     = window.devicePixelRatio || 2;
+  var svgData = new XMLSerializer().serializeToString(svgElement);
+  var svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+  var svgUrl  = URL.createObjectURL(svgBlob);
+  var img     = new Image();
+  var scale   = window.devicePixelRatio || 2;
 
   img.onload = function() {
     var canvas  = document.createElement('canvas');
@@ -173,9 +165,9 @@ function downloadChartAsPng(svgElement, filename) {
     ctx.drawImage(img, 0, 0);
     URL.revokeObjectURL(svgUrl);
 
-    var a    = document.createElement('a');
-    a.href   = canvas.toDataURL('image/png');
-    a.download = (filename || 'chart') + '.png';
+    var a      = document.createElement('a');
+    a.href     = canvas.toDataURL('image/png');
+    a.download = (filename || 'grafik') + '.png';
     a.click();
     showToast('Grafik indirildi');
   };

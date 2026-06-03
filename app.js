@@ -2,27 +2,37 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v1.0.1';
+const APP_VERSION = 'v1.1.0';
 
 const CHANGELOG = {
+  'v1.1.0': {
+    date: 'Haziran 2026',
+    items: [
+      'Excel import motoru yeniden yazıldı — kolon eşleşme hatası giderildi.',
+      'Excel export Türkçe karakter sorunu düzeltildi.',
+      'Tüm ekranlarda Türkçe metin düzeltmeleri uygulandı.',
+      'Dashboard tablosunda yatay kaydırma sorunu giderildi.',
+      'Profil linki artık doğru ekrana yönlendiriyor.',
+    ]
+  },
   'v1.0.1': {
     date: 'Haziran 2026',
     items: [
-      'Navbar\'a tarih ve aya kalan i&#x15F; g&#xFC;n&#xFC; sayac&#x131; eklendi.',
-      'Sipari&#x15F;ler ekran&#x131;na manuel sat&#x131;r ekleme &#xF6;zelli&#x11F;i getirildi.',
-      'Analiz ekran&#x131;nda T&#xFC;rk&#xE7;e metin ve ta&#x15F;ma sorunlar&#x131; d&#xFC;zeltildi.',
-      'Limitler ekran&#x131;nda pasif m&#xFC;&#x15F;teriler art&#x131;k gizleniyor.',
+      'Navbar\'a tarih ve aya kalan iş günü sayacı eklendi.',
+      'Siparişler ekranına manuel satır ekleme özelliği getirildi.',
+      'Analiz ekranında Türkçe metin ve taşma sorunları düzeltildi.',
+      'Limitler ekranında pasif müşteriler artık gizleniyor.',
     ]
   },
   'v1.0.0': {
     date: 'Haziran 2026',
     items: [
-      'Uygulama ilk surumu yayinlandi.',
-      'Dashboard, Sipari&#x15F;ler, Limitler, Analiz ekranlari aktif.',
-      'Cari, &#xDC;lke ve &#xDC;r&#xFC;n detay panelleri eklendi.',
-      'Supabase gercek zamanli veri senkronizasyonu.',
-      'Excel import ve export destegi.',
-      'PDF rapor alma ozelligi.',
+      'Uygulama ilk sürümü yayınlandı.',
+      'Dashboard, Siparişler, Limitler, Analiz ekranları aktif.',
+      'Cari, Ülke ve Ürün detay panelleri eklendi.',
+      'Supabase gerçek zamanlı veri senkronizasyonu.',
+      'Excel import ve export desteği.',
+      'PDF rapor alma özelliği.',
     ]
   }
 };
@@ -96,6 +106,14 @@ function initNavigation() {
   var screen = urlParams.get('screen');
   if (screen && SCREENS.includes(screen)) {
     _activateScreen(screen);
+  }
+
+  // Profile link: ?profile=TOKEN → navigate to dashboard, store token for display
+  var profileToken = urlParams.get('profile');
+  if (profileToken) {
+    _activateScreen('dashboard');
+    // Store for use by screens
+    window._nsProfileToken = profileToken;
   }
 }
 
