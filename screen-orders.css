@@ -466,3 +466,51 @@
   color: var(--color-text-secondary);
   font-size: 15px;
 }
+
+/* ============================================================
+   MANUAL ADD ROW
+   ============================================================ */
+
+.orders-add-row-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px var(--space-4);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: transparent;
+  border: none;
+  border-top: 1.5px dashed var(--color-border);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  text-align: left;
+}
+
+.orders-add-row-btn:hover {
+  background: #EEF2FF;
+}
+
+.orders-new-row td {
+  background: #F8F9FF;
+  vertical-align: top;
+  padding: var(--space-3) var(--space-3);
+}
+
+.orders-new-select {
+  width: 100%;
+  min-height: 36px;
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.orders-new-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}

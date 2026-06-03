@@ -2,9 +2,18 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v1.0.0';
+const APP_VERSION = 'v1.0.1';
 
 const CHANGELOG = {
+  'v1.0.1': {
+    date: 'Haziran 2026',
+    items: [
+      'Navbar\'a tarih ve aya kalan i&#x15F; g&#xFC;n&#xFC; sayac&#x131; eklendi.',
+      'Sipari&#x15F;ler ekran&#x131;na manuel sat&#x131;r ekleme &#xF6;zelli&#x11F;i getirildi.',
+      'Analiz ekran&#x131;nda T&#xFC;rk&#xE7;e metin ve ta&#x15F;ma sorunlar&#x131; d&#xFC;zeltildi.',
+      'Limitler ekran&#x131;nda pasif m&#xFC;&#x15F;teriler art&#x131;k gizleniyor.',
+    ]
+  },
   'v1.0.0': {
     date: 'Haziran 2026',
     items: [
@@ -97,12 +106,49 @@ function initClock() {
   var clockEl = document.getElementById('nav-clock');
   if (!clockEl) return;
 
+  var TR_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+                   'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+  function calcWorkdaysLeft(from) {
+    // Count remaining weekdays from tomorrow up to last weekday of this month (inclusive)
+    var year  = from.getFullYear();
+    var month = from.getMonth();
+    // Find last weekday of month
+    var lastDay = new Date(year, month + 1, 0); // last calendar day
+    while (lastDay.getDay() === 0 || lastDay.getDay() === 6) {
+      lastDay.setDate(lastDay.getDate() - 1);
+    }
+    // Count Mon-Fri from day after 'from' up to lastDay
+    var count = 0;
+    var d = new Date(from);
+    d.setDate(d.getDate() + 1);
+    d.setHours(0, 0, 0, 0);
+    var end = new Date(lastDay);
+    end.setHours(0, 0, 0, 0);
+    while (d <= end) {
+      var dow = d.getDay();
+      if (dow !== 0 && dow !== 6) count++;
+      d.setDate(d.getDate() + 1);
+    }
+    return count;
+  }
+
   function tick() {
     var now = new Date();
     var h = String(now.getHours()).padStart(2, '0');
     var m = String(now.getMinutes()).padStart(2, '0');
     var s = String(now.getSeconds()).padStart(2, '0');
-    clockEl.textContent = h + ':' + m + ':' + s;
+
+    var dateStr = now.getDate() + ' ' + TR_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+    var wdLeft  = calcWorkdaysLeft(now);
+    var wdLabel = wdLeft === 0 ? 'Son iş günü' : ('Aya ' + wdLeft + ' iş günü kaldı');
+
+    clockEl.innerHTML =
+      '<span style="font-weight:500;color:var(--color-text-secondary)">' + dateStr + '</span>' +
+      '<span style="margin:0 6px;color:var(--color-border)">|</span>' +
+      '<span style="font-weight:500;color:var(--color-accent)">' + wdLabel + '</span>' +
+      '<span style="margin:0 6px;color:var(--color-border)">|</span>' +
+      '<span style="font-feature-settings:\'tnum\'">' + h + ':' + m + ':' + s + '</span>';
   }
 
   tick();

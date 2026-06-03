@@ -16,7 +16,8 @@
     importDetailVisible: false,
     currentMonth: null,
     currentYear: null,
-    activeRowId: null
+    activeRowId: null,
+    addRowOpen: false
   };
 
   var _saveTimer = null;
@@ -174,7 +175,7 @@
             '<th>Toplam Euro</th>' +
             '<th>Not</th>' +
           '</tr></thead>' +
-          '<tbody id="orders-tbody">' + rows + '</tbody>' +
+          '<tbody id="orders-tbody">' + rows + _buildAddRow() + '</tbody>' +
         '</table>' +
       '</div>' +
       '<div class="orders-inactive-toggle" id="orders-inactive-toggle">' +
@@ -388,6 +389,162 @@
 
     html += '</div>';
     return html;
+  }
+
+  /* ============================================================
+     MANUAL ADD ROW
+     ============================================================ */
+
+  function _buildAddRow() {
+    if (!_state.addRowOpen) {
+      return '<tr id="orders-add-row-trigger">' +
+        '<td colspan="8" style="padding:0">' +
+          '<button id="orders-add-row-btn" class="orders-add-row-btn">' +
+            '<span>+</span> Sat&#x131;r Ekle' +
+          '</button>' +
+        '</td>' +
+      '</tr>';
+    }
+
+    var activeCustomers = _state.customers.filter(function(c) { return c.active !== false; });
+
+    var customerOptions = '<option value="">M&#xFC;&#x15F;teri se&#xE7;...</option>' +
+      activeCustomers.map(function(c) {
+        return '<option value="' + c.id + '">' + _esc(c.name) + '</option>';
+      }).join('');
+
+    var productOptions = '<option value="">&#xDC;r&#xFC;n se&#xE7;...</option>' +
+      _state.products.map(function(p) {
+        return '<option value="' + p.id + '">' + _esc(p.name) + '</option>';
+      }).join('');
+
+    return '<tr id="orders-new-row" class="orders-new-row">' +
+      '<td>' +
+        '<select id="orders-new-customer" class="orders-new-select" aria-label="M&#xFC;&#x15F;teri">' +
+          customerOptions +
+        '</select>' +
+        '<select id="orders-new-product" class="orders-new-select" style="margin-top:4px" aria-label="&#xDC;r&#xFC;n">' +
+          productOptions +
+        '</select>' +
+      '</td>' +
+      '<td><input type="number" min="0" id="orders-new-shipped" class="orders-input" placeholder="0" aria-label="&#xC7;&#x131;kan adet" /></td>' +
+      '<td><div class="orders-computed" id="orders-new-shipped-euro">&#x2014;</div></td>' +
+      '<td><input type="number" min="0" id="orders-new-planned-qty" class="orders-input" placeholder="0" aria-label="&#xC7;&#x131;kacak adet" /></td>' +
+      '<td><input type="number" min="0" id="orders-new-planned-euro" class="orders-input" placeholder="0" aria-label="&#xC7;&#x131;kacak euro" /></td>' +
+      '<td><div class="orders-computed" id="orders-new-container">&#x2014;</div></td>' +
+      '<td><div class="orders-computed" id="orders-new-total-euro">&#x2014;</div></td>' +
+      '<td>' +
+        '<input type="text" id="orders-new-note" class="orders-note-input" placeholder="Not..." maxlength="200" />' +
+        '<div style="display:flex;gap:6px;margin-top:6px">' +
+          '<button id="orders-new-save" class="btn btn-primary" style="font-size:13px;padding:4px 12px">Kaydet</button>' +
+          '<button id="orders-new-cancel" class="btn btn-secondary" style="font-size:13px;padding:4px 10px">&#x130;ptal</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }
+
+  function _bindNewRowEvents() {
+    var addBtn = document.getElementById('orders-add-row-btn');
+    if (addBtn) {
+      addBtn.addEventListener('click', function() {
+        _state.addRowOpen = true;
+        _render();
+        var sel = document.getElementById('orders-new-customer');
+        if (sel) sel.focus();
+      });
+    }
+
+    var cancelBtn = document.getElementById('orders-new-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function() {
+        _state.addRowOpen = false;
+        _render();
+      });
+    }
+
+    var saveBtn = document.getElementById('orders-new-save');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', _saveNewRow);
+    }
+
+    // Live calc for new row
+    var shippedInput   = document.getElementById('orders-new-shipped');
+    var plannedQtyInp  = document.getElementById('orders-new-planned-qty');
+    var plannedEuroInp = document.getElementById('orders-new-planned-euro');
+
+    function _getNewRowProduct() {
+      var sel = document.getElementById('orders-new-product');
+      return sel ? _state.productMap[sel.value] : null;
+    }
+
+    function _updateNewRowCalc() {
+      var product     = _getNewRowProduct();
+      var price       = product ? parseNum(product.avg_price_eur) : 0;
+      var ratio       = product ? parseNum(product.container_ratio) : null;
+      var shippedQty  = shippedInput  ? (parseNum(shippedInput.value)  || 0) : 0;
+      var plannedQty  = plannedQtyInp ? (parseNum(plannedQtyInp.value) || 0) : 0;
+      var shippedEuro = price ? shippedQty * price : 0;
+      var plannedEuro = price ? plannedQty * price : 0;
+      var containers  = ratio && ratio > 0 ? (shippedQty + plannedQty) / ratio : null;
+
+      var seEl = document.getElementById('orders-new-shipped-euro');
+      var cEl  = document.getElementById('orders-new-container');
+      var tEl  = document.getElementById('orders-new-total-euro');
+
+      if (seEl) seEl.textContent = shippedEuro > 0 ? fmtEuro(shippedEuro) : '\u2014';
+      if (cEl)  cEl.textContent  = containers !== null ? fmtQty(containers) : '\u2014';
+      if (tEl)  tEl.textContent  = (shippedEuro + plannedEuro) > 0 ? fmtEuro(shippedEuro + plannedEuro) : '\u2014';
+
+      // Sync planned euro when qty changes
+      if (plannedEuroInp && document.activeElement === plannedQtyInp) {
+        plannedEuroInp.value = plannedEuro > 0 ? Math.round(plannedEuro) : '';
+      }
+    }
+
+    if (shippedInput)   shippedInput.addEventListener('input', _updateNewRowCalc);
+    if (plannedQtyInp)  plannedQtyInp.addEventListener('input', _updateNewRowCalc);
+    if (plannedEuroInp) plannedEuroInp.addEventListener('input', _updateNewRowCalc);
+
+    var prodSel = document.getElementById('orders-new-product');
+    if (prodSel) prodSel.addEventListener('change', _updateNewRowCalc);
+  }
+
+  async function _saveNewRow() {
+    var custSel    = document.getElementById('orders-new-customer');
+    var prodSel    = document.getElementById('orders-new-product');
+    var shippedInp = document.getElementById('orders-new-shipped');
+    var qtyInp     = document.getElementById('orders-new-planned-qty');
+    var noteInp    = document.getElementById('orders-new-note');
+
+    var customerId = custSel ? custSel.value : '';
+    var productId  = prodSel ? prodSel.value : '';
+
+    if (!customerId || !productId) {
+      showToast('M\u00FC\u015Fteri ve \u00FCr\u00FCn se\u00E7ilmeli');
+      return;
+    }
+
+    var shippedQty = shippedInp ? (parseNum(shippedInp.value) || 0) : 0;
+    var plannedQty = qtyInp     ? (parseNum(qtyInp.value)     || 0) : 0;
+    var note       = noteInp    ? noteInp.value : '';
+
+    var ok = await dbUpsertOrder({
+      customer_id: customerId,
+      product_id:  productId,
+      shipped_qty: shippedQty,
+      planned_qty: plannedQty,
+      note:        note
+    });
+
+    if (ok) {
+      _showSaved();
+      _state.addRowOpen = false;
+      await _loadAll();
+      _render();
+      emitDataChange('orders', {});
+    } else {
+      showToast('Kaydedilemedi');
+    }
   }
 
   /* ============================================================
@@ -704,9 +861,12 @@
     document.querySelectorAll('.orders-note-input').forEach(function(input) {
       input.addEventListener('input', function() {
         var rowKey = input.getAttribute('data-row-key');
-        _scheduleRowSave(rowKey);
+        if (rowKey) _scheduleRowSave(rowKey);
       });
     });
+
+    // Manual add row
+    _bindNewRowEvents();
   }
 
   /* ============================================================

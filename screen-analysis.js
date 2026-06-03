@@ -115,7 +115,7 @@
       '<div class="analysis-scenario-card">' +
         '<span class="analysis-scenario-label">Kesinle&#x15F;en Ciro</span>' +
         '<span class="analysis-scenario-value" style="color:var(--color-text-primary)">' + fmtEuro(totals.confirmed_eur, true) + '</span>' +
-        '<span class="analysis-scenario-sub">Sevk edilmis</span>' +
+        '<span class="analysis-scenario-sub">Sevk edilmi&#x15F;</span>' +
       '</div>' +
       '<div class="analysis-scenario-card">' +
         '<span class="analysis-scenario-label">Ay Sonu &#xD6;ng&#xF6;r&#xFC;s&#xFC;</span>' +
@@ -192,7 +192,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">M&#xFC;&#x15F;teri Bazli Ciro (Beklenen)</span>' +
+        '<span class="analysis-chart-title">M&#xFC;&#x15F;teri Bazl&#x131; Ciro (Beklenen)</span>' +
         '<button class="analysis-chart-download" id="analysis-dl-customers" aria-label="Indir">&#x21E9;</button>' +
       '</div>' +
       '<div class="analysis-chart-body">' + svg + '</div>' +
@@ -264,7 +264,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">&#xDC;r&#xFC;n Dag&#x131;l&#x131;m&#x131;</span>' +
+        '<span class="analysis-chart-title">&#xDC;r&#xFC;n Da&#x11F;&#x131;l&#x131;m&#x131;</span>' +
         '<button class="analysis-chart-download" id="analysis-dl-products" aria-label="Indir">&#x21E9;</button>' +
       '</div>' +
       '<div class="analysis-chart-body">' +
@@ -310,7 +310,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">M&#xFC;&#x15F;teri Hedef Isi Haritas&#x131;</span>' +
+        '<span class="analysis-chart-title">M&#xFC;&#x15F;teri Hedef Is&#x131; Haritas&#x131;</span>' +
         '<span style="font-size:12px;color:var(--color-text-secondary)">Boyut=Ciro &nbsp; Renk=Hedef%</span>' +
       '</div>' +
       '<div class="analysis-chart-body">' +
@@ -350,7 +350,7 @@
     customerSummaries.forEach(function(s) {
       var c = _state.customerMap[s.customer_id];
       if (!c) return;
-      var country = c.country || 'Diger';
+      var country = c.country || 'Di&#x11F;er';
       if (!countryMap[country]) countryMap[country] = 0;
       countryMap[country] += s.expected_eur || 0;
     });
@@ -382,7 +382,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">&#xDC;lke Bazli Dagilim</span>' +
+        '<span class="analysis-chart-title">&#xDC;lke Bazl&#x131; Da&#x11F;&#x131;l&#x131;m</span>' +
       '</div>' +
       '<div class="analysis-chart-body" style="padding:0">' +
         '<table class="analysis-comparison-table">' +
@@ -419,7 +419,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Tam M&#xFC;&#x15F;teri Siralamas&#x131;</span>' +
+        '<span class="analysis-chart-title">Tam M&#xFC;&#x15F;teri S&#x131;ralamas&#x131;</span>' +
       '</div>' +
       '<div class="analysis-chart-body" style="padding:0">' +
         '<table class="analysis-comparison-table">' +

@@ -1,7 +1,7 @@
 /* NSDATA - sw.js */
 /* Service worker — cache version must always match app version */
 
-var CACHE_NAME = 'nsdata-v1.0.0';
+var CACHE_NAME = 'nsdata-v1.0.1';
 
 var STATIC_ASSETS = [
   '/',

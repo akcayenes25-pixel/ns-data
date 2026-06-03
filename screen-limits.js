@@ -81,6 +81,7 @@
   function _buildHTML() {
     var q = _state.searchQuery.toLowerCase();
     var customers = _state.customers.filter(function(c) {
+      if (c.active === false) return false;
       if (!q) return true;
       return c.name.toLowerCase().includes(q) || (c.country || '').toLowerCase().includes(q);
     });
