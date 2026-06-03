@@ -1,5 +1,6 @@
-/* NSDATA - screen-orders.js v1.4.0 */
-/* destination_country, 6-alan three-way, çift konteyner/toplam, pasif toggle kaldırıldı */
+/* NSDATA - screen-orders.js v1.7.0 */
+/* Kolon düzeni: KONTEYNER | ADET | EURO | Toplam € | Ülke | Not */
+/* 2-satırlı header: grup etiketi + Çıkan/Çıkacak */
 (function() {
   'use strict';
 
@@ -20,40 +21,34 @@
   var _saveTimer = null;
   var _saveIndicator = null;
 
-  // Çift grup: ÇIKAN ve ÇIKACAK — her biri 3 editable (adet/euro/konteyner) + 1 computed (toplam euro)
-  var COL_GROUPS = [
-    {
-      id: 'shipped', label: 'ÇIKAN', color: '#F0FDF4', borderColor: '#86EFAC',
-      cols: [
-        { id: 'shipped_qty',       label: 'Adet',      type: 'input',    sortable: false },
-        { id: 'shipped_euro',      label: 'Euro',      type: 'input',    sortable: true  },
-        { id: 'shipped_container', label: 'Konteyner', type: 'input',    sortable: false },
-        { id: 'shipped_total',     label: 'Toplam €',  type: 'computed', sortable: true  },
-      ]
-    },
-    {
-      id: 'planned', label: 'ÇIKACAK', color: '#EFF6FF', borderColor: '#93C5FD',
-      cols: [
-        { id: 'planned_qty',       label: 'Adet',      type: 'input',    sortable: false },
-        { id: 'planned_euro',      label: 'Euro',      type: 'input',    sortable: true  },
-        { id: 'planned_container', label: 'Konteyner', type: 'input',    sortable: false },
-        { id: 'planned_total',     label: 'Toplam €',  type: 'computed', sortable: true  },
-      ]
-    },
-    {
-      id: 'meta', label: '', color: '', borderColor: '',
-      cols: [
-        { id: 'destination', label: 'Ülke', type: 'input-text', sortable: false },
-        { id: 'note',        label: 'Not',  type: 'input-text', sortable: false },
-      ]
-    }
+  // Yeni kolon düzeni: KONTEYNER | ADET | EURO | Toplam € | Ülke | Not
+  // Her grup: shipped + planned yan yana
+  var COL_DEFS = [
+    { id: 'shipped_container', group: 'container', groupLabel: 'KONTEYNER', side: 'shipped', label: 'Çıkan',   type: 'input',      sortable: false },
+    { id: 'planned_container', group: 'container', groupLabel: 'KONTEYNER', side: 'planned', label: 'Çıkacak', type: 'input',      sortable: false },
+    { id: 'shipped_qty',       group: 'qty',       groupLabel: 'ADET',      side: 'shipped', label: 'Çıkan',   type: 'input',      sortable: false },
+    { id: 'planned_qty',       group: 'qty',       groupLabel: 'ADET',      side: 'planned', label: 'Çıkacak', type: 'input',      sortable: false },
+    { id: 'shipped_euro',      group: 'euro',      groupLabel: 'EURO',      side: 'shipped', label: 'Çıkan',   type: 'input',      sortable: true  },
+    { id: 'planned_euro',      group: 'euro',      groupLabel: 'EURO',      side: 'planned', label: 'Çıkacak', type: 'input',      sortable: true  },
+    { id: 'total_euro',        group: 'total',     groupLabel: '',          side: null,       label: 'Toplam €',type: 'computed',   sortable: true  },
+    { id: 'destination',       group: 'meta',      groupLabel: '',          side: null,       label: 'Ülke',    type: 'input-text', sortable: false },
+    { id: 'note',              group: 'meta',      groupLabel: '',          side: null,       label: 'Not',     type: 'input-text', sortable: false },
   ];
 
-  function _allCols() {
-    var cols = [];
-    COL_GROUPS.forEach(function(g) { g.cols.forEach(function(c) { cols.push(c); }); });
-    return cols;
+  // Group border colors
+  var GROUP_STYLE = {
+    container: { color: '#F0FDF4', border: '#86EFAC' },
+    qty:       { color: '#EFF6FF', border: '#93C5FD' },
+    euro:      { color: '#FFFBEB', border: '#FCD34D' },
+    total:     { color: '#F5F3FF', border: '#C4B5FD' },
+    meta:      { color: '',        border: '' },
+  };
+
+  function _visCols() {
+    return COL_DEFS.filter(function(c) { return !_state.hiddenCols[c.id]; });
   }
+
+  function _visibleColCount() { return _visCols().length; }
 
   /* ============================================================ INIT */
   document.addEventListener('nsdata:appReady', function() { _init(); });
@@ -90,8 +85,11 @@
     var chipsBar  = document.querySelector('#screen-orders .orders-chips-bar');
     if (!filterbar) return;
     var top = 64 + (filterbar.offsetHeight || 52) + (chipsBar ? chipsBar.offsetHeight : 0);
-    document.querySelectorAll('#screen-orders .orders-th').forEach(function(th) {
+    document.querySelectorAll('#screen-orders .orders-th-row th').forEach(function(th) {
       th.style.top = top + 'px';
+    });
+    document.querySelectorAll('#screen-orders .orders-th-group th').forEach(function(th) {
+      th.style.top = (top - 28) + 'px';
     });
   }
 
@@ -102,13 +100,10 @@
   /* ============================================================ FILTER BAR */
   function _buildFilterBar() {
     var allCountries = [];
-    // Collect countries from orders.destination_country
     _state.orders.forEach(function(o) {
       if (o.destination_country && !allCountries.includes(o.destination_country)) allCountries.push(o.destination_country);
     });
     allCountries.sort();
-
-    var allProducts = _state.products;
 
     return '<div class="orders-filterbar" id="orders-filterbar">' +
       '<div class="orders-filterbar-inner">' +
@@ -129,7 +124,7 @@
         '</div>' +
       '</div>' +
       _buildCountryDD(allCountries) +
-      _buildProductDD(allProducts) +
+      _buildProductDD(_state.products) +
       _buildColVisDD() +
     '</div>';
   }
@@ -167,10 +162,33 @@
 
   function _buildColVisDD() {
     if (_state.openDropdown !== 'colvis') return '<div id="orders-dd-colvis" class="orders-dropdown" style="display:none"></div>';
-    var items = _allCols().map(function(col) {
-      return '<label class="orders-dd-item"><input type="checkbox" class="orders-colvis-cb" data-col="' + col.id + '" ' + (!_state.hiddenCols[col.id] ? 'checked' : '') + '><span>' + col.label + '</span></label>';
-    }).join('');
-    return '<div id="orders-dd-colvis" class="orders-dropdown"><div class="orders-dd-list">' + items + '</div></div>';
+
+    // Gruplu gösterim
+    var groups = [
+      { key: 'container', label: 'KONTEYNER', cols: ['shipped_container', 'planned_container'] },
+      { key: 'qty',       label: 'ADET',      cols: ['shipped_qty', 'planned_qty'] },
+      { key: 'euro',      label: 'EURO',       cols: ['shipped_euro', 'planned_euro'] },
+      { key: 'total',     label: 'Toplam €',   cols: ['total_euro'] },
+      { key: 'meta',      label: 'Diğer',      cols: ['destination', 'note'] },
+    ];
+
+    var colLabel = {
+      shipped_container: 'Çıkan', planned_container: 'Çıkacak',
+      shipped_qty: 'Çıkan', planned_qty: 'Çıkacak',
+      shipped_euro: 'Çıkan', planned_euro: 'Çıkacak',
+      total_euro: 'Toplam €',
+      destination: 'Ülke', note: 'Not'
+    };
+
+    var html = '<div id="orders-dd-colvis" class="orders-dropdown orders-colvis-dd"><div class="orders-dd-list">';
+    groups.forEach(function(g) {
+      html += '<div class="orders-colvis-group-label">' + g.label + '</div>';
+      g.cols.forEach(function(cid) {
+        html += '<label class="orders-dd-item orders-dd-item--sub"><input type="checkbox" class="orders-colvis-cb" data-col="' + cid + '" ' + (!_state.hiddenCols[cid] ? 'checked' : '') + '><span>' + (colLabel[cid] || cid) + '</span></label>';
+      });
+    });
+    html += '</div></div>';
+    return html;
   }
 
   /* ============================================================ CHIPS */
@@ -203,26 +221,53 @@
   }
 
   function _buildThead() {
-    // Single unified header row — no rowspan, cleaner
-    var row = '<tr>';
-    row += '<th class="orders-th orders-th--name">Müşteri / Ürün</th>';
-    COL_GROUPS.forEach(function(g) {
-      g.cols.forEach(function(col) {
-        if (_state.hiddenCols[col.id]) return;
+    var vis = _visCols();
+
+    // --- Group header row ---
+    var groupRow = '<tr class="orders-th-group">';
+    groupRow += '<th rowspan="2" class="orders-th orders-th--name-hdr" style="vertical-align:bottom;padding-bottom:6px">Müşteri / Ürün</th>';
+
+    // Find contiguous group spans
+    var i = 0;
+    while (i < vis.length) {
+      var col = vis[i];
+      var gs = GROUP_STYLE[col.group] || {};
+      var bg = gs.color ? 'background:' + gs.color + ';' : 'background:var(--color-surface-2);';
+      var bl = gs.border ? 'border-left:2px solid ' + gs.border + ';' : '';
+      var br = gs.border ? 'border-right:2px solid ' + gs.border + ';' : '';
+
+      if (!col.groupLabel) {
+        // No group label — single cell rowspan=2 for meta/total
         var sortIcon = col.sortable ? (_state.sort.col === col.id ? (_state.sort.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅') : '';
-        var bg = g.color ? 'background:' + g.color + ';' : '';
-        var bl = g.color ? 'border-left:2px solid ' + g.borderColor + ';' : '';
-        var groupLabel = g.label ? '<div style="font-size:9px;letter-spacing:0.8px;color:#888;margin-bottom:1px">' + g.label + '</div>' : '';
-        row += '<th class="orders-th orders-th--num' + (col.sortable ? ' orders-th--sortable' : '') + '" ' +
-          'style="' + bg + bl + '" ' +
-          (col.sortable ? 'data-sort="' + col.id + '"' : '') + '>' +
-          groupLabel + col.label + sortIcon + '</th>';
-      });
+        groupRow += '<th rowspan="2" class="orders-th orders-th--num' + (col.sortable ? ' orders-th--sortable' : '') + '" style="' + bg + bl + 'vertical-align:bottom;padding-bottom:6px" ' + (col.sortable ? 'data-sort="' + col.id + '"' : '') + '>' + col.label + sortIcon + '</th>';
+        i++;
+      } else {
+        // Count how many cols share same group
+        var span = 0;
+        var j = i;
+        while (j < vis.length && vis[j].group === col.group) { span++; j++; }
+        groupRow += '<th colspan="' + span + '" class="orders-th orders-th--group-hdr" style="' + bg + bl + br + 'text-align:center;border-bottom:1px solid ' + (gs.border || 'var(--color-border)') + '">' + col.groupLabel + '</th>';
+        i += span;
+      }
+    }
+    groupRow += '</tr>';
+
+    // --- Sub header row ---
+    var subRow = '<tr class="orders-th-row">';
+    vis.forEach(function(col) {
+      if (!col.groupLabel) return; // already rowspan=2 above
+      var gs = GROUP_STYLE[col.group] || {};
+      var bg = gs.color ? 'background:' + gs.color + ';' : '';
+      var bl = col.side === 'shipped' && gs.border ? 'border-left:2px solid ' + gs.border + ';' : '';
+      var sortIcon = col.sortable ? (_state.sort.col === col.id ? (_state.sort.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅') : '';
+      subRow += '<th class="orders-th orders-th--num orders-th--sub' + (col.sortable ? ' orders-th--sortable' : '') + '" style="' + bg + bl + '" ' + (col.sortable ? 'data-sort="' + col.id + '"' : '') + '>' + col.label + sortIcon + '</th>';
     });
-    row += '</tr>';
-    return row;
+    subRow += '</tr>';
+
+    return groupRow + subRow;
   }
 
+  /* ============================================================ TABLE ROWS */
   function _buildTableRows() {
     var q  = _state.searchQuery.toLowerCase();
     var fC = _state.filters.countries;
@@ -231,7 +276,6 @@
     var customers = _state.customers.filter(function(c) {
       if (c.active === false) return false;
       if (q && !c.name.toLowerCase().includes(q)) return false;
-      // Country filter — check if customer has orders to those countries
       if (fC.length) {
         var hasCountry = _state.orders.some(function(o) {
           return o.customer_id === c.id && fC.includes(o.destination_country);
@@ -258,13 +302,11 @@
   function _sortCustomers(customers, fP) {
     var col = _state.sort.col; var dir = _state.sort.dir === 'asc' ? 1 : -1;
     return customers.slice().sort(function(a, b) {
-      var aVal = _customerColTotal(a.id, col, fP);
-      var bVal = _customerColTotal(b.id, col, fP);
-      return dir * (aVal - bVal);
+      return dir * (_custTotal(a.id, col, fP) - _custTotal(b.id, col, fP));
     });
   }
 
-  function _customerColTotal(customerId, col, fP) {
+  function _custTotal(customerId, col, fP) {
     var total = 0;
     _state.orders.forEach(function(o) {
       if (o.customer_id !== customerId) return;
@@ -273,8 +315,9 @@
       var price = parseNum(p.avg_price_eur) || 0;
       var sq = parseNum(o.shipped_qty) || 0;
       var pq = parseNum(o.planned_qty) || 0;
-      if (col === 'shipped_euro' || col === 'shipped_total') total += sq * price;
-      else if (col === 'planned_euro' || col === 'planned_total') total += pq * price;
+      if (col === 'shipped_euro') total += sq * price;
+      else if (col === 'planned_euro') total += pq * price;
+      else if (col === 'total_euro') total += (sq + pq) * price;
     });
     return total;
   }
@@ -296,6 +339,8 @@
 
     if (isCollapsed) return html;
 
+    var vis = _visCols();
+
     products.forEach(function(product) {
       var order = _state.orders.find(function(o) { return o.customer_id === customer.id && o.product_id === product.id; });
       var sq    = order ? (parseNum(order.shipped_qty)  || 0) : 0;
@@ -306,45 +351,43 @@
       var pe    = price ? pq * price : 0;
       var sc    = ratio ? sq / ratio : null;
       var pc    = ratio ? pq / ratio : null;
+      var total = se + pe;
       var rowKey = customer.id + '__' + product.id;
       var dest   = order ? (order.destination_country || '') : '';
+      var note   = order ? (order.note || '') : '';
 
       html += '<tr class="orders-data-row' + (_state.activeRowKey === rowKey ? ' orders-active-row' : '') + '" ' +
         'data-row-key="' + rowKey + '" data-customer-id="' + customer.id + '" data-product-id="' + product.id + '">' +
         '<td class="orders-td orders-td--name"><div class="orders-product-name">' + _esc(product.name) + '</div></td>';
 
-      COL_GROUPS.forEach(function(g) {
-        g.cols.forEach(function(col) {
-          if (_state.hiddenCols[col.id]) return;
-          var bg = g.color ? 'background:' + g.color + ';' : '';
-          var bl = g.color ? 'border-left:2px solid ' + g.borderColor + ';' : '';
-          var style = 'style="' + bg + bl + '"';
-          var td = '';
+      vis.forEach(function(col) {
+        var gs = GROUP_STYLE[col.group] || {};
+        var bg = gs.color ? 'background:' + gs.color + ';' : '';
+        var bl = col.side === 'shipped' && gs.border ? 'border-left:2px solid ' + gs.border + ';' : '';
+        var style = 'style="' + bg + bl + '"';
+        var td = '';
 
-          if (col.id === 'shipped_qty') {
-            td = '<input type="number" min="0" class="orders-input orders-shipped-qty" data-row-key="' + rowKey + '" value="' + (sq || '') + '" placeholder="0" />';
-          } else if (col.id === 'shipped_euro') {
-            td = '<input type="number" min="0" class="orders-input orders-shipped-euro-inp" data-row-key="' + rowKey + '" value="' + (se || '') + '" placeholder="0" />';
-          } else if (col.id === 'shipped_container') {
-            td = '<input type="number" min="0" class="orders-input orders-shipped-container" data-row-key="' + rowKey + '" value="' + (sc !== null ? (Math.round(sc*100)/100) : '') + '" placeholder="0" />';
-          } else if (col.id === 'shipped_total') {
-            td = '<div class="orders-computed">' + (se > 0 ? fmtEuro(se) : '—') + '</div>';
-          } else if (col.id === 'planned_qty') {
-            td = '<input type="number" min="0" class="orders-input orders-planned-qty" data-row-key="' + rowKey + '" value="' + (pq || '') + '" placeholder="0" />';
-          } else if (col.id === 'planned_euro') {
-            td = '<input type="number" min="0" class="orders-input orders-planned-euro-inp" data-row-key="' + rowKey + '" value="' + (pe || '') + '" placeholder="0" />';
-          } else if (col.id === 'planned_container') {
-            td = '<input type="number" min="0" class="orders-input orders-planned-container" data-row-key="' + rowKey + '" value="' + (pc !== null ? (Math.round(pc*100)/100) : '') + '" placeholder="0" />';
-          } else if (col.id === 'planned_total') {
-            td = '<div class="orders-computed orders-planned-total">' + (pe > 0 ? fmtEuro(pe) : '—') + '</div>';
-          } else if (col.id === 'destination') {
-            td = '<input type="text" class="orders-note-input orders-dest-input" data-row-key="' + rowKey + '" value="' + _esc(dest) + '" placeholder="Ülke..." maxlength="60" />';
-          } else if (col.id === 'note') {
-            td = '<input type="text" class="orders-note-input" data-row-key="' + rowKey + '" value="' + _esc(order ? (order.note || '') : '') + '" placeholder="Not..." maxlength="200" />';
-          }
+        if (col.id === 'shipped_container') {
+          td = '<input type="number" min="0" class="orders-input orders-shipped-container" data-row-key="' + rowKey + '" value="' + (sc !== null ? (Math.round(sc*100)/100) : '') + '" placeholder="0" />';
+        } else if (col.id === 'planned_container') {
+          td = '<input type="number" min="0" class="orders-input orders-planned-container" data-row-key="' + rowKey + '" value="' + (pc !== null ? (Math.round(pc*100)/100) : '') + '" placeholder="0" />';
+        } else if (col.id === 'shipped_qty') {
+          td = '<input type="number" min="0" class="orders-input orders-shipped-qty" data-row-key="' + rowKey + '" value="' + (sq || '') + '" placeholder="0" />';
+        } else if (col.id === 'planned_qty') {
+          td = '<input type="number" min="0" class="orders-input orders-planned-qty" data-row-key="' + rowKey + '" value="' + (pq || '') + '" placeholder="0" />';
+        } else if (col.id === 'shipped_euro') {
+          td = '<input type="number" min="0" class="orders-input orders-shipped-euro-inp" data-row-key="' + rowKey + '" value="' + (se || '') + '" placeholder="0" />';
+        } else if (col.id === 'planned_euro') {
+          td = '<input type="number" min="0" class="orders-input orders-planned-euro-inp" data-row-key="' + rowKey + '" value="' + (pe || '') + '" placeholder="0" />';
+        } else if (col.id === 'total_euro') {
+          td = '<div class="orders-computed orders-total-euro">' + (total > 0 ? fmtEuro(total) : '—') + '</div>';
+        } else if (col.id === 'destination') {
+          td = '<input type="text" class="orders-note-input orders-dest-input" data-row-key="' + rowKey + '" value="' + _esc(dest) + '" placeholder="Ülke..." maxlength="60" />';
+        } else if (col.id === 'note') {
+          td = '<input type="text" class="orders-note-input" data-row-key="' + rowKey + '" value="' + _esc(note) + '" placeholder="Not..." maxlength="200" />';
+        }
 
-          html += '<td class="orders-td orders-td--num" ' + style + '>' + td + '</td>';
-        });
+        html += '<td class="orders-td orders-td--num" ' + style + '>' + td + '</td>';
       });
 
       html += '</tr>';
@@ -353,11 +396,7 @@
     return html;
   }
 
-  function _visibleColCount() {
-    return _allCols().filter(function(c){ return !_state.hiddenCols[c.id]; }).length;
-  }
-
-  /* ============================================================ THREE-WAY (6 alan) */
+  /* ============================================================ THREE-WAY */
   function _applyThreeWay(rowKey, group, source, value) {
     var row = document.querySelector('[data-row-key="' + rowKey + '"]');
     if (!row) return;
@@ -367,24 +406,24 @@
     var ratio = parseNum(product.container_ratio);
     var result = calcThreeWay(source, value, price, ratio);
 
-    if (group === 'shipped') {
-      var qEl  = row.querySelector('.orders-shipped-qty');
-      var eEl  = row.querySelector('.orders-shipped-euro-inp');
-      var cEl  = row.querySelector('.orders-shipped-container');
-      var tEl  = row.querySelector('.orders-computed:not(.orders-planned-total)');
-      if (source !== 'qty'       && qEl && result.qty       !== null) { qEl.setAttribute('data-skip','1'); qEl.value = Math.round(result.qty * 100)/100; }
-      if (source !== 'euro'      && eEl && result.euro      !== null) { eEl.setAttribute('data-skip','1'); eEl.value = Math.round(result.euro); }
-      if (source !== 'container' && cEl && result.container !== null) { cEl.setAttribute('data-skip','1'); cEl.value = Math.round(result.container * 100)/100; }
-      if (tEl) tEl.textContent = result.euro > 0 ? fmtEuro(result.euro) : (price ? fmtEuro((parseNum(qEl ? qEl.value : 0)||0)*price) : '—');
-    } else {
-      var qEl  = row.querySelector('.orders-planned-qty');
-      var eEl  = row.querySelector('.orders-planned-euro-inp');
-      var cEl  = row.querySelector('.orders-planned-container');
-      var tEl  = row.querySelector('.orders-planned-total');
-      if (source !== 'qty'       && qEl && result.qty       !== null) { qEl.setAttribute('data-skip','1'); qEl.value = Math.round(result.qty * 100)/100; }
-      if (source !== 'euro'      && eEl && result.euro      !== null) { eEl.setAttribute('data-skip','1'); eEl.value = Math.round(result.euro); }
-      if (source !== 'container' && cEl && result.container !== null) { cEl.setAttribute('data-skip','1'); cEl.value = Math.round(result.container * 100)/100; }
-      if (tEl) tEl.textContent = result.euro > 0 ? fmtEuro(result.euro) : '—';
+    var prefix = group === 'shipped' ? '.orders-shipped-' : '.orders-planned-';
+    var qEl = row.querySelector(prefix + 'qty');
+    var eEl = row.querySelector(prefix + 'euro-inp');
+    var cEl = row.querySelector(prefix + 'container');
+    var tEl = row.querySelector('.orders-total-euro');
+
+    if (source !== 'qty'       && qEl && result.qty       !== null) { qEl.setAttribute('data-skip','1'); qEl.value = Math.round(result.qty * 100)/100; }
+    if (source !== 'euro'      && eEl && result.euro      !== null) { eEl.setAttribute('data-skip','1'); eEl.value = Math.round(result.euro); }
+    if (source !== 'container' && cEl && result.container !== null) { cEl.setAttribute('data-skip','1'); cEl.value = Math.round(result.container * 100)/100; }
+
+    // Update Toplam €
+    if (tEl) {
+      var se = parseNum((row.querySelector('.orders-shipped-euro-inp') || {}).value) || 0;
+      var pe = parseNum((row.querySelector('.orders-planned-euro-inp') || {}).value) || 0;
+      if (group === 'shipped' && result.euro !== null) se = result.euro;
+      if (group === 'planned' && result.euro !== null) pe = result.euro;
+      var total = se + pe;
+      tEl.textContent = total > 0 ? fmtEuro(total) : '—';
     }
   }
 
@@ -554,27 +593,18 @@
   async function _confirmImport() {
     if (!_state.importPreviewData) return;
     var rows = _state.importPreviewData.rows || [];
-
-    // Collect manual overrides from UI
     document.querySelectorAll('.import-cust-select').forEach(function(sel) {
       if (!sel.value) return;
       var erpName = sel.getAttribute('data-erp-name');
       var row = rows.find(function(r){ return r.customer_name === erpName && !r.customer_id; });
-      if (row) {
-        row.customer_id = sel.value;
-        if (typeof recordImportMapping === 'function') recordImportMapping('customer', erpName, _state.customerMap[sel.value]?.name, true);
-      }
+      if (row) { row.customer_id = sel.value; if (typeof recordImportMapping === 'function') recordImportMapping('customer', erpName, _state.customerMap[sel.value]?.name, true); }
     });
     document.querySelectorAll('.import-prod-select').forEach(function(sel) {
       if (!sel.value) return;
       var erpName = sel.getAttribute('data-erp-name');
       var row = rows.find(function(r){ return r.product_name === erpName && !r.product_id; });
-      if (row) {
-        row.product_id = sel.value;
-        if (typeof recordImportMapping === 'function') recordImportMapping('product', erpName, _state.productMap[sel.value]?.name, true);
-      }
+      if (row) { row.product_id = sel.value; if (typeof recordImportMapping === 'function') recordImportMapping('product', erpName, _state.productMap[sel.value]?.name, true); }
     });
-
     var done = 0;
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
@@ -603,11 +633,9 @@
   }
 
   function _bindScreenEvents() {
-    // Search
     var se = document.getElementById('orders-search');
     if (se) se.addEventListener('input', debounce(function(){ _state.searchQuery = se.value.trim(); _render(); }, 250));
 
-    // Filter btns
     document.querySelectorAll('[data-filter]').forEach(function(btn) {
       if (!btn.classList.contains('orders-filter-btn') && !btn.classList.contains('orders-chip-x') && !btn.classList.contains('orders-dd-reset')) return;
       btn.addEventListener('click', function(e) {
@@ -636,7 +664,6 @@
     var clearAll = document.getElementById('orders-chips-clear');
     if (clearAll) clearAll.addEventListener('click', function(){ _state.searchQuery = ''; _state.filters = { countries: [], products: [] }; _render(); });
 
-    // Checkboxes
     document.querySelectorAll('.orders-dd-cb').forEach(function(cb) {
       cb.addEventListener('change', function() {
         var f = cb.getAttribute('data-filter'); var v = cb.getAttribute('data-value');
@@ -659,7 +686,7 @@
       });
     });
 
-    // Sort
+    // Sort — both header rows
     document.querySelectorAll('.orders-th--sortable').forEach(function(th) {
       th.addEventListener('click', function() {
         var col = th.getAttribute('data-sort');
@@ -669,7 +696,6 @@
       });
     });
 
-    // Group collapse
     document.querySelectorAll('.orders-group-collapse').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -678,16 +704,13 @@
       });
     });
 
-    // Customer name click
     document.querySelectorAll('.orders-customer-btn').forEach(function(btn) {
       btn.addEventListener('click', function() { var id = btn.getAttribute('data-customer-id'); if (id) navigateTo('customer', { id: id }); });
     });
 
-    // Export
     var expBtn = document.getElementById('orders-export-excel');
     if (expBtn) expBtn.addEventListener('click', function() { if (typeof exportOrdersToExcel === 'function') exportOrdersToExcel(_state.orders, _state.products, _state.customers); });
 
-    // Import
     var impInp = document.getElementById('orders-import-input');
     if (impInp) impInp.addEventListener('change', function() { if (impInp.files[0]) _handleImportFile(impInp.files[0]); impInp.value = ''; });
     var impCancel = document.getElementById('orders-import-cancel');
@@ -695,7 +718,6 @@
     var impConfirm = document.getElementById('orders-import-confirm');
     if (impConfirm) impConfirm.addEventListener('click', _confirmImport);
 
-    // Add row
     var addBtn = document.getElementById('orders-add-row-btn');
     if (addBtn) addBtn.addEventListener('click', function() { _state.addRowOpen = true; _render(); });
     var cancelNew = document.getElementById('orders-new-cancel');
@@ -703,8 +725,8 @@
     var saveNew = document.getElementById('orders-new-save');
     if (saveNew) saveNew.addEventListener('click', _saveNewRow);
 
-    // Input handlers — three-way
-    function _bindInputGroup(qSel, eSel, cSel, group) {
+    // Three-way input binding
+    function _bindGroup(qSel, eSel, cSel, group) {
       document.querySelectorAll(qSel).forEach(function(inp) {
         inp.addEventListener('focus', function() { _state.activeRowKey = inp.getAttribute('data-row-key'); });
         inp.addEventListener('input', function() {
@@ -731,8 +753,8 @@
       });
     }
 
-    _bindInputGroup('.orders-shipped-qty', '.orders-shipped-euro-inp', '.orders-shipped-container', 'shipped');
-    _bindInputGroup('.orders-planned-qty', '.orders-planned-euro-inp', '.orders-planned-container', 'planned');
+    _bindGroup('.orders-shipped-qty', '.orders-shipped-euro-inp', '.orders-shipped-container', 'shipped');
+    _bindGroup('.orders-planned-qty', '.orders-planned-euro-inp', '.orders-planned-container', 'planned');
 
     document.querySelectorAll('.orders-note-input, .orders-dest-input').forEach(function(inp) {
       inp.addEventListener('input', function() { var rk = inp.getAttribute('data-row-key'); if (rk) _scheduleRowSave(rk); });
