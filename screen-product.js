@@ -130,11 +130,11 @@
     }).join('');
 
     return '<div class="product-section-card">' +
-      '<div class="product-section-header">Musteri Siralaması</div>' +
+      '<div class="product-section-header">Musteri Siralamas&#x131;</div>' +
       '<table class="product-customer-table">' +
         '<thead><tr>' +
-          '<th>#</th><th>Musteri</th><th style="text-align:right">Cikan</th>' +
-          '<th style="text-align:right">Cikacak</th><th style="text-align:right">Beklenen</th>' +
+          '<th>#</th><th>MUSTERI</th><th style="text-align:right">CIKAN</th>' +
+          '<th style="text-align:right">CIKACAK</th><th style="text-align:right">BEKLENEN</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +
@@ -177,10 +177,10 @@
     }).join('');
 
     return '<div class="product-section-card">' +
-      '<div class="product-section-header">Ulke Dagilımı</div>' +
+      '<div class="product-section-header">Ulke Dagil&#x131;m&#x131;</div>' +
       '<table class="product-country-table">' +
         '<thead><tr>' +
-          '<th>#</th><th>Ulke</th><th>Pay</th><th style="text-align:right">Beklenen</th><th style="text-align:right">%</th>' +
+          '<th>#</th><th>ULKE</th><th>PAY</th><th style="text-align:right">BEKLENEN</th><th style="text-align:right">%</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +

@@ -148,7 +148,7 @@
       '<div class="orders-import-detail-body ' + detailClass + '" id="orders-import-detail-body">' +
         '<table class="orders-import-detail-table">' +
           '<thead><tr>' +
-            '<th>Musteri</th><th>Urun</th><th>Adet</th><th>Euro</th><th>Durum</th>' +
+            '<th>MUSTERI</th><th>URUN</th><th>ADET</th><th>EURO</th><th>DURUM</th>' +
           '</tr></thead>' +
           '<tbody>' + detailRows + '</tbody>' +
         '</table>' +
@@ -166,14 +166,14 @@
       '<div class="orders-table-wrap">' +
         '<table class="orders-table" role="grid">' +
           '<thead><tr>' +
-            '<th>Musteri / Urun</th>' +
-            '<th>Cikan Adet</th>' +
-            '<th>Cikan Euro</th>' +
-            '<th>Cikacak Adet</th>' +
-            '<th>Cikacak Euro</th>' +
-            '<th>Konteyner</th>' +
-            '<th>Toplam Euro</th>' +
-            '<th>Not</th>' +
+            '<th>MUSTERI / URUN</th>' +
+            '<th>CIKAN ADET</th>' +
+            '<th>CIKAN EURO</th>' +
+            '<th>CIKACAK ADET</th>' +
+            '<th>CIKACAK EURO</th>' +
+            '<th>KONTEYNER</th>' +
+            '<th>TOPLAM EURO</th>' +
+            '<th>NOT</th>' +
           '</tr></thead>' +
           '<tbody id="orders-tbody">' + rows + '</tbody>' +
         '</table>' +

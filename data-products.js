@@ -85,10 +85,10 @@ var ProductManager = (function() {
 
     return '<table style="width:100%;border-collapse:collapse;font-size:15px">' +
       '<thead><tr style="background:#F1F3F9">' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Urun</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">URUN</th>' +
         '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Ort. Fiyat (EUR)</th>' +
         '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Konteyner Katsayisi</th>' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Durum</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">DURUM</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';

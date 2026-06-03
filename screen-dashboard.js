@@ -327,12 +327,12 @@
         '<table class="dashboard-table" role="grid">' +
           '<thead>' +
             '<tr>' +
-              '<th scope="col">Musteri</th>' +
-              '<th scope="col">Ulke</th>' +
-              '<th scope="col">Kesinlesen</th>' +
-              '<th scope="col">Beklenen</th>' +
-              '<th scope="col">Hedef</th>' +
-              '<th scope="col">Butce %</th>' +
+              '<th scope="col">MUSTERI</th>' +
+              '<th scope="col">ULKE</th>' +
+              '<th scope="col">KESINLESEN</th>' +
+              '<th scope="col">BEKLENEN</th>' +
+              '<th scope="col">HEDEF</th>' +
+              '<th scope="col">BUTCE %</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody id="dashboard-tbody">' +

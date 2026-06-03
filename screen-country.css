@@ -86,7 +86,6 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-secondary);
-  text-transform: uppercase;
 }
 
 .country-header-metric-value {

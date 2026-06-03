@@ -188,8 +188,8 @@
       '<div class="customer-section-header">Urun Bazli Dagilim</div>' +
       '<table class="customer-product-table">' +
         '<thead><tr>' +
-          '<th>Urun</th><th style="text-align:right">Cikan</th><th style="text-align:right">Cikacak</th>' +
-          '<th style="text-align:right">Kesinlesen</th><th style="text-align:right">Beklenen</th>' +
+          '<th>URUN</th><th style="text-align:right">CIKAN</th><th style="text-align:right">CIKACAK</th>' +
+          '<th style="text-align:right">KESINLESEN</th><th style="text-align:right">BEKLENEN</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +
@@ -250,7 +250,7 @@
 
     return '<div style="display:flex;flex-direction:column;gap:var(--space-5)">' +
       '<div class="customer-section-card">' +
-        '<div class="customer-section-header">Urun Karması</div>' +
+        '<div class="customer-section-header">Urun Karmas&#x131;</div>' +
         '<div class="customer-donut-wrap">' +
           svg +
           '<div class="customer-donut-legend">' + legend + '</div>' +

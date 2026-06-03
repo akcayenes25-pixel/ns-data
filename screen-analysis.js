@@ -186,7 +186,7 @@
       '</g>';
     }).join('');
 
-    var svg = '<svg class="analysis-bar-chart" viewBox="0 0 ' + svgWidth + ' ' + svgHeight + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Musteri ciro siralaması">' +
+    var svg = '<svg class="analysis-bar-chart" viewBox="0 0 ' + svgWidth + ' ' + svgHeight + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Musteri ciro siralamas&#x131;">' +
       bars +
     '</svg>';
 
@@ -256,7 +256,7 @@
       startAngle = endAngle;
     });
 
-    var svg = '<svg class="analysis-donut-svg" width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Urun dagılımı">' +
+    var svg = '<svg class="analysis-donut-svg" width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Urun dag&#x131;l&#x131;m&#x131;">' +
       paths +
       '<text x="90" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#4A5068" font-family="Inter,sans-serif">Toplam</text>' +
       '<text x="90" y="100" text-anchor="middle" font-size="14" font-weight="800" fill="#0F1117" font-family="Inter,sans-serif">' + fmtEuro(total, true) + '</text>' +
@@ -264,7 +264,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Urun Dagılımı</span>' +
+        '<span class="analysis-chart-title">Urun Dag&#x131;l&#x131;m&#x131;</span>' +
         '<button class="analysis-chart-download" id="analysis-dl-products" aria-label="Indir">&#x21E9;</button>' +
       '</div>' +
       '<div class="analysis-chart-body">' +
@@ -310,7 +310,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Musteri Hedef Isi Haritası</span>' +
+        '<span class="analysis-chart-title">Musteri Hedef Isi Haritas&#x131;</span>' +
         '<span style="font-size:12px;color:var(--color-text-secondary)">Boyut=Ciro &nbsp; Renk=Hedef%</span>' +
       '</div>' +
       '<div class="analysis-chart-body">' +
@@ -387,7 +387,7 @@
       '<div class="analysis-chart-body" style="padding:0">' +
         '<table class="analysis-comparison-table">' +
           '<thead><tr>' +
-            '<th>#</th><th>Ulke</th><th>Pazar Payi</th><th>Beklenen</th><th>%</th>' +
+            '<th>#</th><th>ULKE</th><th>PAZAR PAYI</th><th>BEKLENEN</th><th>%</th>' +
           '</tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>' +
@@ -419,12 +419,12 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Tam Musteri Siralaması</span>' +
+        '<span class="analysis-chart-title">Tam Musteri Siralamas&#x131;</span>' +
       '</div>' +
       '<div class="analysis-chart-body" style="padding:0">' +
         '<table class="analysis-comparison-table">' +
           '<thead><tr>' +
-            '<th>#</th><th>Musteri</th><th>Kesinlesen</th><th>Beklenen</th><th>Hedef%</th>' +
+            '<th>#</th><th>MUSTERI</th><th>KESINLESEN</th><th>BEKLENEN</th><th>HEDEF%</th>' +
           '</tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>' +

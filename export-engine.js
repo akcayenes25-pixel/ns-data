@@ -7,7 +7,7 @@
 
 function exportOrdersToExcel(orders, products, customers) {
   if (typeof XLSX === 'undefined') {
-    showToast('Excel export hazırlanıyor...');
+    showToast('Excel export haz&#x131;rlan&#x131;yor...');
     return;
   }
 
@@ -146,7 +146,7 @@ function exportAnalysisPdf() {
     if (el) el.remove();
   }, 1000);
 
-  showToast('PDF hazırlandı');
+  showToast('PDF haz&#x131;rland&#x131;');
 }
 
 /* ============================================================

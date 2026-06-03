@@ -150,7 +150,6 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-secondary);
-  text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
@@ -353,7 +352,6 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-secondary);
-  text-transform: uppercase;
   letter-spacing: 0.4px;
   padding: var(--space-3) var(--space-4);
   border-bottom: 1.5px solid var(--color-border);

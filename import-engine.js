@@ -45,8 +45,8 @@ function _buildPreview(rows, customers, products) {
 
   rows.forEach(function(row) {
     // Normalize column names — handle Turkish ERP export
-    var rawCustomer = String(row['CARİ'] || row['CARI'] || row['Cari'] || row['musteri'] || '').trim();
-    var rawProduct  = String(row['ÜRÜN'] || row['URUN'] || row['urun'] || row['Urun'] || '').trim();
+    var rawCustomer = String(row['CAR&#x130;'] || row['CARI'] || row['Cari'] || row['musteri'] || '').trim();
+    var rawProduct  = String(row['&#xDC;R&#xDC;N'] || row['URUN'] || row['urun'] || row['Urun'] || '').trim();
     var rawQty      = row['ADET'] || row['adet'] || row['Adet'] || 0;
     var rawEuro     = row['EURO'] || row['euro'] || row['Euro'] || 0;
     var rawMonth    = String(row['AY'] || row['ay'] || '').trim();

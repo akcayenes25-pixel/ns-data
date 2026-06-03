@@ -94,7 +94,7 @@
         '</div>' +
         '<div class="settings-paste-hint">' +
           '<span>&#x1F4CB;</span>' +
-          'Ipucu: Excel\'den kopyaladigınız verileri (Euro, Adet sutunları) dogrudan tabloya yapistirabilirsiniz.' +
+          'Ipucu: Excel\'den kopyaladig&#x131;n&#x131;z verileri (Euro, Adet sutunlar&#x131;) dogrudan tabloya yapistirabilirsiniz.' +
         '</div>' +
         '<div class="settings-target-grid" id="settings-target-grid">' +
           gridHTML +
