@@ -242,3 +242,24 @@ async function dbGetLastUpdated() {
     return res.data ? res.data.updated_at : null;
   } catch (err) { return null; }
 }
+
+/* ============================================================
+   DELETE OPERATIONS
+   ============================================================ */
+async function dbDeleteProduct(productId) {
+  if (!productId) return false;
+  try {
+    var res = await _client.from('products').delete().eq('id', productId);
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbDeleteProduct:', err); return false; }
+}
+
+async function dbDeleteCustomer(customerId) {
+  if (!customerId) return false;
+  try {
+    var res = await _client.from('customers').delete().eq('id', customerId);
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbDeleteCustomer:', err); return false; }
+}

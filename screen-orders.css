@@ -234,7 +234,7 @@
 
 .orders-th {
   position: sticky;
-  top: calc(var(--nav-height) + 52px);
+  top: calc(var(--nav-height) + 52px); /* updated by JS */
   background: var(--color-surface-2);
   font-size: 12px;
   font-weight: 700;

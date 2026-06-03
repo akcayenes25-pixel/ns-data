@@ -405,3 +405,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+.customer-country-tag {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline dotted;
+}
+.customer-country-tag:hover { color: var(--color-accent); }

@@ -61,6 +61,9 @@ var CustomerManager = (function() {
             '<span style="font-size:14px">' + (c.active !== false ? 'Aktif' : 'Pasif') + '</span>' +
           '</label>' +
         '</td>' +
+        '<td style="padding:8px 12px">' +
+          '<button class="customer-delete-btn" data-customer-id="' + c.id + '" style="color:#DC2626;font-size:13px;font-weight:600;padding:4px 10px;border:1.5px solid #DC2626;border-radius:4px;cursor:pointer;background:transparent">Sil</button>' +
+        '</td>' +
       '</tr>';
     }).join('');
 
@@ -70,6 +73,7 @@ var CustomerManager = (function() {
         '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">ÜLKE</th>' +
         '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">ALT PAZAR</th>' +
         '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">DURUM</th>' +
+        '<th style="padding:10px 16px"></th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
@@ -77,6 +81,9 @@ var CustomerManager = (function() {
 
   function bindSettingsEvents(container) {
     if (!container) return;
+    container.querySelectorAll('.customer-delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { deleteCustomer(btn.getAttribute('data-customer-id')); });
+    });
     container.querySelectorAll('.customer-active-cb').forEach(function(cb) {
       cb.addEventListener('change', function() {
         setActive(cb.getAttribute('data-customer-id'), cb.checked);
@@ -84,10 +91,22 @@ var CustomerManager = (function() {
     });
   }
 
+
+  async function deleteCustomer(customerId) {
+    if (!confirm('Bu müşteriyi silmek istediğinizden emin misiniz? İlgili tüm sipariş ve limitler de silinecek.')) return false;
+    var ok = await dbDeleteCustomer(customerId);
+    if (ok) {
+      _customers = await dbGetCustomers();
+      emitDataChange('customers', {});
+      showToast('Müşteri silindi');
+    }
+    return ok;
+  }
+
   function _esc(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  return { load, upsert, setActive, getAll, getActive, displayName, buildSettingsHTML, bindSettingsEvents };
+  return { load, upsert, setActive, deleteCustomer, getAll, getActive, displayName, buildSettingsHTML, bindSettingsEvents };
 })();

@@ -69,7 +69,7 @@
   function _buildBackBar() {
     var product = _state.productMap[_state.productId];
     return '<div class="product-back-bar">' +
-      '<button class="product-back-btn" id="product-back-btn">&#x2190; Geri</button>' +
+      '<button class="product-back-btn" id="product-back-btn">← Geri</button>' +
       '<div class="product-breadcrumb">' +
         '<span>Dashboard</span><span>›</span>' +
         '<span class="product-breadcrumb-current">' + _esc(product ? product.name : '') + '</span>' +
@@ -85,7 +85,7 @@
       '</div>' +
       '<div class="product-header-metrics">' +
         '<div class="product-header-metric">' +
-          '<span class="product-header-metric-label">Kesinle&#x15F;en</span>' +
+          '<span class="product-header-metric-label">Kesinleşen</span>' +
           '<span class="product-header-metric-value">' + fmtEuro(confirmed, true) + '</span>' +
         '</div>' +
         '<div class="product-header-metric">' +
@@ -133,8 +133,8 @@
       '<div class="product-section-header">Müşteri Sıralaması</div>' +
       '<table class="product-customer-table">' +
         '<thead><tr>' +
-          '<th>#</th><th>M&#xFC;&#x15F;teri</th><th style="text-align:right">&#xC7;&#x131;kan</th>' +
-          '<th style="text-align:right">&#xC7;&#x131;kacak</th><th style="text-align:right">BEKLENEN</th>' +
+          '<th>#</th><th>Müşteri</th><th style="text-align:right">Çıkan</th>' +
+          '<th style="text-align:right">Çıkacak</th><th style="text-align:right">BEKLENEN</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +
@@ -180,7 +180,7 @@
       '<div class="product-section-header">Ülke Dağılımı</div>' +
       '<table class="product-country-table">' +
         '<thead><tr>' +
-          '<th>#</th><th>&#xDC;lke</th><th>PAY</th><th style="text-align:right">BEKLENEN</th><th style="text-align:right">%</th>' +
+          '<th>#</th><th>Ülke</th><th>PAY</th><th style="text-align:right">BEKLENEN</th><th style="text-align:right">%</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +

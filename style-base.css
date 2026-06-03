@@ -746,3 +746,57 @@ a {
   .grid-4 { grid-template-columns: 1fr; }
   .nav-logo { font-size: 16px; }
 }
+
+/* ============================================================
+   HIGH DPI / RETINA SUPPORT
+   ============================================================ */
+
+/* Crisp rendering for all images and icons */
+img, svg, canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Sub-pixel border for HiDPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .main-nav,
+  .app-footer,
+  .card,
+  .orders-table-card,
+  .limits1-table,
+  .limits-card,
+  .settings-section,
+  .dashboard-table-card {
+    border-width: 0.5px;
+  }
+
+  .orders-th,
+  .limits1-th,
+  .dashboard-table th {
+    border-bottom-width: 0.5px;
+  }
+
+  .orders-td,
+  .limits1-td {
+    border-bottom-width: 0.5px;
+  }
+
+  /* Sharper focus rings */
+  input:focus, select:focus, textarea:focus {
+    box-shadow: 0 0 0 1.5px rgba(79,70,229,0.15);
+  }
+}
+
+/* Font smoothing */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* SVG icons crisp */
+.orders-filter-count,
+.badge,
+.limit-warning-icon {
+  -webkit-font-smoothing: antialiased;
+}

@@ -93,9 +93,25 @@
       _buildNotesCard(custOrders);
   }
 
+
+  function _buildCustomerCountries(customerId) {
+    var countries = [];
+    _state.orders.forEach(function(o) {
+      if (o.customer_id === customerId && o.destination_country && !countries.includes(o.destination_country)) {
+        countries.push(o.destination_country);
+      }
+    });
+    if (!countries.length) return '';
+    return '<div class="customer-header-country">' +
+      '<span>🌍</span> ' + countries.map(function(c) {
+        return '<button class="customer-country-tag" data-country="' + _esc(c) + '">' + _esc(c) + '</button>';
+      }).join(', ') +
+    '</div>';
+  }
+
   function _buildBackBar() {
     return '<div class="customer-back-bar">' +
-      '<button class="customer-back-btn" id="customer-back-btn">&#x2190; Geri</button>' +
+      '<button class="customer-back-btn" id="customer-back-btn">← Geri</button>' +
       '<div class="customer-breadcrumb">' +
         '<span>Dashboard</span>' +
         '<span>›</span>' +
@@ -119,9 +135,7 @@
           _esc(c.name) +
           (isLimitCritical(0, 0) ? '' : '') +
         '</div>' +
-        '<div class="customer-header-country" id="customer-country-btn" data-country="' + _esc(c.country || '') + '">' +
-          '<span>&#x1F30D;</span> ' + _esc(c.country || 'Ülke yok') +
-        '</div>' +
+        _buildCustomerCountries(c.id) +
       '</div>' +
       '<div class="customer-header-right">' +
         '<div class="customer-target-pct" style="color:' + pctColor + '">' + fmtPct(pct) + '</div>' +
@@ -138,7 +152,7 @@
 
     return '<div class="customer-metrics-row">' +
       '<div class="customer-metric-card">' +
-        '<span class="customer-metric-label">Kesinle&#x15F;en Ciro</span>' +
+        '<span class="customer-metric-label">Kesinleşen Ciro</span>' +
         '<span class="customer-metric-value">' + fmtEuro(confirmed) + '</span>' +
       '</div>' +
       '<div class="customer-metric-card">' +
@@ -146,7 +160,7 @@
         '<span class="customer-metric-value accent">' + fmtEuro(expected) + '</span>' +
       '</div>' +
       '<div class="customer-metric-card">' +
-        '<span class="customer-metric-label">Planlanan &#xC7;&#x131;k&#x131;&#x15F;</span>' +
+        '<span class="customer-metric-label">Planlanan Çıkış</span>' +
         '<span class="customer-metric-value">' + fmtEuro(plannedEuro) + '</span>' +
       '</div>' +
       '<div class="customer-metric-card">' +
@@ -188,8 +202,8 @@
       '<div class="customer-section-header">Ürün Bazlı Dağılım</div>' +
       '<table class="customer-product-table">' +
         '<thead><tr>' +
-          '<th>&#xDC;r&#xFC;n</th><th style="text-align:right">&#xC7;&#x131;kan</th><th style="text-align:right">&#xC7;&#x131;kacak</th>' +
-          '<th style="text-align:right">Kesinle&#x15F;en</th><th style="text-align:right">BEKLENEN</th>' +
+          '<th>Ürün</th><th style="text-align:right">Çıkan</th><th style="text-align:right">Çıkacak</th>' +
+          '<th style="text-align:right">Kesinleşen</th><th style="text-align:right">BEKLENEN</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +
@@ -264,7 +278,7 @@
             '<span class="customer-limit-value ' + consClass + '">' + (conservative !== null ? fmtEuro(conservative) : '\u2014') + '</span>' +
           '</div>' +
           '<div class="customer-limit-box optimistic">' +
-            '<span class="customer-limit-label">&#xD6;deme gelince</span>' +
+            '<span class="customer-limit-label">Ödeme gelince</span>' +
             '<span class="customer-limit-value ' + optClass + '">' + (optimistic !== null ? fmtEuro(optimistic) : '\u2014') + '</span>' +
           '</div>' +
         '</div>' +
@@ -295,13 +309,12 @@
     var backBtn = document.getElementById('customer-back-btn');
     if (backBtn) backBtn.addEventListener('click', function() { window.history.back(); });
 
-    var countryBtn = document.getElementById('customer-country-btn');
-    if (countryBtn) {
-      countryBtn.addEventListener('click', function() {
-        var country = countryBtn.getAttribute('data-country');
+    document.querySelectorAll('.customer-country-tag').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var country = btn.getAttribute('data-country');
         if (country) navigateTo('country', { id: country });
       });
-    }
+    });
 
     document.querySelectorAll('[data-product-id]').forEach(function(el) {
       el.addEventListener('click', function() {

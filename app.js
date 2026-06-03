@@ -2,9 +2,47 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v1.2.0';
+const APP_VERSION = 'v1.6.0';
 
 const CHANGELOG = {
+  'v1.6.0': {
+    date: 'Haziran 2026',
+    items: [
+      'destination_country mimarisi tamamlandı — ülke bilgisi artık sipariş satırında.',
+      'Dashboard: ülke kolonu orders.destination_country'den geliyor.',
+      'Müşteri detay: sipariş ülkeleri dinamik gösteriliyor.',
+      'Ülke detay ekranı destination_country'ye göre çalışıyor.',
+      'Euro format denetimi tamamlandı.',
+    ]
+  },
+  'v1.5.0': {
+    date: 'Haziran 2026',
+    items: [
+      'Hedef import — Excel'den müşteri ve ülke bazlı hedef yükleme.',
+      'Yüksek DPI / Retina ekran desteği eklendi.',
+      'Tüm dosyalarda Türkçe karakter ve entity final temizliği.',
+    ]
+  },
+  'v1.4.0': {
+    date: 'Haziran 2026',
+    items: [
+      'Siparişler: çıkan/çıkacak ayrı kolon grupları, her grup 3 girdi (adet/euro/konteyner) three-way.',
+      'Siparişler: destination_country — her sipariş satırına ülke girilebilir.',
+      'Siparişler: import onay ekranı — eşleşmeyen satırlar için manual dropdown + güven skoru.',
+      'Limitler: Limit-1 (tablo + expand) ve Limit-2 (inline) görünümleri.',
+      'Ayarlar: müşteri ve ürün silme butonu eklendi.',
+      'Türkçe metin ve entity sorunları giderildi.',
+    ]
+  },
+  'v1.3.0': {
+    date: 'Haziran 2026',
+    items: [
+      'Tüm ekranlarda HTML entity Türkçe karakter sorunu giderildi.',
+      'Siparişler ve Dashboard tablo header sticky sorunu düzeltildi.',
+      'Akıllı ERP import motoru — çok formatlı, öğrenen eşleştirme sistemi.',
+      'Import: hafıza sistemi, token overlap, bigram benzerlik, kısaltma tespiti.',
+    ]
+  },
   'v1.2.0': {
     date: 'Haziran 2026',
     items: [
@@ -200,7 +238,7 @@ function initNetworkStatus() {
       banner.classList.add('hidden');
     } else {
       var timeStr = _lastOnlineTime ? formatTime(_lastOnlineTime) : 'bilinmiyor';
-      bannerText.textContent = '&#x130;nternet ba&#x11F;lant&#x131;s&#x131; yok — son g&#xFC;ncelleme: ' + timeStr;
+      bannerText.textContent = 'İnternet bağlantısı yok — son güncelleme: ' + timeStr;
       banner.classList.remove('hidden');
     }
   }
@@ -227,18 +265,18 @@ function updateDataAge(timestamp) {
   var label = '';
   if (diffDays === 0) {
     if (diffHours === 0) {
-      label = 'Az &#xF6;nce g&#xFC;ncellendi';
+      label = 'Az önce güncellendi';
     } else {
-      label = diffHours + ' saat &#xF6;nce g&#xFC;ncellendi';
+      label = diffHours + ' saat önce güncellendi';
     }
   } else if (diffDays === 1) {
-    label = 'Dun g&#xFC;ncellendi';
+    label = 'Dun güncellendi';
   } else {
-    label = diffDays + ' g&#xFC;n &#xF6;nce g&#xFC;ncellendi';
+    label = diffDays + ' gün önce güncellendi';
   }
 
   if (el) el.textContent = label;
-  if (footerEl) footerEl.textContent = 'Son g&#xFC;ncelleme: ' + formatDateTime(then);
+  if (footerEl) footerEl.textContent = 'Son güncelleme: ' + formatDateTime(then);
 }
 
 /* ============================================================
@@ -344,7 +382,7 @@ function _renderChangelog() {
     html += '<ul style="list-style: none; display: flex; flex-direction: column; gap: 6px;">';
     entry.items.forEach(function(item) {
       html += '<li style="display: flex; gap: 8px; align-items: flex-start;">';
-      html += '<span style="color: #16A34A; flex-shrink: 0; margin-top: 2px;">&#x2713;</span>';
+      html += '<span style="color: #16A34A; flex-shrink: 0; margin-top: 2px;">✓</span>';
       html += '<span>' + item + '</span>';
       html += '</li>';
     });

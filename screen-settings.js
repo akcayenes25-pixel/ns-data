@@ -4,7 +4,8 @@
 
   var _state = {
     customers: [], products: [], targets: [], profiles: [],
-    targetMode: 'customer',      // 'customer' | 'country'
+    targetMode: 'customer',
+    targetImportPreview: null,      // 'customer' | 'country'
     selectedCustomerId: null,
     selectedCountry: null,
     selectedYear: new Date().getFullYear(),
@@ -95,9 +96,16 @@
     }
 
     return '<div class="settings-section">' +
-      '<div class="settings-section-header"><span class="settings-section-title">🎯 Aylık Hedefler</span></div>' +
+      '<div class="settings-section-header">' +
+        '<span class="settings-section-title">🎯 Aylık Hedefler</span>' +
+        '<label class="btn btn-secondary" style="cursor:pointer;font-size:13px;height:36px">' +
+          'Excel'den Yükle' +
+          '<input type="file" id="settings-target-import-input" accept=".xlsx,.xls" style="display:none" />' +
+        '</label>' +
+      '</div>' +
       '<div class="settings-section-body">' + tabs + selector +
         '<div id="settings-target-grid">' + grid + '</div>' +
+        _buildTargetImportPreview() +
       '</div>' +
     '</div>';
   }
@@ -105,6 +113,58 @@
   /* ============================================================
      PRODUCT SECTION
      ============================================================ */
+
+  function _buildTargetImportPreview() {
+    if (!_state.targetImportPreview) return '';
+    var data = _state.targetImportPreview;
+    var rows = (data.rows || []).slice(0, 50);
+
+    var rowsHtml = rows.map(function(row) {
+      var custCell = row.scope === 'country'
+        ? '<span style="color:#4A5068">' + (row.country || '—') + ' (Ülke)</span>'
+        : (row.customer_id
+            ? '<span style="color:var(--color-positive)">✓ ' + _esc(_state.customers.find(function(c){ return c.id === row.customer_id; })?.name || row.customer_name) + '</span>'
+            : '<select class="settings-new-select tgt-import-cust" data-erp="' + _esc(row.customer_name||'') + '" style="font-size:12px;height:28px;min-height:unset"><option value="">— Eşleştir —</option>' +
+              _state.customers.map(function(c){ return '<option value="' + c.id + '">' + _esc(c.name) + '</option>'; }).join('') + '</select>');
+      var prodCell = row.product_id
+        ? '<span style="color:var(--color-positive)">✓ ' + _esc(_state.products.find(function(p){ return p.id === row.product_id; })?.name || row.product_name) + '</span>'
+        : '<select class="settings-new-select tgt-import-prod" data-erp="' + _esc(row.product_name) + '" style="font-size:12px;height:28px;min-height:unset"><option value="">— Eşleştir —</option>' +
+          _state.products.map(function(p){ return '<option value="' + p.id + '">' + _esc(p.name) + '</option>'; }).join('') + '</select>';
+
+      return '<tr>' +
+        '<td style="padding:6px 10px">' + custCell + '</td>' +
+        '<td style="padding:6px 10px">' + prodCell + '</td>' +
+        '<td style="padding:6px 10px;text-align:right">' + (row.target_eur !== null ? row.target_eur.toLocaleString('de-DE') + ' €' : '—') + '</td>' +
+        '<td style="padding:6px 10px;text-align:right">' + (row.target_qty !== null ? row.target_qty : '—') + '</td>' +
+        '<td style="padding:6px 10px">' + (row.month||'?') + '/' + (row.year||'?') + '</td>' +
+        '<td style="padding:6px 10px">' + (row.matched ? '<span style="color:var(--color-positive)">✓</span>' : '<span style="color:var(--color-warning)">?</span>') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div style="background:var(--color-surface);border:1.5px solid var(--color-border);border-radius:var(--radius-md);margin-top:12px;overflow:hidden">' +
+      '<div style="padding:12px 16px;border-bottom:1.5px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">' +
+        '<span style="font-size:14px;font-weight:700">Hedef İmport Önizleme — ' + data.rowCount + ' satır (' + data.unmatchedCount + ' eşleşmedi)</span>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn btn-primary" id="settings-target-import-confirm" style="font-size:13px;height:34px">Yükle</button>' +
+          '<button class="btn btn-secondary" id="settings-target-import-cancel" style="font-size:13px;height:34px">İptal</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="max-height:320px;overflow-y:auto">' +
+        '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+          '<thead><tr style="background:#F1F3F9;position:sticky;top:0">' +
+            '<th style="padding:8px 10px;text-align:left">Müşteri/Ülke</th>' +
+            '<th style="padding:8px 10px;text-align:left">Ürün</th>' +
+            '<th style="padding:8px 10px;text-align:right">Hedef EUR</th>' +
+            '<th style="padding:8px 10px;text-align:right">Hedef Adet</th>' +
+            '<th style="padding:8px 10px">Ay/Yıl</th>' +
+            '<th style="padding:8px 10px">Durum</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rowsHtml + '</tbody>' +
+        '</table>' +
+      '</div>' +
+    '</div>';
+  }
+
   function _buildProductSection() {
     var tableHTML = ProductManager.buildSettingsHTML(_state.products);
     return '<div class="settings-section">' +
@@ -250,6 +310,67 @@
      BIND EVENTS
      ============================================================ */
   function _bindScreenEvents() {
+    // Target import
+    var tgtImportInput = document.getElementById('settings-target-import-input');
+    if (tgtImportInput) {
+      tgtImportInput.addEventListener('change', function() {
+        var file = tgtImportInput.files[0];
+        if (!file) return;
+        if (typeof processTargetImportFile === 'function') {
+          processTargetImportFile(file, _state.customers, _state.products, function(preview) {
+            _state.targetImportPreview = preview;
+            _render();
+          });
+        }
+        tgtImportInput.value = '';
+      });
+    }
+
+    var tgtImportConfirm = document.getElementById('settings-target-import-confirm');
+    if (tgtImportConfirm) {
+      tgtImportConfirm.addEventListener('click', async function() {
+        var rows = (_state.targetImportPreview && _state.targetImportPreview.rows) || [];
+        // Apply manual overrides
+        document.querySelectorAll('.tgt-import-cust').forEach(function(sel) {
+          if (!sel.value) return;
+          var erpName = sel.getAttribute('data-erp');
+          var row = rows.find(function(r){ return r.customer_name === erpName && !r.customer_id; });
+          if (row) { row.customer_id = sel.value; row.matched = !!row.product_id; }
+        });
+        document.querySelectorAll('.tgt-import-prod').forEach(function(sel) {
+          if (!sel.value) return;
+          var erpName = sel.getAttribute('data-erp');
+          var row = rows.find(function(r){ return r.product_name === erpName && !r.product_id; });
+          if (row) { row.product_id = sel.value; row.matched = !!(row.customer_id || row.scope === 'country') && !!row.product_id; }
+        });
+        var done = 0;
+        for (var i = 0; i < rows.length; i++) {
+          var row = rows[i];
+          if (!row.product_id || !row.month || !row.year) continue;
+          if (row.scope === 'customer' && !row.customer_id) continue;
+          var ok = await TargetManager.upsert({
+            scope: row.scope,
+            customer_id: row.customer_id || null,
+            country: row.country || null,
+            product_id: row.product_id,
+            month: row.month,
+            year: row.year,
+            target_eur: row.target_eur,
+            target_qty: row.target_qty
+          });
+          if (ok) done++;
+        }
+        showToast(done + ' hedef kaydedildi');
+        _state.targetImportPreview = null;
+        _render();
+      });
+    }
+
+    var tgtImportCancel = document.getElementById('settings-target-import-cancel');
+    if (tgtImportCancel) {
+      tgtImportCancel.addEventListener('click', function() { _state.targetImportPreview = null; _render(); });
+    }
+
     // Target mode tabs
     var modeCust = document.getElementById('tgt-mode-customer');
     var modeCtry = document.getElementById('tgt-mode-country');

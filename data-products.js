@@ -80,15 +80,19 @@ var ProductManager = (function() {
             'Aktif' +
           '</label>' +
         '</td>' +
+        '<td style="padding:8px 12px">' +
+          '<button class="product-delete-btn" data-product-id="' + p.id + '" style="color:#DC2626;font-size:13px;font-weight:600;padding:4px 10px;border:1.5px solid #DC2626;border-radius:4px;cursor:pointer;background:transparent">Sil</button>' +
+        '</td>' +
       '</tr>';
     }).join('');
 
     return '<table style="width:100%;border-collapse:collapse;font-size:15px">' +
       '<thead><tr style="background:#F1F3F9">' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">&#xDC;r&#xFC;n</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Ürün</th>' +
         '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Ort. Fiyat (EUR)</th>' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Konteyner Katsay&#x131;s&#x131;</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Konteyner Katsayısı</th>' +
         '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">DURUM</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068"></th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
@@ -119,10 +123,31 @@ var ProductManager = (function() {
       });
     });
 
+    _bindDeleteEvents(container);
     container.querySelectorAll('.product-active-input').forEach(function(input) {
       input.addEventListener('change', function() {
         var id = input.getAttribute('data-product-id');
         upsert({ id: id, active: input.checked });
+      });
+    });
+  }
+
+
+  async function deleteProduct(productId) {
+    if (!confirm('Bu ürünü silmek istediğinizden emin misiniz? İlgili tüm siparişler de silinecek.')) return false;
+    var ok = await dbDeleteProduct(productId);
+    if (ok) {
+      _products = await dbGetProducts();
+      emitDataChange('products', {});
+      showToast('Ürün silindi');
+    }
+    return ok;
+  }
+
+  function _bindDeleteEvents(container) {
+    container.querySelectorAll('.product-delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        deleteProduct(btn.getAttribute('data-product-id'));
       });
     });
   }
@@ -132,5 +157,5 @@ var ProductManager = (function() {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  return { load: load, upsert: upsert, updatePrice: updatePrice, getAll: getAll, buildSettingsHTML: buildSettingsHTML, bindSettingsEvents: bindSettingsEvents };
+  return { load: load, upsert: upsert, updatePrice: updatePrice, deleteProduct: deleteProduct, getAll: getAll, buildSettingsHTML: buildSettingsHTML, bindSettingsEvents: bindSettingsEvents };
 })();

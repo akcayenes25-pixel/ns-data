@@ -1,5 +1,5 @@
-/* NSDATA - screen-limits.js v1.2.0 */
-/* Limit cards — filtre bar, sort, sub_market, Türkçe düzeltme */
+/* NSDATA - screen-limits.js v1.4.0 */
+/* Limit-1: dense tablo + expand | Limit-2: inline tablo */
 (function() {
   'use strict';
 
@@ -12,19 +12,19 @@
     filters: { countries: [] },
     sort: { col: 'name', dir: 'asc' },
     openDropdown: null,
-    currentMonth: null, currentYear: null
+    currentMonth: null, currentYear: null,
+    viewMode: 'limit1',   // 'limit1' | 'limit2'
+    expanded: {}           // limit1: expanded customer ids
   };
 
-  var _saveTimer  = null;
+  var _saveTimer = null;
   var _saveIndicator = null;
 
-  /* ============================================================ INIT */
   document.addEventListener('nsdata:appReady', function() { _init(); });
 
   async function _init() {
     var my = currentMonthYear();
-    _state.currentMonth = my.month;
-    _state.currentYear  = my.year;
+    _state.currentMonth = my.month; _state.currentYear = my.year;
     await _loadAll();
     _injectSaveIndicator();
     _bindGlobalEvents();
@@ -32,18 +32,14 @@
 
   async function _loadAll() {
     var r = await Promise.all([dbGetCustomers(), dbGetOrders(), dbGetProducts(), dbGetLimits(), dbGetPayments()]);
-    _state.customers = r[0];
-    _state.orders    = r[1];
-    _state.products  = r[2];
-    _state.limits    = r[3];
-    _state.payments  = r[4];
+    _state.customers = r[0]; _state.orders = r[1]; _state.products = r[2];
+    _state.limits = r[3]; _state.payments = r[4];
     _state.customerMap = buildCustomerMap(_state.customers);
     _state.productMap  = buildProductMap(_state.products);
     _state.limitsMap = {};
     _state.limits.forEach(function(l) { _state.limitsMap[l.customer_id] = l; });
   }
 
-  /* ============================================================ RENDER */
   function _render() {
     var screen = document.getElementById('screen-limits');
     if (!screen) return;
@@ -52,7 +48,8 @@
   }
 
   function _buildHTML() {
-    return _buildFilterBar() + _buildActiveChips() + _buildGrid();
+    return _buildFilterBar() + _buildActiveChips() +
+      (_state.viewMode === 'limit1' ? _buildLimit1() : _buildLimit2());
   }
 
   /* ============================================================ FILTER BAR */
@@ -64,312 +61,291 @@
     allCountries.sort();
 
     var sortOptions = [
-      { val: 'name',          label: 'Müşteri Adı' },
-      { val: 'total_limit',   label: 'Toplam Limit' },
-      { val: 'conservative',  label: 'Kullanılabilir' }
+      { val: 'name', label: 'Müşteri Adı' },
+      { val: 'total_limit', label: 'Toplam Limit' },
+      { val: 'conservative', label: 'Kullanılabilir' }
     ];
     var sortSel = sortOptions.map(function(o) {
       return '<option value="' + o.val + '"' + (_state.sort.col === o.val ? ' selected' : '') + '>' + o.label + '</option>';
     }).join('');
 
-    var hasCountryFilter = _state.filters.countries.length > 0;
-    var countryBtnClass = hasCountryFilter ? 'orders-filter-btn orders-filter-btn--active' : 'orders-filter-btn';
-    var countryBadge = hasCountryFilter ? '<span class="orders-filter-count">' + _state.filters.countries.length + '</span>' : '';
+    var hasFilter = _state.filters.countries.length > 0;
+    var filterBtnCls = hasFilter ? 'orders-filter-btn orders-filter-btn--active' : 'orders-filter-btn';
+    var badge = hasFilter ? '<span class="orders-filter-count">' + _state.filters.countries.length + '</span>' : '';
+
+    var dd = '';
+    if (_state.openDropdown === 'country') {
+      var items = allCountries.map(function(c) {
+        return '<label class="orders-dd-item"><input type="checkbox" class="limits-dd-cb" data-value="' + _esc(c) + '" ' + (_state.filters.countries.includes(c) ? 'checked' : '') + '><span>' + _esc(c) + '</span></label>';
+      }).join('');
+      dd = '<div class="orders-dropdown">' +
+        '<input type="search" class="orders-dd-search" placeholder="Ülke ara..." />' +
+        '<div class="orders-dd-list">' + (items || '<div class="orders-dd-empty">Ülke bulunamadı</div>') + '</div>' +
+        '<div class="orders-dd-footer"><button class="orders-dd-reset" id="limits-dd-reset">Sıfırla</button></div>' +
+      '</div>';
+    }
 
     return '<div class="limits-filterbar" id="limits-filterbar">' +
       '<div class="limits-filterbar-inner">' +
         '<div class="orders-search-wrap">' +
           '<span class="orders-search-icon">🔍</span>' +
-          '<input type="search" id="limits-search" class="orders-search-input" placeholder="Müşteri veya ülke ara..." value="' + _esc(_state.searchQuery) + '" />' +
+          '<input type="search" id="limits-search" class="orders-search-input" placeholder="Müşteri ara..." value="' + _esc(_state.searchQuery) + '" />' +
         '</div>' +
-        '<button class="' + countryBtnClass + '" data-filter="country">Ülke' + countryBadge + ' ▾</button>' +
+        '<button class="' + filterBtnCls + '" id="limits-filter-country">Ülke' + badge + ' ▾</button>' +
         '<div style="display:flex;align-items:center;gap:8px;margin-left:8px">' +
           '<span style="font-size:13px;color:#4A5068;font-weight:500">Sırala:</span>' +
           '<select id="limits-sort-col" style="height:34px;min-height:unset;font-size:13px;padding:0 8px;border-radius:4px;border:1.5px solid #E2E5EF">' + sortSel + '</select>' +
-          '<button id="limits-sort-dir" class="orders-filter-btn" style="padding:0 10px;min-width:36px">' +
-            (_state.sort.dir === 'asc' ? '↑' : '↓') +
-          '</button>' +
+          '<button id="limits-sort-dir" class="orders-filter-btn" style="padding:0 10px">' + (_state.sort.dir === 'asc' ? '↑' : '↓') + '</button>' +
+        '</div>' +
+        '<div style="margin-left:auto;display:flex;gap:6px">' +
+          '<button class="orders-filter-btn' + (_state.viewMode === 'limit1' ? ' orders-filter-btn--active' : '') + '" id="limits-view-1">Limit-1</button>' +
+          '<button class="orders-filter-btn' + (_state.viewMode === 'limit2' ? ' orders-filter-btn--active' : '') + '" id="limits-view-2">Limit-2</button>' +
         '</div>' +
       '</div>' +
-      _buildCountryDropdown(allCountries) +
-    '</div>';
-  }
-
-  function _buildCountryDropdown(allCountries) {
-    if (_state.openDropdown !== 'country') return '<div id="limits-dd-country" class="orders-dropdown" style="display:none"></div>';
-
-    var items = allCountries.map(function(c) {
-      var checked = _state.filters.countries.includes(c);
-      return '<label class="orders-dd-item">' +
-        '<input type="checkbox" class="limits-dd-cb" data-value="' + _esc(c) + '" ' + (checked ? 'checked' : '') + '>' +
-        '<span>' + _esc(c) + '</span></label>';
-    }).join('');
-
-    return '<div id="limits-dd-country" class="orders-dropdown">' +
-      '<input type="search" class="orders-dd-search" placeholder="Ülke ara..." />' +
-      '<div class="orders-dd-list">' + (items || '<div class="orders-dd-empty">Ülke bulunamadı</div>') + '</div>' +
-      '<div class="orders-dd-footer"><button class="orders-dd-reset" id="limits-dd-reset">Sıfırla</button></div>' +
+      dd +
     '</div>';
   }
 
   function _buildActiveChips() {
     var chips = '';
     _state.filters.countries.forEach(function(c) {
-      chips += '<span class="orders-chip">Ülke: ' + _esc(c) +
-        '<button class="orders-chip-x" data-value="' + _esc(c) + '">×</button></span>';
+      chips += '<span class="orders-chip">Ülke: ' + _esc(c) + '<button class="limits-chip-x" data-value="' + _esc(c) + '">×</button></span>';
     });
-    if (_state.searchQuery) {
-      chips += '<span class="orders-chip">Arama: ' + _esc(_state.searchQuery) +
-        '<button class="orders-chip-x" data-filter="search">×</button></span>';
-    }
+    if (_state.searchQuery) chips += '<span class="orders-chip">Arama: ' + _esc(_state.searchQuery) + '<button class="limits-chip-x" data-value="" data-type="search">×</button></span>';
     if (!chips) return '';
-    return '<div class="orders-chips-bar">' + chips +
-      '<button id="limits-chips-clear" class="orders-chips-clear">Tümünü Temizle</button>' +
-    '</div>';
+    return '<div class="orders-chips-bar">' + chips + '<button id="limits-chips-clear" class="orders-chips-clear">Tümünü Temizle</button></div>';
   }
 
-  /* ============================================================ GRID */
-  function _buildGrid() {
+  /* ============================================================ CUSTOMER FILTER + SORT */
+  function _filteredCustomers() {
     var q  = _state.searchQuery.toLowerCase();
     var fC = _state.filters.countries;
-
     var customers = _state.customers.filter(function(c) {
       if (c.active === false) return false;
       if (fC.length && !fC.includes(c.country)) return false;
-      if (q && !c.name.toLowerCase().includes(q) && !(c.country||'').toLowerCase().includes(q) && !(c.sub_market||'').toLowerCase().includes(q)) return false;
+      if (q && !c.name.toLowerCase().includes(q) && !(c.country||'').toLowerCase().includes(q)) return false;
       return true;
     });
-
-    // Sort
     var dir = _state.sort.dir === 'asc' ? 1 : -1;
-    customers = customers.slice().sort(function(a, b) {
+    return customers.slice().sort(function(a, b) {
       if (_state.sort.col === 'name') return dir * a.name.localeCompare(b.name, 'tr');
-      var la = _state.limitsMap[a.id] || {};
-      var lb = _state.limitsMap[b.id] || {};
-      if (_state.sort.col === 'total_limit') {
-        return dir * ((parseNum(la.total_limit_eur) || 0) - (parseNum(lb.total_limit_eur) || 0));
-      }
+      var la = _state.limitsMap[a.id] || {}; var lb = _state.limitsMap[b.id] || {};
+      if (_state.sort.col === 'total_limit') return dir * ((parseNum(la.total_limit_eur)||0) - (parseNum(lb.total_limit_eur)||0));
       if (_state.sort.col === 'conservative') {
         var pa = calcCustomerPlannedEuro(_state.orders, a.id, _state.productMap);
         var pb = calcCustomerPlannedEuro(_state.orders, b.id, _state.productMap);
-        var ca = calcConservativeLimit(la.total_limit_eur, la.open_balance_eur, pa) || 0;
-        var cb = calcConservativeLimit(lb.total_limit_eur, lb.open_balance_eur, pb) || 0;
-        return dir * (ca - cb);
+        return dir * ((calcConservativeLimit(la.total_limit_eur, la.open_balance_eur, pa)||0) - (calcConservativeLimit(lb.total_limit_eur, lb.open_balance_eur, pb)||0));
       }
       return 0;
     });
+  }
 
-    var cards = customers.map(function(c) { return _buildCard(c); }).join('');
+  /* ============================================================ LIMIT-1: Dense tablo + expand */
+  function _buildLimit1() {
+    var customers = _filteredCustomers();
+    if (!customers.length) return '<div class="limits-empty" style="padding:40px;text-align:center;color:#4A5068">Müşteri bulunamadı</div>';
 
-    return '<div class="limits-grid">' +
-      (cards || '<div class="limits-empty">Müşteri bulunamadı</div>') +
+    var rows = customers.map(function(c) {
+      var lim = _state.limitsMap[c.id] || {};
+      var pe  = calcCustomerPlannedEuro(_state.orders, c.id, _state.productMap);
+      var cp  = _state.payments.filter(function(p){ return p.customer_id === c.id; });
+      var con = calcConservativeLimit(lim.total_limit_eur, lim.open_balance_eur, pe);
+      var opt = calcOptimisticLimit(lim.total_limit_eur, lim.open_balance_eur, pe, cp, _state.currentMonth, _state.currentYear);
+      var isCrit = isLimitCritical(con, lim.total_limit_eur);
+      var isExp  = !!_state.expanded[c.id];
+      var conClass = con === null ? '' : (con <= 0 ? 'color:#DC2626;font-weight:700' : (lim.total_limit_eur && con < lim.total_limit_eur * 0.15 ? 'color:#D97706;font-weight:700' : 'color:#16A34A;font-weight:700'));
+
+      var mainRow = '<tr class="limits1-row' + (isCrit ? ' limits1-critical' : '') + '" data-customer-id="' + c.id + '">' +
+        '<td class="limits1-td limits1-name-td">' +
+          '<button class="limits1-expand-btn" data-cid="' + c.id + '">' + (isExp ? '▼' : '▶') + '</button>' +
+          '<button class="limits1-cust-btn" data-customer-id="' + c.id + '">' + (isCrit ? '<span style="color:#DC2626;margin-right:4px">!</span>' : '') + _esc(CustomerManager.displayName(c)) + '</button>' +
+          (c.country ? '<span class="orders-group-country" style="margin-left:6px">' + _esc(c.country) + '</span>' : '') +
+        '</td>' +
+        '<td class="limits1-td limits1-num">' + (lim.total_limit_eur ? fmtEuro(lim.total_limit_eur) : '—') + '</td>' +
+        '<td class="limits1-td limits1-num">' + (lim.open_balance_eur ? fmtEuro(lim.open_balance_eur) : '—') + '</td>' +
+        '<td class="limits1-td limits1-num">' + fmtEuro(pe) + '</td>' +
+        '<td class="limits1-td limits1-num" style="' + conClass + '">' + (con !== null ? fmtEuro(con) : '—') + '</td>' +
+        '<td class="limits1-td limits1-num" style="color:var(--color-accent)">' + (opt !== null ? fmtEuro(opt) : '—') + '</td>' +
+      '</tr>';
+
+      var expandRow = '';
+      if (isExp) {
+        expandRow = '<tr class="limits1-expand-row"><td colspan="6" style="padding:0;background:#F8F9FF">' +
+          _buildExpandDetail(c, lim, pe, cp, con, opt) +
+        '</td></tr>';
+      }
+      return mainRow + expandRow;
+    }).join('');
+
+    return '<div style="margin:16px">' +
+      '<table class="limits1-table">' +
+        '<thead><tr>' +
+          '<th class="limits1-th">Müşteri</th>' +
+          '<th class="limits1-th limits1-num">Toplam Limit</th>' +
+          '<th class="limits1-th limits1-num">Açık Bakiye</th>' +
+          '<th class="limits1-th limits1-num">Planlanan</th>' +
+          '<th class="limits1-th limits1-num">Şu An Kullanılabilir</th>' +
+          '<th class="limits1-th limits1-num">Ödeme Gelince</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
     '</div>';
   }
 
-  function _buildCard(customer) {
-    var lim = _state.limitsMap[customer.id] || {};
-    var totalLimit  = parseNum(lim.total_limit_eur)  || null;
-    var openBalance = parseNum(lim.open_balance_eur) || 0;
-    var plannedEuro = calcCustomerPlannedEuro(_state.orders, customer.id, _state.productMap);
-    var custPayments = _state.payments.filter(function(p) { return p.customer_id === customer.id; });
-    var conservative = calcConservativeLimit(totalLimit, openBalance, plannedEuro);
-    var optimistic   = calcOptimisticLimit(totalLimit, openBalance, plannedEuro, custPayments, _state.currentMonth, _state.currentYear);
-    var isCritical   = isLimitCritical(conservative, totalLimit);
-
-    var displayName = CustomerManager.displayName(customer);
-
-    return '<div class="limits-card' + (isCritical ? ' limits-critical' : '') + '" data-customer-id="' + customer.id + '">' +
-      '<div class="limits-card-header">' +
-        '<div style="display:flex;flex-direction:column;gap:2px">' +
-          '<button class="limits-card-name-btn" data-customer-id="' + customer.id + '">' +
-            (isCritical ? '<span class="limit-warning-icon">!</span>' : '') +
-            _esc(displayName) +
-          '</button>' +
-          '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
-            (customer.country ? '<span class="limits-card-country">' + _esc(customer.country) + '</span>' : '') +
-            (customer.sub_market ? '<span class="limits-card-submarket">' + _esc(customer.sub_market) + '</span>' : '') +
-          '</div>' +
-        '</div>' +
-        (isCritical ? '<span class="badge badge-negative">Limit Kritik</span>' : '') +
-      '</div>' +
-      '<div class="limits-card-body">' +
-        _buildInputRow(customer.id, lim) +
-        _buildPlannedRow(plannedEuro) +
-        _buildResultRow(conservative, optimistic, totalLimit) +
-        _buildPaymentsSection(customer.id, custPayments) +
-      '</div>' +
-    '</div>';
-  }
-
-  function _buildInputRow(customerId, lim) {
-    return '<div class="limits-input-row">' +
-      '<div class="limits-field">' +
-        '<label class="limits-field-label">Toplam Limit (EUR)</label>' +
-        '<input type="number" min="0" id="limits-total-' + customerId + '" class="limits-field-input limits-total-input" data-customer-id="' + customerId + '" value="' + (lim.total_limit_eur || '') + '" placeholder="0" />' +
-      '</div>' +
-      '<div class="limits-field">' +
-        '<label class="limits-field-label">Açık Bakiye (EUR)</label>' +
-        '<input type="number" min="0" id="limits-balance-' + customerId + '" class="limits-field-input limits-balance-input" data-customer-id="' + customerId + '" value="' + (lim.open_balance_eur || '') + '" placeholder="0" />' +
-      '</div>' +
-    '</div>';
-  }
-
-  function _buildPlannedRow(plannedEuro) {
-    return '<div class="limits-planned-row">' +
-      '<span class="limits-planned-label">Bu ay planlanan çıkış</span>' +
-      '<span class="limits-planned-value">' + fmtEuro(plannedEuro || 0) + '</span>' +
-    '</div>';
-  }
-
-  function _buildResultRow(conservative, optimistic, totalLimit) {
-    var consClass = 'positive';
-    if (conservative !== null) {
-      if (conservative <= 0) consClass = 'negative';
-      else if (totalLimit && conservative < totalLimit * 0.15) consClass = 'warning';
-    }
-    var optClass = conservative !== null && optimistic !== null && optimistic <= 0 ? 'negative' : 'accent';
-    var consBoxClass = 'limits-result-box conservative' + (consClass === 'negative' ? ' critical' : '');
-
-    return '<div class="limits-result-row">' +
-      '<div class="' + consBoxClass + '">' +
-        '<span class="limits-result-label">Şu an kullanılabilir limit</span>' +
-        '<span class="limits-result-value ' + consClass + '">' + (conservative !== null ? fmtEuro(conservative) : '—') + '</span>' +
-        '<span class="limits-result-sub">Ödeme beklenmeden</span>' +
-      '</div>' +
-      '<div class="limits-result-box optimistic">' +
-        '<span class="limits-result-label">Ödeme gelince kullanılabilir limit</span>' +
-        '<span class="limits-result-value ' + optClass + '">' + (optimistic !== null ? fmtEuro(optimistic) : '—') + '</span>' +
-        '<span class="limits-result-sub">Bu ayki teyitli ödemeler dahil</span>' +
-      '</div>' +
-    '</div>';
-  }
-
-  function _buildPaymentsSection(customerId, payments) {
-    var rowsHtml = payments.map(function(p) {
-      var sameMonth = isSameMonth(p.payment_date, _state.currentMonth, _state.currentYear);
-      var dateVal   = p.payment_date ? p.payment_date.slice(0,10) : '';
-      return '<div class="limits-payment-row' + (sameMonth ? ' same-month' : '') + '" data-payment-id="' + p.id + '">' +
-        '<div class="limits-payment-date">' +
-          '<input type="date" class="limits-payment-date-input" data-payment-id="' + p.id + '" data-customer-id="' + customerId + '" value="' + dateVal + '" />' +
-        '</div>' +
-        '<div class="limits-payment-amount">' +
-          '<input type="number" min="0" class="limits-payment-amount-input" data-payment-id="' + p.id + '" data-customer-id="' + customerId + '" value="' + (p.amount_eur || '') + '" placeholder="EUR" />' +
-        '</div>' +
-        (sameMonth ? '<span class="limits-payment-same-month-tag"><span>✓</span> Bu ay</span>' : '') +
-        '<button class="limits-payment-delete" data-payment-id="' + p.id + '" aria-label="Ödemeyi sil">×</button>' +
+  function _buildExpandDetail(customer, lim, plannedEuro, custPayments, conservative, optimistic) {
+    var payRows = custPayments.map(function(p) {
+      var same = isSameMonth(p.payment_date, _state.currentMonth, _state.currentYear);
+      return '<div class="limits-payment-row' + (same ? ' same-month' : '') + '" data-payment-id="' + p.id + '">' +
+        '<input type="date" class="limits-payment-date-input" data-payment-id="' + p.id + '" data-customer-id="' + customer.id + '" value="' + (p.payment_date||'').slice(0,10) + '" style="height:32px;min-height:unset;width:140px;font-size:13px" />' +
+        '<input type="number" min="0" class="limits-payment-amount-input" data-payment-id="' + p.id + '" data-customer-id="' + customer.id + '" value="' + (p.amount_eur||'') + '" placeholder="EUR" style="height:32px;min-height:unset;width:120px;font-size:13px;text-align:right" />' +
+        (same ? '<span class="limits-payment-same-month-tag">✓ Bu ay</span>' : '') +
+        '<button class="limits-payment-delete" data-payment-id="' + p.id + '">×</button>' +
       '</div>';
     }).join('');
 
-    return '<div class="limits-payments-section" data-customer-id="' + customerId + '">' +
-      '<div class="limits-payments-header"><span class="limits-payments-title">Gelecek Ödemeler</span></div>' +
-      '<div class="limits-payment-list" id="limits-payment-list-' + customerId + '">' + rowsHtml + '</div>' +
-      '<button class="limits-add-payment-btn" data-customer-id="' + customerId + '"><span>+</span> Ödeme Ekle</button>' +
+    return '<div style="padding:16px;display:flex;gap:24px;flex-wrap:wrap">' +
+      '<div style="flex:1;min-width:260px">' +
+        '<div style="font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px;margin-bottom:10px">LİMİT BİLGİLERİ</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+          '<div><div style="font-size:11px;color:#4A5068;font-weight:600;margin-bottom:4px">Toplam Limit (EUR)</div>' +
+            '<input type="number" min="0" class="limits-total-input" data-customer-id="' + customer.id + '" value="' + (lim.total_limit_eur||'') + '" placeholder="0" style="height:36px;min-height:unset;font-size:15px;font-weight:700;text-align:right" /></div>' +
+          '<div><div style="font-size:11px;color:#4A5068;font-weight:600;margin-bottom:4px">Açık Bakiye (EUR)</div>' +
+            '<input type="number" min="0" class="limits-balance-input" data-customer-id="' + customer.id + '" value="' + (lim.open_balance_eur||'') + '" placeholder="0" style="height:36px;min-height:unset;font-size:15px;font-weight:700;text-align:right" /></div>' +
+        '</div>' +
+        '<div style="background:#F1F3F9;border-radius:6px;padding:10px;font-size:13px;display:flex;justify-content:space-between">' +
+          '<span style="color:#4A5068">Bu ay planlanan çıkış</span>' +
+          '<span style="font-weight:700">' + fmtEuro(plannedEuro) + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div style="flex:1;min-width:220px">' +
+        '<div style="font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px;margin-bottom:10px">GELECEK ÖDEMELER</div>' +
+        '<div class="limits-payment-list" id="limits-payment-list-' + customer.id + '">' + payRows + '</div>' +
+        '<button class="limits-add-payment-btn" data-customer-id="' + customer.id + '">+ Ödeme Ekle</button>' +
+      '</div>' +
     '</div>';
   }
 
-  /* ============================================================ LIVE RECALC */
-  function _recalcCard(customerId) {
-    var card = document.querySelector('.limits-card[data-customer-id="' + customerId + '"]');
+  /* ============================================================ LIMIT-2: Inline tablo */
+  function _buildLimit2() {
+    var customers = _filteredCustomers();
+    if (!customers.length) return '<div class="limits-empty" style="padding:40px;text-align:center;color:#4A5068">Müşteri bulunamadı</div>';
+
+    var rows = customers.map(function(c) {
+      var lim = _state.limitsMap[c.id] || {};
+      var pe  = calcCustomerPlannedEuro(_state.orders, c.id, _state.productMap);
+      var cp  = _state.payments.filter(function(p){ return p.customer_id === c.id; });
+      var con = calcConservativeLimit(lim.total_limit_eur, lim.open_balance_eur, pe);
+      var opt = calcOptimisticLimit(lim.total_limit_eur, lim.open_balance_eur, pe, cp, _state.currentMonth, _state.currentYear);
+      var isCrit = isLimitCritical(con, lim.total_limit_eur);
+      var conStyle = con === null ? '' : (con <= 0 ? 'color:#DC2626;font-weight:700' : (lim.total_limit_eur && con < lim.total_limit_eur * 0.15 ? 'color:#D97706;font-weight:700' : 'color:#16A34A;font-weight:700'));
+
+      return '<tr class="limits1-row' + (isCrit ? ' limits1-critical' : '') + '" data-customer-id="' + c.id + '">' +
+        '<td class="limits1-td">' +
+          '<button class="limits1-cust-btn" data-customer-id="' + c.id + '">' + (isCrit ? '<span style="color:#DC2626;margin-right:4px">!</span>' : '') + _esc(CustomerManager.displayName(c)) + '</button>' +
+          (c.country ? '<span class="orders-group-country" style="margin-left:6px">' + _esc(c.country) + '</span>' : '') +
+        '</td>' +
+        '<td class="limits1-td limits1-num"><input type="number" min="0" class="limits-total-input" data-customer-id="' + c.id + '" value="' + (lim.total_limit_eur||'') + '" placeholder="0" style="height:32px;min-height:unset;width:110px;text-align:right;font-size:14px" /></td>' +
+        '<td class="limits1-td limits1-num"><input type="number" min="0" class="limits-balance-input" data-customer-id="' + c.id + '" value="' + (lim.open_balance_eur||'') + '" placeholder="0" style="height:32px;min-height:unset;width:110px;text-align:right;font-size:14px" /></td>' +
+        '<td class="limits1-td limits1-num">' + fmtEuro(pe) + '</td>' +
+        '<td class="limits1-td limits1-num" style="' + conStyle + '">' + (con !== null ? fmtEuro(con) : '—') + '</td>' +
+        '<td class="limits1-td limits1-num" style="color:var(--color-accent)">' + (opt !== null ? fmtEuro(opt) : '—') + '</td>' +
+        '<td class="limits1-td">' +
+          '<button class="limits-add-payment-btn" data-customer-id="' + c.id + '" style="width:auto;padding:0 10px;height:30px;font-size:12px;margin:0">+ Ödeme</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div style="margin:16px">' +
+      '<table class="limits1-table">' +
+        '<thead><tr>' +
+          '<th class="limits1-th">Müşteri</th>' +
+          '<th class="limits1-th limits1-num">Toplam Limit</th>' +
+          '<th class="limits1-th limits1-num">Açık Bakiye</th>' +
+          '<th class="limits1-th limits1-num">Planlanan</th>' +
+          '<th class="limits1-th limits1-num">Şu An Kullanılabilir</th>' +
+          '<th class="limits1-th limits1-num">Ödeme Gelince</th>' +
+          '<th class="limits1-th">Ödeme</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>';
+  }
+
+  /* ============================================================ RECALC */
+  function _recalcRow(customerId) {
+    // Update limit row values in-place for limit2
+    var lim = _state.limitsMap[customerId] || {};
+    var card = document.querySelector('[data-customer-id="' + customerId + '"]');
     if (!card) return;
-    var ti = card.querySelector('.limits-total-input');
-    var bi = card.querySelector('.limits-balance-input');
+    var ti = document.querySelector('.limits-total-input[data-customer-id="' + customerId + '"]');
+    var bi = document.querySelector('.limits-balance-input[data-customer-id="' + customerId + '"]');
     var totalLimit  = ti ? parseNum(ti.value) : null;
     var openBalance = bi ? parseNum(bi.value) || 0 : 0;
-    var plannedEuro = calcCustomerPlannedEuro(_state.orders, customerId, _state.productMap);
-
-    var custPayments = _state.payments.filter(function(p) { return p.customer_id === customerId; });
-    card.querySelectorAll('.limits-payment-row').forEach(function(row) {
-      var pid = row.getAttribute('data-payment-id');
-      var di  = row.querySelector('.limits-payment-date-input');
-      var ai  = row.querySelector('.limits-payment-amount-input');
-      if (!di || !ai) return;
-      var ex = custPayments.find(function(p) { return p.id === pid; });
-      if (ex) { ex.payment_date = di.value; ex.amount_eur = parseNum(ai.value); }
-    });
-
-    var conservative = calcConservativeLimit(totalLimit, openBalance, plannedEuro);
-    var optimistic   = calcOptimisticLimit(totalLimit, openBalance, plannedEuro, custPayments, _state.currentMonth, _state.currentYear);
-    var isCritical   = isLimitCritical(conservative, totalLimit);
-
-    var consClass = conservative !== null ? (conservative <= 0 ? 'negative' : (totalLimit && conservative < totalLimit * 0.15 ? 'warning' : 'positive')) : 'positive';
-    var optClass  = optimistic !== null && optimistic <= 0 ? 'negative' : 'accent';
-
-    var consBox = card.querySelector('.conservative .limits-result-value');
-    var optBox  = card.querySelector('.optimistic .limits-result-value');
-    if (consBox) { consBox.className = 'limits-result-value ' + consClass; consBox.textContent = conservative !== null ? fmtEuro(conservative) : '—'; }
-    if (optBox)  { optBox.className  = 'limits-result-value ' + optClass;  optBox.textContent  = optimistic  !== null ? fmtEuro(optimistic)  : '—'; }
-    card.classList.toggle('limits-critical', isCritical);
+    var pe = calcCustomerPlannedEuro(_state.orders, customerId, _state.productMap);
+    var cp = _state.payments.filter(function(p){ return p.customer_id === customerId; });
+    var con = calcConservativeLimit(totalLimit, openBalance, pe);
+    var opt = calcOptimisticLimit(totalLimit, openBalance, pe, cp, _state.currentMonth, _state.currentYear);
+    // Re-render just that row
+    _render();
   }
 
   /* ============================================================ SAVE */
-  function _scheduleLimitSave(customerId) {
+  function _scheduleLimitSave(cid) {
     if (_saveTimer) clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(function() { _saveLimitRow(customerId); }, 700);
+    _saveTimer = setTimeout(function() { _saveLimitRow(cid); }, 700);
   }
 
-  async function _saveLimitRow(customerId) {
-    var card = document.querySelector('.limits-card[data-customer-id="' + customerId + '"]');
-    if (!card) return;
-    var ti = card.querySelector('.limits-total-input');
-    var bi = card.querySelector('.limits-balance-input');
-    var existing = _state.limitsMap[customerId];
-    var payload = {
-      customer_id: customerId,
+  async function _saveLimitRow(cid) {
+    var ti = document.querySelector('.limits-total-input[data-customer-id="' + cid + '"]');
+    var bi = document.querySelector('.limits-balance-input[data-customer-id="' + cid + '"]');
+    var ex = _state.limitsMap[cid];
+    var ok = await dbUpsertLimit(Object.assign(ex && ex.id ? { id: ex.id } : {}, {
+      customer_id: cid,
       total_limit_eur:  ti ? parseNum(ti.value) : null,
       open_balance_eur: bi ? parseNum(bi.value) : null
-    };
-    if (existing && existing.id) payload.id = existing.id;
-    var ok = await dbUpsertLimit(payload);
+    }));
     if (ok) {
       _showSaved();
       _state.limits = await dbGetLimits();
       _state.limitsMap = {};
-      _state.limits.forEach(function(l) { _state.limitsMap[l.customer_id] = l; });
+      _state.limits.forEach(function(l){ _state.limitsMap[l.customer_id] = l; });
       emitDataChange('limits', {});
     }
   }
 
-  async function _addPayment(customerId) {
+  async function _addPayment(cid) {
     var now = new Date();
-    var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    var ok = await dbUpsertPayment({ customer_id: customerId, amount_eur: 0, payment_date: dateStr });
+    var ds = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    var ok = await dbUpsertPayment({ customer_id: cid, amount_eur: 0, payment_date: ds });
     if (ok) { _state.payments = await dbGetPayments(); _render(); emitDataChange('incoming_payments', {}); }
   }
 
-  async function _deletePayment(paymentId) {
-    var ok = await dbDeletePayment(paymentId);
+  async function _deletePayment(pid) {
+    var ok = await dbDeletePayment(pid);
     if (ok) { _state.payments = await dbGetPayments(); _render(); emitDataChange('incoming_payments', {}); }
   }
 
-  function _schedulePaymentSave(paymentId, customerId) {
-    if (_saveTimer) clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(function() { _savePayment(paymentId, customerId); }, 700);
-  }
-
-  async function _savePayment(paymentId, customerId) {
-    var card = document.querySelector('.limits-card[data-customer-id="' + customerId + '"]');
-    if (!card) return;
-    var row = card.querySelector('[data-payment-id="' + paymentId + '"]');
+  async function _savePayment(pid, cid) {
+    var row = document.querySelector('[data-payment-id="' + pid + '"]');
     if (!row) return;
     var di = row.querySelector('.limits-payment-date-input');
     var ai = row.querySelector('.limits-payment-amount-input');
     if (!di || !ai) return;
-    var ok = await dbUpsertPayment({ id: paymentId, customer_id: customerId, amount_eur: parseNum(ai.value) || 0, payment_date: di.value });
-    if (ok) { _showSaved(); _state.payments = await dbGetPayments(); _recalcCard(customerId); emitDataChange('incoming_payments', {}); }
+    var ok = await dbUpsertPayment({ id: pid, customer_id: cid, amount_eur: parseNum(ai.value)||0, payment_date: di.value });
+    if (ok) { _showSaved(); _state.payments = await dbGetPayments(); emitDataChange('incoming_payments', {}); }
   }
 
   function _showSaved() {
     if (!_saveIndicator) return;
     _saveIndicator.classList.add('visible');
-    setTimeout(function() { _saveIndicator.classList.remove('visible'); }, 1800);
+    setTimeout(function(){ _saveIndicator.classList.remove('visible'); }, 1800);
   }
 
   function _injectSaveIndicator() {
     if (document.getElementById('limits-save-indicator')) return;
     var el = document.createElement('div');
-    el.id = 'limits-save-indicator';
-    el.className = 'limits-save-indicator';
-    el.innerHTML = '✓ Kaydedildi';
+    el.id = 'limits-save-indicator'; el.className = 'limits-save-indicator';
+    el.textContent = '✓ Kaydedildi';
     document.body.appendChild(el);
     _saveIndicator = el;
   }
@@ -378,51 +354,45 @@
   function _bindGlobalEvents() {
     document.addEventListener('nsdata:dataChanged', function(e) {
       if (['orders','products','customers','limits','incoming_payments'].includes(e.detail.table)) {
-        _loadAll().then(function() {
-          if (document.getElementById('screen-limits').classList.contains('active')) _render();
-        });
+        _loadAll().then(function() { if (document.getElementById('screen-limits').classList.contains('active')) _render(); });
       }
     });
-    document.addEventListener('nsdata:screenActivated', function(e) {
-      if (e.detail.screen === 'limits') _render();
-    });
-    document.addEventListener('nsdata:filterCleared', function() {
-      _state.searchQuery = ''; _state.filters = { countries: [] }; _render();
-    });
+    document.addEventListener('nsdata:screenActivated', function(e) { if (e.detail.screen === 'limits') _render(); });
+    document.addEventListener('nsdata:filterCleared', function() { _state.searchQuery = ''; _state.filters = { countries: [] }; _render(); });
     document.addEventListener('click', function(e) {
-      if (_state.openDropdown && !e.target.closest('.limits-filterbar')) {
-        _state.openDropdown = null; _render();
-      }
+      if (_state.openDropdown && !e.target.closest('.limits-filterbar')) { _state.openDropdown = null; _render(); }
     });
   }
 
   function _bindScreenEvents() {
-    var searchEl = document.getElementById('limits-search');
-    if (searchEl) {
-      searchEl.addEventListener('input', debounce(function() {
-        _state.searchQuery = searchEl.value.trim(); _render();
-      }, 250));
-    }
+    // Search
+    var se = document.getElementById('limits-search');
+    if (se) se.addEventListener('input', debounce(function(){ _state.searchQuery = se.value.trim(); _render(); }, 250));
 
-    // Filter btn
-    var filterBtn = document.querySelector('[data-filter="country"]');
-    if (filterBtn) filterBtn.addEventListener('click', function(e) {
+    // View mode
+    var v1 = document.getElementById('limits-view-1'); var v2 = document.getElementById('limits-view-2');
+    if (v1) v1.addEventListener('click', function(){ _state.viewMode = 'limit1'; _render(); });
+    if (v2) v2.addEventListener('click', function(){ _state.viewMode = 'limit2'; _render(); });
+
+    // Filter country
+    var fcBtn = document.getElementById('limits-filter-country');
+    if (fcBtn) fcBtn.addEventListener('click', function(e) {
       e.stopPropagation();
-      _state.openDropdown = _state.openDropdown === 'country' ? null : 'country';
-      _render();
+      _state.openDropdown = _state.openDropdown === 'country' ? null : 'country'; _render();
     });
 
-    // Country checkboxes
     document.querySelectorAll('.limits-dd-cb').forEach(function(cb) {
       cb.addEventListener('change', function() {
-        var val = cb.getAttribute('data-value');
-        if (cb.checked) { if (!_state.filters.countries.includes(val)) _state.filters.countries.push(val); }
-        else _state.filters.countries = _state.filters.countries.filter(function(v){ return v !== val; });
+        var v = cb.getAttribute('data-value');
+        if (cb.checked) { if (!_state.filters.countries.includes(v)) _state.filters.countries.push(v); }
+        else _state.filters.countries = _state.filters.countries.filter(function(x){ return x !== v; });
         _render();
       });
     });
 
-    // DD search
+    var ddReset = document.getElementById('limits-dd-reset');
+    if (ddReset) ddReset.addEventListener('click', function(){ _state.filters.countries = []; _render(); });
+
     document.querySelectorAll('.orders-dd-search').forEach(function(inp) {
       inp.addEventListener('input', function() {
         var q = inp.value.toLowerCase();
@@ -432,67 +402,50 @@
       });
     });
 
-    var ddReset = document.getElementById('limits-dd-reset');
-    if (ddReset) ddReset.addEventListener('click', function() { _state.filters.countries = []; _render(); });
-
-    // Chips
-    document.querySelectorAll('.orders-chip-x').forEach(function(btn) {
+    document.querySelectorAll('.limits-chip-x').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        var filter = btn.getAttribute('data-filter');
-        var val    = btn.getAttribute('data-value');
-        if (filter === 'search') _state.searchQuery = '';
-        else _state.filters.countries = _state.filters.countries.filter(function(v){ return v !== val; });
+        var t = btn.getAttribute('data-type'); var v = btn.getAttribute('data-value');
+        if (t === 'search') _state.searchQuery = '';
+        else _state.filters.countries = _state.filters.countries.filter(function(x){ return x !== v; });
         _render();
       });
     });
+
     var clearAll = document.getElementById('limits-chips-clear');
-    if (clearAll) clearAll.addEventListener('click', function() {
-      _state.searchQuery = ''; _state.filters = { countries: [] }; _render();
-    });
+    if (clearAll) clearAll.addEventListener('click', function(){ _state.searchQuery = ''; _state.filters = { countries: [] }; _render(); });
 
     // Sort
-    var sortColEl = document.getElementById('limits-sort-col');
-    if (sortColEl) sortColEl.addEventListener('change', function() {
-      _state.sort.col = sortColEl.value; _render();
-    });
-    var sortDirEl = document.getElementById('limits-sort-dir');
-    if (sortDirEl) sortDirEl.addEventListener('click', function() {
-      _state.sort.dir = _state.sort.dir === 'asc' ? 'desc' : 'asc'; _render();
+    var sc = document.getElementById('limits-sort-col');
+    if (sc) sc.addEventListener('change', function(){ _state.sort.col = sc.value; _render(); });
+    var sd = document.getElementById('limits-sort-dir');
+    if (sd) sd.addEventListener('click', function(){ _state.sort.dir = _state.sort.dir === 'asc' ? 'desc' : 'asc'; _render(); });
+
+    // Expand (limit1)
+    document.querySelectorAll('.limits1-expand-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(){ var cid = btn.getAttribute('data-cid'); _state.expanded[cid] = !_state.expanded[cid]; _render(); });
     });
 
-    // Customer name clicks
-    document.querySelectorAll('.limits-card-name-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var id = btn.getAttribute('data-customer-id');
-        if (id) navigateTo('customer', { id: id });
-      });
+    // Customer name click
+    document.querySelectorAll('.limits1-cust-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(){ var id = btn.getAttribute('data-customer-id'); if (id) navigateTo('customer', { id: id }); });
     });
 
     // Limit inputs
     document.querySelectorAll('.limits-total-input, .limits-balance-input').forEach(function(inp) {
-      inp.addEventListener('input', function() {
-        var cid = inp.getAttribute('data-customer-id');
-        _recalcCard(cid); _scheduleLimitSave(cid);
-      });
+      inp.addEventListener('input', function(){ var cid = inp.getAttribute('data-customer-id'); _scheduleLimitSave(cid); });
     });
 
     // Payments
     document.querySelectorAll('.limits-add-payment-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { _addPayment(btn.getAttribute('data-customer-id')); });
+      btn.addEventListener('click', function(){ _addPayment(btn.getAttribute('data-customer-id')); });
     });
     document.querySelectorAll('.limits-payment-delete').forEach(function(btn) {
-      btn.addEventListener('click', function() { _deletePayment(btn.getAttribute('data-payment-id')); });
+      btn.addEventListener('click', function(){ _deletePayment(btn.getAttribute('data-payment-id')); });
     });
-    document.querySelectorAll('.limits-payment-date-input').forEach(function(inp) {
-      inp.addEventListener('change', function() {
-        _recalcCard(inp.getAttribute('data-customer-id'));
-        _schedulePaymentSave(inp.getAttribute('data-payment-id'), inp.getAttribute('data-customer-id'));
-      });
-    });
-    document.querySelectorAll('.limits-payment-amount-input').forEach(function(inp) {
-      inp.addEventListener('input', function() {
-        _recalcCard(inp.getAttribute('data-customer-id'));
-        _schedulePaymentSave(inp.getAttribute('data-payment-id'), inp.getAttribute('data-customer-id'));
+    document.querySelectorAll('.limits-payment-date-input, .limits-payment-amount-input').forEach(function(inp) {
+      inp.addEventListener('change', function(){
+        if (_saveTimer) clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(function(){ _savePayment(inp.getAttribute('data-payment-id'), inp.getAttribute('data-customer-id')); }, 600);
       });
     });
   }

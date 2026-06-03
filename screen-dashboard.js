@@ -110,7 +110,7 @@
       summaries = summaries.filter(function(s) {
         var c = _state.customerMap[s.customer_id];
         if (!c) return false;
-        return c.name.toLowerCase().includes(q) || (c.country || '').toLowerCase().includes(q);
+        return c.name.toLowerCase().includes(q);
       });
 
       // Recalculate totals from filtered
@@ -154,7 +154,7 @@
       // Card 1: Confirmed
       '<div class="dashboard-metric-card">' +
         '<div class="dashboard-metric-label">' +
-          '<span>&#x2713;</span> Kesinle&#x15F;en Ciro' +
+          '<span>✓</span> Kesinleşen Ciro' +
         '</div>' +
         '<div class="dashboard-metric-value dashboard-confirmed">' + confirmedStr + '</div>' +
         '<div class="dashboard-metric-sub">Fabrikadan gerçekten sevk edildi</div>' +
@@ -163,16 +163,16 @@
       // Card 2: Expected
       '<div class="dashboard-metric-card dashboard-expected-card">' +
         '<div class="dashboard-metric-label">' +
-          '<span>&#x25CB;</span> Ay Sonu &#xD6;ng&#xF6;r&#xFC;s&#xFC;' +
+          '<span>○</span> Ay Sonu Öngörüsü' +
         '</div>' +
         '<div class="dashboard-metric-value dashboard-expected">' + expectedStr + '</div>' +
-        '<div class="dashboard-expected-note">Kesinle&#x15F;en + Planlanan</div>' +
+        '<div class="dashboard-expected-note">Kesinleşen + Planlanan</div>' +
       '</div>' +
 
       // Card 3: Budget %
       '<div class="dashboard-metric-card' + (status === 'achieved' ? ' achieved' : '') + '">' +
         '<div class="dashboard-metric-label">' +
-          '<span>&#x25A0;</span> B&#xFC;t&#xE7;e Y&#xFC;zdesi' +
+          '<span>■</span> Bütçe Yüzdesi' +
         '</div>' +
         '<div class="dashboard-metric-value dashboard-' + status + '">' + pctStr + '</div>' +
         '<div class="dashboard-progress-wrap">' +
@@ -218,7 +218,7 @@
       achievers.forEach(function(a) {
         listHtml += '<li class="dashboard-achiever-item" data-customer-id="' + a.customer_id + '">' +
           '<span class="dashboard-achiever-name">' +
-            '<span style="color:var(--color-positive)">&#x2605;</span>' +
+            '<span style="color:var(--color-positive)">★</span>' +
             _escHtml(a.name) +
           '</span>' +
           '<span class="dashboard-achiever-pct" style="color:var(--color-positive)">' + fmtPct(a.pct) + '</span>' +
@@ -230,7 +230,7 @@
     return '<div class="dashboard-achievers-card">' +
       '<div class="dashboard-card-header">' +
         '<span class="dashboard-card-title">' +
-          '<span style="color:var(--color-positive)">&#x2605;</span> Hedefini Asan M&#xFC;&#x15F;teriler' +
+          '<span style="color:var(--color-positive)">★</span> Hedefini Asan Müşteriler' +
         '</span>' +
         '<span class="badge badge-positive">' + achievers.length + '</span>' +
       '</div>' +
@@ -277,7 +277,7 @@
     return '<div class="dashboard-achievers-card">' +
       '<div class="dashboard-card-header">' +
         '<span class="dashboard-card-title">' +
-          '<span style="color:var(--color-negative)">!</span> Limit Uyar&#x131;lar&#x131;' +
+          '<span style="color:var(--color-negative)">!</span> Limit Uyarıları' +
         '</span>' +
         (criticals.length > 0 ? '<span class="badge badge-negative">' + criticals.length + '</span>' : '') +
       '</div>' +
@@ -316,10 +316,10 @@
     return '<div class="dashboard-table-card">' +
       '<div class="dashboard-table-toolbar">' +
         '<div class="dashboard-search-wrap">' +
-          '<span class="dashboard-search-icon">&#x1F50D;</span>' +
+          '<span class="dashboard-search-icon">🔍</span>' +
           '<input type="search" id="dashboard-search" class="dashboard-search-input" ' +
-            'placeholder="M&#xFC;&#x15F;teri veya &#xFC;lke ara..." ' +
-            'aria-label="M&#xFC;&#x15F;teri veya &#xFC;lke ara" ' +
+            'placeholder="Müşteri veya ülke ara..." ' +
+            'aria-label="Müşteri veya ülke ara" ' +
             'value="' + _escHtml(_state.searchQuery) + '" />' +
         '</div>' +
       '</div>' +
@@ -327,16 +327,16 @@
         '<table class="dashboard-table" role="grid">' +
           '<thead>' +
             '<tr>' +
-              '<th scope="col">M&#xFC;&#x15F;teri</th>' +
-              '<th scope="col">&#xDC;lke</th>' +
-              '<th scope="col">Kesinle&#x15F;en</th>' +
+              '<th scope="col">Müşteri</th>' +
+              '<th scope="col">Ülke</th>' +
+              '<th scope="col">Kesinleşen</th>' +
               '<th scope="col">BEKLENEN</th>' +
               '<th scope="col">HEDEF</th>' +
-              '<th scope="col">B&#xFC;t&#xE7;e %</th>' +
+              '<th scope="col">Bütçe %</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody id="dashboard-tbody">' +
-            (rows || '<tr><td colspan="6" class="dashboard-empty">Veri bulunamad&#x131;</td></tr>') +
+            (rows || '<tr><td colspan="6" class="dashboard-empty">Veri bulunamadı</td></tr>') +
           '</tbody>' +
         '</table>' +
       '</div>' +
@@ -380,9 +380,7 @@
         '</div>' +
       '</td>' +
       '<td>' +
-        '<button class="dashboard-customer-name-btn" style="color:var(--color-text-secondary);font-weight:500" data-country="' + _escHtml(c.country || '') + '">' +
-          _escHtml(c.country || '—') +
-        '</button>' +
+        _buildCountryCell(s.customer_id) +
       '</td>' +
       '<td class="dashboard-num confirmed">' + fmtEuro(s.confirmed_eur) + '</td>' +
       '<td class="dashboard-num expected">' + fmtEuro(s.expected_eur) + '</td>' +
@@ -395,11 +393,26 @@
      FILTERED HELPERS
      ============================================================ */
 
+
+  function _buildCountryCell(customerId) {
+    // Get unique destination countries for this customer from orders
+    var countries = [];
+    _state.orders.forEach(function(o) {
+      if (o.customer_id === customerId && o.destination_country && !countries.includes(o.destination_country)) {
+        countries.push(o.destination_country);
+      }
+    });
+    if (!countries.length) return '<span style="color:#4A5068">—</span>';
+    return countries.map(function(c) {
+      return '<button class="dashboard-customer-name-btn" style="color:var(--color-text-secondary);font-weight:500;display:block" data-country="' + _escHtml(c) + '">' + _escHtml(c) + '</button>';
+    }).join('');
+  }
+
   function _filteredCustomers() {
     if (!_state.searchQuery) return _state.customers;
     var q = _state.searchQuery.toLowerCase();
     return _state.customers.filter(function(c) {
-      return c.name.toLowerCase().includes(q) || (c.country || '').toLowerCase().includes(q);
+      return c.name.toLowerCase().includes(q);
     });
   }
 

@@ -342,7 +342,7 @@
 
 .dashboard-table th {
   position: sticky;
-  top: calc(var(--nav-height) + 65px);
+  top: calc(var(--nav-height) + 72px);
   background: var(--color-surface);
   font-size: 12px;
   font-weight: 700;

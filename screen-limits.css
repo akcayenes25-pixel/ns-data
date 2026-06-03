@@ -448,3 +448,93 @@
 .limits-grid {
   padding: 16px;
 }
+
+/* ============================================================
+   LIMIT-1 / LIMIT-2 TABLO (v1.4.0)
+   ============================================================ */
+.limits-filterbar {
+  position: sticky;
+  top: var(--nav-height);
+  z-index: 30;
+  background: var(--color-surface);
+  border-bottom: 1.5px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+.limits-filterbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-height: 52px;
+  flex-wrap: wrap;
+}
+.limits-filterbar-inner::-webkit-scrollbar { display: none; }
+
+.limits1-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.limits1-th {
+  position: sticky;
+  top: calc(var(--nav-height) + 52px);
+  background: var(--color-surface-2);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.4px;
+  padding: 8px 12px;
+  border-bottom: 1.5px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+  z-index: 4;
+}
+.limits1-th.limits1-num { text-align: right; }
+
+.limits1-td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  font-feature-settings: 'tnum' on;
+}
+.limits1-td.limits1-num { text-align: right; }
+.limits1-name-td { min-width: 200px; }
+
+.limits1-row:hover .limits1-td { background: var(--color-surface-2); }
+.limits1-row.limits1-critical .limits1-td { background: #FFF5F5; }
+.limits1-row.limits1-critical:hover .limits1-td { background: #FEE2E2; }
+
+.limits1-expand-btn {
+  width: 20px; height: 20px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+  margin-right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+.limits1-expand-btn:hover { background: var(--color-border); }
+
+.limits1-cust-btn {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  display: inline;
+}
+.limits1-cust-btn:hover { text-decoration: underline; }
+
+.limits1-expand-row td { padding: 0; }

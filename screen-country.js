@@ -43,28 +43,24 @@
     if (!screen) return;
 
     var country = _state.countryId;
-    var customers = _state.customers.filter(function(c) {
-      return (c.country || 'Diger') === country;
-    });
+    // Filter orders by destination_country
+    var countryOrders = _state.orders.filter(function(o) { return o.destination_country === country; });
+    var customerIds = [];
+    countryOrders.forEach(function(o) { if (!customerIds.includes(o.customer_id)) customerIds.push(o.customer_id); });
+    var customers = _state.customers.filter(function(c) { return customerIds.includes(c.id); });
 
-    if (!customers.length) {
+    if (!countryOrders.length) {
       screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">Ülke bulunamadı</div></div>';
       return;
     }
 
     var totalConfirmed = 0, totalExpected = 0, totalTarget = 0;
-    customers.forEach(function(c) {
-      var custOrders = _state.orders.filter(function(o) { return o.customer_id === c.id; });
-      custOrders.forEach(function(o) {
-        var p = _state.productMap[o.product_id];
-        if (!p) return;
-        var price = parseNum(p.avg_price_eur) || 0;
-        totalConfirmed += (parseNum(o.shipped_qty) || 0) * price;
-        totalExpected  += ((parseNum(o.shipped_qty) || 0) + (parseNum(o.planned_qty) || 0)) * price;
-      });
-      var tgtKey = c.id + '_' + _state.currentMonth + '_' + _state.currentYear;
-      var target = _state.targetMap[tgtKey];
-      if (target) totalTarget += parseNum(target.target_eur) || 0;
+    countryOrders.forEach(function(o) {
+      var p = _state.productMap[o.product_id];
+      if (!p) return;
+      var price = parseNum(p.avg_price_eur) || 0;
+      totalConfirmed += (parseNum(o.shipped_qty) || 0) * price;
+      totalExpected  += ((parseNum(o.shipped_qty) || 0) + (parseNum(o.planned_qty) || 0)) * price;
     });
 
     var pct = calcTargetPct(totalExpected, totalTarget);
@@ -79,7 +75,7 @@
 
   function _buildBackBar(country) {
     return '<div class="country-back-bar">' +
-      '<button class="country-back-btn" id="country-back-btn">&#x2190; Geri</button>' +
+      '<button class="country-back-btn" id="country-back-btn">← Geri</button>' +
       '<div class="country-breadcrumb">' +
         '<span>Dashboard</span><span>›</span>' +
         '<span class="country-breadcrumb-current">' + _esc(country) + '</span>' +
@@ -96,7 +92,7 @@
       '<div class="country-header-name">' + _esc(country) + '</div>' +
       '<div class="country-header-metrics">' +
         '<div class="country-header-metric">' +
-          '<span class="country-header-metric-label">Kesinle&#x15F;en</span>' +
+          '<span class="country-header-metric-label">Kesinleşen</span>' +
           '<span class="country-header-metric-value">' + fmtEuro(confirmed, true) + '</span>' +
         '</div>' +
         '<div class="country-header-metric">' +
@@ -140,7 +136,7 @@
         '</div>' +
         '<div class="country-customer-card-body">' +
           '<div class="country-customer-row">' +
-            '<span class="country-customer-row-label">Kesinle&#x15F;en</span>' +
+            '<span class="country-customer-row-label">Kesinleşen</span>' +
             '<span class="country-customer-row-value">' + fmtEuro(confirmed) + '</span>' +
           '</div>' +
           '<div class="country-customer-row">' +

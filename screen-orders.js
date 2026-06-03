@@ -1,41 +1,59 @@
-/* NSDATA - screen-orders.js v1.2.0 */
-/* TradingView-style filter bar, column sort, group collapse, dense rows */
+/* NSDATA - screen-orders.js v1.4.0 */
+/* destination_country, 6-alan three-way, çift konteyner/toplam, pasif toggle kaldırıldı */
 (function() {
   'use strict';
 
   var _state = {
     orders: [], products: [], customers: [], productMap: {}, customerMap: {},
     searchQuery: '',
-    showInactive: false,
-    importPreviewData: null,
-    importDetailVisible: false,
+    importPreviewData: null, importDetailVisible: false,
     currentMonth: null, currentYear: null,
-    activeRowId: null,
+    activeRowKey: null,
     addRowOpen: false,
-    // Filters
     filters: { countries: [], products: [] },
-    // Sort: { col: 'customer'|'shipped_euro'|'planned_euro'|'total_euro', dir: 'asc'|'desc' }
     sort: { col: null, dir: 'asc' },
-    // Collapsed groups
     collapsed: {},
-    // Hidden columns
     hiddenCols: {},
-    // Dropdowns open
     openDropdown: null
   };
 
   var _saveTimer = null;
   var _saveIndicator = null;
 
-  var COLS = [
-    { id: 'shipped_qty',    label: 'Çıkan Adet',    sortable: false },
-    { id: 'shipped_euro',   label: 'Çıkan Euro',     sortable: true  },
-    { id: 'planned_qty',    label: 'Çıkacak Adet',  sortable: false },
-    { id: 'planned_euro',   label: 'Çıkacak Euro',  sortable: true  },
-    { id: 'container',      label: 'Konteyner',      sortable: false },
-    { id: 'total_euro',     label: 'Toplam Euro',    sortable: true  },
-    { id: 'note',           label: 'Not',            sortable: false }
+  // Çift grup: ÇIKAN ve ÇIKACAK — her biri 3 editable (adet/euro/konteyner) + 1 computed (toplam euro)
+  var COL_GROUPS = [
+    {
+      id: 'shipped', label: 'ÇIKAN', color: '#F0FDF4', borderColor: '#86EFAC',
+      cols: [
+        { id: 'shipped_qty',       label: 'Adet',      type: 'input',    sortable: false },
+        { id: 'shipped_euro',      label: 'Euro',      type: 'input',    sortable: true  },
+        { id: 'shipped_container', label: 'Konteyner', type: 'input',    sortable: false },
+        { id: 'shipped_total',     label: 'Toplam €',  type: 'computed', sortable: true  },
+      ]
+    },
+    {
+      id: 'planned', label: 'ÇIKACAK', color: '#EFF6FF', borderColor: '#93C5FD',
+      cols: [
+        { id: 'planned_qty',       label: 'Adet',      type: 'input',    sortable: false },
+        { id: 'planned_euro',      label: 'Euro',      type: 'input',    sortable: true  },
+        { id: 'planned_container', label: 'Konteyner', type: 'input',    sortable: false },
+        { id: 'planned_total',     label: 'Toplam €',  type: 'computed', sortable: true  },
+      ]
+    },
+    {
+      id: 'meta', label: '', color: '', borderColor: '',
+      cols: [
+        { id: 'destination', label: 'Ülke', type: 'input-text', sortable: false },
+        { id: 'note',        label: 'Not',  type: 'input-text', sortable: false },
+      ]
+    }
   ];
+
+  function _allCols() {
+    var cols = [];
+    COL_GROUPS.forEach(function(g) { g.cols.forEach(function(c) { cols.push(c); }); });
+    return cols;
+  }
 
   /* ============================================================ INIT */
   document.addEventListener('nsdata:appReady', function() { _init(); });
@@ -64,42 +82,44 @@
     if (!screen) return;
     screen.innerHTML = _buildHTML();
     _bindScreenEvents();
+    setTimeout(_fixStickyHeader, 0);
+  }
+
+  function _fixStickyHeader() {
+    var filterbar = document.getElementById('orders-filterbar');
+    var chipsBar  = document.querySelector('#screen-orders .orders-chips-bar');
+    if (!filterbar) return;
+    var top = 64 + (filterbar.offsetHeight || 52) + (chipsBar ? chipsBar.offsetHeight : 0);
+    document.querySelectorAll('#screen-orders .orders-th').forEach(function(th) {
+      th.style.top = top + 'px';
+    });
   }
 
   function _buildHTML() {
-    return _buildFilterBar() +
-           _buildActiveChips() +
-           _buildImportPreview() +
-           _buildTableCard();
+    return _buildFilterBar() + _buildActiveChips() + _buildImportPreview() + _buildTableCard();
   }
 
   /* ============================================================ FILTER BAR */
   function _buildFilterBar() {
-    // Unique countries and products from active customers/products
     var allCountries = [];
-    _state.customers.forEach(function(c) {
-      if (c.active !== false && c.country && !allCountries.includes(c.country)) allCountries.push(c.country);
+    // Collect countries from orders.destination_country
+    _state.orders.forEach(function(o) {
+      if (o.destination_country && !allCountries.includes(o.destination_country)) allCountries.push(o.destination_country);
     });
     allCountries.sort();
 
-    var allProducts = _state.products.map(function(p) { return { id: p.id, name: p.name }; });
+    var allProducts = _state.products;
 
     return '<div class="orders-filterbar" id="orders-filterbar">' +
       '<div class="orders-filterbar-inner">' +
-        // Search
         '<div class="orders-search-wrap">' +
           '<span class="orders-search-icon">🔍</span>' +
           '<input type="search" id="orders-search" class="orders-search-input" placeholder="Müşteri veya ülke ara..." value="' + _esc(_state.searchQuery) + '" />' +
         '</div>' +
-        // Country filter
-        _buildFilterBtn('country', 'Ülke', allCountries.map(function(c){ return { id: c, label: c }; }), _state.filters.countries) +
-        // Product filter
-        _buildFilterBtn('product', 'Ürün', allProducts.map(function(p){ return { id: p.id, label: p.name }; }), _state.filters.products) +
-        // Column visibility
-        _buildColVisBtn() +
-        // Spacer
+        _filterBtn('country', 'Ülke', _state.filters.countries.length) +
+        _filterBtn('product', 'Ürün', _state.filters.products.length) +
+        _filterBtn('colvis', 'Kolonlar', Object.values(_state.hiddenCols).filter(Boolean).length) +
         '<div style="flex:1"></div>' +
-        // Actions
         '<div class="orders-toolbar-actions">' +
           '<button class="btn btn-secondary" id="orders-export-excel" style="font-size:13px;height:36px">Excel İndir</button>' +
           '<label class="btn btn-primary" style="cursor:pointer;font-size:13px;height:36px">' +
@@ -108,40 +128,24 @@
           '</label>' +
         '</div>' +
       '</div>' +
-      // Dropdowns
-      _buildCountryDropdown(allCountries) +
-      _buildProductDropdown(allProducts) +
-      _buildColVisDropdown() +
+      _buildCountryDD(allCountries) +
+      _buildProductDD(allProducts) +
+      _buildColVisDD() +
     '</div>';
   }
 
-  function _buildFilterBtn(key, label, items, selected) {
-    var hasFilter = selected.length > 0;
-    var btnClass  = hasFilter ? 'orders-filter-btn orders-filter-btn--active' : 'orders-filter-btn';
-    var countBadge = hasFilter ? '<span class="orders-filter-count">' + selected.length + '</span>' : '';
-    return '<button class="' + btnClass + '" data-filter="' + key + '">' +
-      label + countBadge + ' ▾' +
-    '</button>';
+  function _filterBtn(key, label, count) {
+    var active = count > 0;
+    var cls = active ? 'orders-filter-btn orders-filter-btn--active' : 'orders-filter-btn';
+    var badge = count > 0 ? '<span class="orders-filter-count">' + count + '</span>' : '';
+    return '<button class="' + cls + '" data-filter="' + key + '">' + label + badge + ' ▾</button>';
   }
 
-  function _buildColVisBtn() {
-    var hiddenCount = Object.keys(_state.hiddenCols).filter(function(k){ return _state.hiddenCols[k]; }).length;
-    var badge = hiddenCount > 0 ? '<span class="orders-filter-count">' + hiddenCount + '</span>' : '';
-    return '<button class="orders-filter-btn" data-filter="colvis">Kolonlar' + badge + ' ▾</button>';
-  }
-
-  function _buildCountryDropdown(allCountries) {
-    var open = _state.openDropdown === 'country';
-    if (!open) return '<div id="orders-dd-country" class="orders-dropdown" style="display:none"></div>';
-
-    var items = allCountries.map(function(c) {
-      var checked = _state.filters.countries.includes(c);
-      return '<label class="orders-dd-item">' +
-        '<input type="checkbox" class="orders-dd-cb" data-filter="country" data-value="' + _esc(c) + '" ' + (checked ? 'checked' : '') + '>' +
-        '<span>' + _esc(c) + '</span>' +
-      '</label>';
+  function _buildCountryDD(countries) {
+    if (_state.openDropdown !== 'country') return '<div id="orders-dd-country" class="orders-dropdown" style="display:none"></div>';
+    var items = countries.map(function(c) {
+      return '<label class="orders-dd-item"><input type="checkbox" class="orders-dd-cb" data-filter="country" data-value="' + _esc(c) + '" ' + (_state.filters.countries.includes(c) ? 'checked' : '') + '><span>' + _esc(c) + '</span></label>';
     }).join('');
-
     return '<div id="orders-dd-country" class="orders-dropdown">' +
       '<input type="search" class="orders-dd-search" placeholder="Ülke ara..." />' +
       '<div class="orders-dd-list">' + (items || '<div class="orders-dd-empty">Ülke bulunamadı</div>') + '</div>' +
@@ -149,18 +153,11 @@
     '</div>';
   }
 
-  function _buildProductDropdown(allProducts) {
-    var open = _state.openDropdown === 'product';
-    if (!open) return '<div id="orders-dd-product" class="orders-dropdown" style="display:none"></div>';
-
-    var items = allProducts.map(function(p) {
-      var checked = _state.filters.products.includes(p.id);
-      return '<label class="orders-dd-item">' +
-        '<input type="checkbox" class="orders-dd-cb" data-filter="product" data-value="' + p.id + '" ' + (checked ? 'checked' : '') + '>' +
-        '<span>' + _esc(p.name) + '</span>' +
-      '</label>';
+  function _buildProductDD(products) {
+    if (_state.openDropdown !== 'product') return '<div id="orders-dd-product" class="orders-dropdown" style="display:none"></div>';
+    var items = products.map(function(p) {
+      return '<label class="orders-dd-item"><input type="checkbox" class="orders-dd-cb" data-filter="product" data-value="' + p.id + '" ' + (_state.filters.products.includes(p.id) ? 'checked' : '') + '><span>' + _esc(p.name) + '</span></label>';
     }).join('');
-
     return '<div id="orders-dd-product" class="orders-dropdown">' +
       '<input type="search" class="orders-dd-search" placeholder="Ürün ara..." />' +
       '<div class="orders-dd-list">' + (items || '<div class="orders-dd-empty">Ürün bulunamadı</div>') + '</div>' +
@@ -168,113 +165,100 @@
     '</div>';
   }
 
-  function _buildColVisDropdown() {
-    var open = _state.openDropdown === 'colvis';
-    if (!open) return '<div id="orders-dd-colvis" class="orders-dropdown" style="display:none"></div>';
-
-    var items = COLS.map(function(col) {
-      var hidden = !!_state.hiddenCols[col.id];
-      return '<label class="orders-dd-item">' +
-        '<input type="checkbox" class="orders-colvis-cb" data-col="' + col.id + '" ' + (!hidden ? 'checked' : '') + '>' +
-        '<span>' + col.label + '</span>' +
-      '</label>';
+  function _buildColVisDD() {
+    if (_state.openDropdown !== 'colvis') return '<div id="orders-dd-colvis" class="orders-dropdown" style="display:none"></div>';
+    var items = _allCols().map(function(col) {
+      return '<label class="orders-dd-item"><input type="checkbox" class="orders-colvis-cb" data-col="' + col.id + '" ' + (!_state.hiddenCols[col.id] ? 'checked' : '') + '><span>' + col.label + '</span></label>';
     }).join('');
-
-    return '<div id="orders-dd-colvis" class="orders-dropdown">' +
-      '<div class="orders-dd-list">' + items + '</div>' +
-    '</div>';
+    return '<div id="orders-dd-colvis" class="orders-dropdown"><div class="orders-dd-list">' + items + '</div></div>';
   }
 
-  /* ============================================================ ACTIVE CHIPS */
+  /* ============================================================ CHIPS */
   function _buildActiveChips() {
     var chips = '';
-
     _state.filters.countries.forEach(function(c) {
-      chips += '<span class="orders-chip">Ülke: ' + _esc(c) +
-        '<button class="orders-chip-x" data-filter="country" data-value="' + _esc(c) + '">×</button></span>';
+      chips += '<span class="orders-chip">Ülke: ' + _esc(c) + '<button class="orders-chip-x" data-filter="country" data-value="' + _esc(c) + '">×</button></span>';
     });
     _state.filters.products.forEach(function(pid) {
       var p = _state.productMap[pid];
-      var label = p ? p.name : pid;
-      chips += '<span class="orders-chip">Ürün: ' + _esc(label) +
-        '<button class="orders-chip-x" data-filter="product" data-value="' + pid + '">×</button></span>';
+      chips += '<span class="orders-chip">Ürün: ' + _esc(p ? p.name : pid) + '<button class="orders-chip-x" data-filter="product" data-value="' + pid + '">×</button></span>';
     });
     if (_state.searchQuery) {
-      chips += '<span class="orders-chip">Arama: ' + _esc(_state.searchQuery) +
-        '<button class="orders-chip-x" data-filter="search" data-value="">×</button></span>';
+      chips += '<span class="orders-chip">Arama: ' + _esc(_state.searchQuery) + '<button class="orders-chip-x" data-filter="search" data-value="">×</button></span>';
     }
-
     if (!chips) return '';
-    return '<div class="orders-chips-bar">' + chips +
-      '<button class="orders-chips-clear" id="orders-chips-clear">Tümünü Temizle</button>' +
-    '</div>';
+    return '<div class="orders-chips-bar">' + chips + '<button class="orders-chips-clear" id="orders-chips-clear">Tümünü Temizle</button></div>';
   }
 
   /* ============================================================ TABLE */
   function _buildTableCard() {
-    var rows = _buildTableRows();
-    var thead = _buildThead();
-
     return '<div class="orders-table-card">' +
       '<div class="orders-table-wrap">' +
         '<table class="orders-table" role="grid">' +
-          '<thead>' + thead + '</thead>' +
-          '<tbody id="orders-tbody">' + rows + _buildAddRow() + '</tbody>' +
+          '<thead>' + _buildThead() + '</thead>' +
+          '<tbody id="orders-tbody">' + _buildTableRows() + _buildAddRow() + '</tbody>' +
         '</table>' +
-      '</div>' +
-      '<div class="orders-inactive-toggle" id="orders-inactive-toggle">' +
-        '<span>' + (_state.showInactive ? 'Pasif müşterileri gizle' : 'Pasif müşterileri göster') + '</span>' +
-        '<span>' + (_state.showInactive ? '▲' : '▼') + '</span>' +
       '</div>' +
     '</div>';
   }
 
   function _buildThead() {
-    var cols = '<th class="orders-th orders-th--name">Müşteri / Ürün</th>';
-    COLS.forEach(function(col) {
-      if (_state.hiddenCols[col.id]) return;
-      var sortIcon = '';
-      if (col.sortable) {
-        if (_state.sort.col === col.id) {
-          sortIcon = _state.sort.dir === 'asc' ? ' ↑' : ' ↓';
-        } else {
-          sortIcon = ' ⇅';
-        }
-      }
-      cols += '<th class="orders-th orders-th--num' + (col.sortable ? ' orders-th--sortable' : '') + '" ' +
-        (col.sortable ? 'data-sort="' + col.id + '"' : '') + '>' +
-        col.label + sortIcon + '</th>';
+    // Üst header: grup başlıkları
+    var topRow = '<tr>';
+    topRow += '<th class="orders-th orders-th--name" rowspan="2">Müşteri / Ürün</th>';
+    COL_GROUPS.forEach(function(g) {
+      var visibleCols = g.cols.filter(function(c){ return !_state.hiddenCols[c.id]; });
+      if (!visibleCols.length) return;
+      var bg = g.color ? 'background:' + g.color + ';border-left:2px solid ' + g.borderColor + ';' : '';
+      topRow += '<th class="orders-th orders-th--group" colspan="' + visibleCols.length + '" style="' + bg + 'text-align:center;font-size:11px;letter-spacing:1px">' + g.label + '</th>';
     });
-    return '<tr>' + cols + '</tr>';
+    topRow += '</tr>';
+
+    // Alt header: kolon başlıkları
+    var botRow = '<tr>';
+    COL_GROUPS.forEach(function(g) {
+      g.cols.forEach(function(col) {
+        if (_state.hiddenCols[col.id]) return;
+        var sortIcon = col.sortable ? (_state.sort.col === col.id ? (_state.sort.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅') : '';
+        var bg = g.color ? 'background:' + g.color + ';' : '';
+        var bl = g.color ? 'border-left:2px solid ' + g.borderColor + ';' : '';
+        botRow += '<th class="orders-th orders-th--num' + (col.sortable ? ' orders-th--sortable' : '') + '" ' +
+          'style="' + bg + bl + '" ' +
+          (col.sortable ? 'data-sort="' + col.id + '"' : '') + '>' +
+          col.label + sortIcon + '</th>';
+      });
+    });
+    botRow += '</tr>';
+
+    return topRow + botRow;
   }
 
   function _buildTableRows() {
-    var q   = _state.searchQuery.toLowerCase();
-    var fC  = _state.filters.countries;
-    var fP  = _state.filters.products;
+    var q  = _state.searchQuery.toLowerCase();
+    var fC = _state.filters.countries;
+    var fP = _state.filters.products;
 
-    var activeCustomers = _state.customers.filter(function(c) {
+    var customers = _state.customers.filter(function(c) {
       if (c.active === false) return false;
-      if (fC.length && !fC.includes(c.country)) return false;
-      if (q && !c.name.toLowerCase().includes(q) && !(c.country||'').toLowerCase().includes(q)) return false;
+      if (q && !c.name.toLowerCase().includes(q)) return false;
+      // Country filter — check if customer has orders to those countries
+      if (fC.length) {
+        var hasCountry = _state.orders.some(function(o) {
+          return o.customer_id === c.id && fC.includes(o.destination_country);
+        });
+        if (!hasCountry) return false;
+      }
       return true;
     });
 
-    var inactiveCustomers = _state.customers.filter(function(c) { return c.active === false; });
-
-    // Sort customers
-    if (_state.sort.col) {
-      activeCustomers = _sortCustomers(activeCustomers, fP);
-    }
+    if (_state.sort.col) customers = _sortCustomers(customers, fP);
 
     var html = '';
-    activeCustomers.forEach(function(c) { html += _buildCustomerGroup(c, false, fP); });
-    if (_state.showInactive) {
-      inactiveCustomers.forEach(function(c) { html += _buildCustomerGroup(c, true, fP); });
-    }
+    customers.forEach(function(c) { html += _buildCustomerGroup(c, fP); });
 
     if (!html) {
-      html = '<tr><td colspan="' + (2 + _visibleColCount()) + '" class="orders-empty">' +
+      var colCount = 1 + _visibleColCount();
+      html = '<tr><td colspan="' + colCount + '" class="orders-empty">' +
         (_state.customers.length === 0 ? 'Henüz müşteri yok. Ayarlar › Müşteriler bölümünden ekleyin.' : 'Veri bulunamadı') +
       '</td></tr>';
     }
@@ -282,13 +266,8 @@
   }
 
   function _sortCustomers(customers, fP) {
-    var col = _state.sort.col;
-    var dir = _state.sort.dir === 'asc' ? 1 : -1;
-
+    var col = _state.sort.col; var dir = _state.sort.dir === 'asc' ? 1 : -1;
     return customers.slice().sort(function(a, b) {
-      if (col === 'customer') {
-        return dir * a.name.localeCompare(b.name, 'tr');
-      }
       var aVal = _customerColTotal(a.id, col, fP);
       var bVal = _customerColTotal(b.id, col, fP);
       return dir * (aVal - bVal);
@@ -300,83 +279,82 @@
     _state.orders.forEach(function(o) {
       if (o.customer_id !== customerId) return;
       if (fP.length && !fP.includes(o.product_id)) return;
-      var product = _state.productMap[o.product_id];
-      if (!product) return;
-      var price = parseNum(product.avg_price_eur) || 0;
-      var shipped = parseNum(o.shipped_qty) || 0;
-      var planned = parseNum(o.planned_qty) || 0;
-      if (col === 'shipped_euro') total += shipped * price;
-      else if (col === 'planned_euro') total += planned * price;
-      else if (col === 'total_euro') total += (shipped + planned) * price;
+      var p = _state.productMap[o.product_id]; if (!p) return;
+      var price = parseNum(p.avg_price_eur) || 0;
+      var sq = parseNum(o.shipped_qty) || 0;
+      var pq = parseNum(o.planned_qty) || 0;
+      if (col === 'shipped_euro' || col === 'shipped_total') total += sq * price;
+      else if (col === 'planned_euro' || col === 'planned_total') total += pq * price;
     });
     return total;
   }
 
-  function _buildCustomerGroup(customer, inactive, fP) {
-    var products = fP.length
-      ? _state.products.filter(function(p) { return fP.includes(p.id); })
-      : _state.products;
-
+  function _buildCustomerGroup(customer, fP) {
+    var products = fP.length ? _state.products.filter(function(p){ return fP.includes(p.id); }) : _state.products;
     if (!products.length) return '';
 
     var isCollapsed = !!_state.collapsed[customer.id];
-    var rowClass = inactive ? 'orders-inactive-section' : '';
-
-    // Group header row
     var colCount = 1 + _visibleColCount();
     var displayName = CustomerManager.displayName(customer);
-    var html = '<tr class="orders-group-row ' + rowClass + '" data-customer-id="' + customer.id + '">' +
+
+    var html = '<tr class="orders-group-row" data-customer-id="' + customer.id + '">' +
       '<td colspan="' + colCount + '" class="orders-group-td">' +
-        '<button class="orders-group-collapse" data-customer-id="' + customer.id + '">' +
-          (isCollapsed ? '▶' : '▼') +
-        '</button>' +
-        '<button class="orders-customer-btn" data-customer-id="' + customer.id + '">' +
-          _esc(displayName) +
-        '</button>' +
-        (customer.country ? '<span class="orders-group-country">' + _esc(customer.country) + '</span>' : '') +
-        (customer.sub_market ? '<span class="orders-group-submarket">' + _esc(customer.sub_market) + '</span>' : '') +
+        '<button class="orders-group-collapse" data-customer-id="' + customer.id + '">' + (isCollapsed ? '▶' : '▼') + '</button>' +
+        '<button class="orders-customer-btn" data-customer-id="' + customer.id + '">' + _esc(displayName) + '</button>' +
       '</td>' +
     '</tr>';
 
     if (isCollapsed) return html;
 
     products.forEach(function(product) {
-      var order = _state.orders.find(function(o) {
-        return o.customer_id === customer.id && o.product_id === product.id;
-      });
+      var order = _state.orders.find(function(o) { return o.customer_id === customer.id && o.product_id === product.id; });
+      var sq    = order ? (parseNum(order.shipped_qty)  || 0) : 0;
+      var pq    = order ? (parseNum(order.planned_qty)  || 0) : 0;
+      var price = parseNum(product.avg_price_eur) || 0;
+      var ratio = parseNum(product.container_ratio);
+      var se    = price ? sq * price : 0;
+      var pe    = price ? pq * price : 0;
+      var sc    = ratio ? sq / ratio : null;
+      var pc    = ratio ? pq / ratio : null;
+      var rowKey = customer.id + '__' + product.id;
+      var dest   = order ? (order.destination_country || '') : '';
 
-      var shippedQty  = order ? (parseNum(order.shipped_qty)  || 0) : 0;
-      var plannedQty  = order ? (parseNum(order.planned_qty)  || 0) : 0;
-      var price       = parseNum(product.avg_price_eur) || 0;
-      var ratio       = parseNum(product.container_ratio);
-      var shippedEuro = price > 0 ? shippedQty * price : 0;
-      var plannedEuro = price > 0 ? plannedQty * price : 0;
-      var totalEuro   = shippedEuro + plannedEuro;
-      var containers  = ratio && ratio > 0 ? (shippedQty + plannedQty) / ratio : null;
-      var rowKey      = customer.id + '__' + product.id;
-      var isActive    = _state.activeRowId === rowKey;
-
-      html += '<tr class="orders-data-row ' + (inactive ? 'orders-inactive-section' : '') + (isActive ? ' orders-active-row' : '') + '" ' +
+      html += '<tr class="orders-data-row' + (_state.activeRowKey === rowKey ? ' orders-active-row' : '') + '" ' +
         'data-row-key="' + rowKey + '" data-customer-id="' + customer.id + '" data-product-id="' + product.id + '">' +
         '<td class="orders-td orders-td--name"><div class="orders-product-name">' + _esc(product.name) + '</div></td>';
 
-      COLS.forEach(function(col) {
-        if (_state.hiddenCols[col.id]) return;
-        if (col.id === 'shipped_qty') {
-          html += '<td class="orders-td orders-td--num"><input type="number" min="0" class="orders-input orders-shipped-qty" data-source="shipped" data-row-key="' + rowKey + '" value="' + (shippedQty || '') + '" placeholder="0" /></td>';
-        } else if (col.id === 'shipped_euro') {
-          html += '<td class="orders-td orders-td--num"><div class="orders-computed orders-shipped-euro">' + (shippedEuro > 0 ? fmtEuro(shippedEuro) : '—') + '</div></td>';
-        } else if (col.id === 'planned_qty') {
-          html += '<td class="orders-td orders-td--num"><input type="number" min="0" class="orders-input orders-planned-qty" data-source="qty" data-row-key="' + rowKey + '" value="' + (plannedQty || '') + '" placeholder="0" /></td>';
-        } else if (col.id === 'planned_euro') {
-          html += '<td class="orders-td orders-td--num"><input type="number" min="0" class="orders-input orders-planned-euro" data-source="euro" data-row-key="' + rowKey + '" value="' + (plannedEuro || '') + '" placeholder="0" /></td>';
-        } else if (col.id === 'container') {
-          html += '<td class="orders-td orders-td--num"><div class="orders-computed">' + (containers !== null ? fmtQty(containers) : '—') + '</div></td>';
-        } else if (col.id === 'total_euro') {
-          html += '<td class="orders-td orders-td--num"><div class="orders-computed orders-total-euro">' + (totalEuro > 0 ? fmtEuro(totalEuro) : '—') + '</div></td>';
-        } else if (col.id === 'note') {
-          html += '<td class="orders-td"><input type="text" class="orders-note-input" data-row-key="' + rowKey + '" value="' + _esc(order ? (order.note || '') : '') + '" placeholder="Not..." maxlength="200" /></td>';
-        }
+      COL_GROUPS.forEach(function(g) {
+        g.cols.forEach(function(col) {
+          if (_state.hiddenCols[col.id]) return;
+          var bg = g.color ? 'background:' + g.color + ';' : '';
+          var bl = g.color ? 'border-left:2px solid ' + g.borderColor + ';' : '';
+          var style = 'style="' + bg + bl + '"';
+          var td = '';
+
+          if (col.id === 'shipped_qty') {
+            td = '<input type="number" min="0" class="orders-input orders-shipped-qty" data-row-key="' + rowKey + '" value="' + (sq || '') + '" placeholder="0" />';
+          } else if (col.id === 'shipped_euro') {
+            td = '<input type="number" min="0" class="orders-input orders-shipped-euro-inp" data-row-key="' + rowKey + '" value="' + (se || '') + '" placeholder="0" />';
+          } else if (col.id === 'shipped_container') {
+            td = '<input type="number" min="0" class="orders-input orders-shipped-container" data-row-key="' + rowKey + '" value="' + (sc !== null ? (Math.round(sc*100)/100) : '') + '" placeholder="0" />';
+          } else if (col.id === 'shipped_total') {
+            td = '<div class="orders-computed">' + (se > 0 ? fmtEuro(se) : '—') + '</div>';
+          } else if (col.id === 'planned_qty') {
+            td = '<input type="number" min="0" class="orders-input orders-planned-qty" data-row-key="' + rowKey + '" value="' + (pq || '') + '" placeholder="0" />';
+          } else if (col.id === 'planned_euro') {
+            td = '<input type="number" min="0" class="orders-input orders-planned-euro-inp" data-row-key="' + rowKey + '" value="' + (pe || '') + '" placeholder="0" />';
+          } else if (col.id === 'planned_container') {
+            td = '<input type="number" min="0" class="orders-input orders-planned-container" data-row-key="' + rowKey + '" value="' + (pc !== null ? (Math.round(pc*100)/100) : '') + '" placeholder="0" />';
+          } else if (col.id === 'planned_total') {
+            td = '<div class="orders-computed orders-planned-total">' + (pe > 0 ? fmtEuro(pe) : '—') + '</div>';
+          } else if (col.id === 'destination') {
+            td = '<input type="text" class="orders-note-input orders-dest-input" data-row-key="' + rowKey + '" value="' + _esc(dest) + '" placeholder="Ülke..." maxlength="60" />';
+          } else if (col.id === 'note') {
+            td = '<input type="text" class="orders-note-input" data-row-key="' + rowKey + '" value="' + _esc(order ? (order.note || '') : '') + '" placeholder="Not..." maxlength="200" />';
+          }
+
+          html += '<td class="orders-td orders-td--num" ' + style + '>' + td + '</td>';
+        });
       });
 
       html += '</tr>';
@@ -386,7 +364,38 @@
   }
 
   function _visibleColCount() {
-    return COLS.filter(function(col) { return !_state.hiddenCols[col.id]; }).length;
+    return _allCols().filter(function(c){ return !_state.hiddenCols[c.id]; }).length;
+  }
+
+  /* ============================================================ THREE-WAY (6 alan) */
+  function _applyThreeWay(rowKey, group, source, value) {
+    var row = document.querySelector('[data-row-key="' + rowKey + '"]');
+    if (!row) return;
+    var product = _state.productMap[row.getAttribute('data-product-id')];
+    if (!product) return;
+    var price = parseNum(product.avg_price_eur);
+    var ratio = parseNum(product.container_ratio);
+    var result = calcThreeWay(source, value, price, ratio);
+
+    if (group === 'shipped') {
+      var qEl  = row.querySelector('.orders-shipped-qty');
+      var eEl  = row.querySelector('.orders-shipped-euro-inp');
+      var cEl  = row.querySelector('.orders-shipped-container');
+      var tEl  = row.querySelector('.orders-computed:not(.orders-planned-total)');
+      if (source !== 'qty'       && qEl && result.qty       !== null) { qEl.setAttribute('data-skip','1'); qEl.value = Math.round(result.qty * 100)/100; }
+      if (source !== 'euro'      && eEl && result.euro      !== null) { eEl.setAttribute('data-skip','1'); eEl.value = Math.round(result.euro); }
+      if (source !== 'container' && cEl && result.container !== null) { cEl.setAttribute('data-skip','1'); cEl.value = Math.round(result.container * 100)/100; }
+      if (tEl) tEl.textContent = result.euro > 0 ? fmtEuro(result.euro) : (price ? fmtEuro((parseNum(qEl ? qEl.value : 0)||0)*price) : '—');
+    } else {
+      var qEl  = row.querySelector('.orders-planned-qty');
+      var eEl  = row.querySelector('.orders-planned-euro-inp');
+      var cEl  = row.querySelector('.orders-planned-container');
+      var tEl  = row.querySelector('.orders-planned-total');
+      if (source !== 'qty'       && qEl && result.qty       !== null) { qEl.setAttribute('data-skip','1'); qEl.value = Math.round(result.qty * 100)/100; }
+      if (source !== 'euro'      && eEl && result.euro      !== null) { eEl.setAttribute('data-skip','1'); eEl.value = Math.round(result.euro); }
+      if (source !== 'container' && cEl && result.container !== null) { cEl.setAttribute('data-skip','1'); cEl.value = Math.round(result.container * 100)/100; }
+      if (tEl) tEl.textContent = result.euro > 0 ? fmtEuro(result.euro) : '—';
+    }
   }
 
   /* ============================================================ ADD ROW */
@@ -397,31 +406,24 @@
         '<button id="orders-add-row-btn" class="orders-add-row-btn">+ Satır Ekle</button>' +
       '</td></tr>';
     }
-
-    var activeCustomers = _state.customers.filter(function(c) { return c.active !== false; });
     var custOpts = '<option value="">Müşteri seç...</option>' +
-      activeCustomers.map(function(c) {
+      _state.customers.filter(function(c){ return c.active !== false; }).map(function(c) {
         return '<option value="' + c.id + '">' + _esc(CustomerManager.displayName(c)) + '</option>';
       }).join('');
     var prodOpts = '<option value="">Ürün seç...</option>' +
-      _state.products.map(function(p) {
-        return '<option value="' + p.id + '">' + _esc(p.name) + '</option>';
-      }).join('');
+      _state.products.map(function(p) { return '<option value="' + p.id + '">' + _esc(p.name) + '</option>'; }).join('');
 
     return '<tr id="orders-new-row" class="orders-new-row">' +
-      '<td><select id="orders-new-customer" class="orders-new-select">' + custOpts + '</select>' +
-          '<select id="orders-new-product" class="orders-new-select" style="margin-top:4px">' + prodOpts + '</select></td>' +
-      '<td><input type="number" min="0" id="orders-new-shipped" class="orders-input" placeholder="0" /></td>' +
-      '<td><div class="orders-computed" id="orders-new-shipped-euro">—</div></td>' +
-      '<td><input type="number" min="0" id="orders-new-planned-qty" class="orders-input" placeholder="0" /></td>' +
-      '<td><input type="number" min="0" id="orders-new-planned-euro" class="orders-input" placeholder="0" /></td>' +
-      '<td><div class="orders-computed" id="orders-new-container">—</div></td>' +
-      '<td><div class="orders-computed" id="orders-new-total-euro">—</div></td>' +
-      '<td>' +
-        '<input type="text" id="orders-new-note" class="orders-note-input" placeholder="Not..." maxlength="200" />' +
-        '<div style="display:flex;gap:6px;margin-top:4px">' +
-          '<button id="orders-new-save" class="btn btn-primary" style="font-size:13px;height:32px;padding:0 12px">Kaydet</button>' +
-          '<button id="orders-new-cancel" class="btn btn-secondary" style="font-size:13px;height:32px;padding:0 10px">İptal</button>' +
+      '<td colspan="' + colCount + '" style="padding:12px 16px;background:#F8F9FF">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">' +
+          '<select id="orders-new-customer" class="orders-new-select" style="min-width:200px">' + custOpts + '</select>' +
+          '<select id="orders-new-product" class="orders-new-select" style="min-width:140px">' + prodOpts + '</select>' +
+          '<input type="number" id="orders-new-shipped" class="orders-input" placeholder="Çıkan Adet" style="width:110px" />' +
+          '<input type="number" id="orders-new-planned" class="orders-input" placeholder="Çıkacak Adet" style="width:120px" />' +
+          '<input type="text" id="orders-new-dest" class="orders-note-input" placeholder="Ülke" style="width:100px" />' +
+          '<input type="text" id="orders-new-note" class="orders-note-input" placeholder="Not..." style="width:140px" />' +
+          '<button id="orders-new-save" class="btn btn-primary" style="font-size:13px;height:34px;padding:0 14px">Kaydet</button>' +
+          '<button id="orders-new-cancel" class="btn btn-secondary" style="font-size:13px;height:34px;padding:0 12px">İptal</button>' +
         '</div>' +
       '</td>' +
     '</tr>';
@@ -431,38 +433,63 @@
   function _buildImportPreview() {
     if (!_state.importPreviewData) return '';
     var data = _state.importPreviewData;
-    var detailRows = (data.rows || []).slice(0, 50).map(function(row) {
-      var cls = row.matched ? '' : 'style="color:var(--color-warning)"';
-      return '<tr><td ' + cls + '>' + _esc(row.customer_name) + '</td>' +
-        '<td>' + _esc(row.product_name) + '</td>' +
-        '<td style="text-align:right">' + fmtQty(row.qty) + '</td>' +
-        '<td style="text-align:right">' + fmtEuro(row.euro) + '</td>' +
-        '<td>' + (row.matched ? '<span style="color:var(--color-positive)">✓ Eşleşti</span>' : '<span style="color:var(--color-warning)">Yeni</span>') + '</td></tr>';
+
+    var detailRows = (data.rows || []).slice(0, 100).map(function(row) {
+      var scoreBar = _buildScoreBar(row.customer_score, row.product_score);
+      var custCell = row.matched
+        ? '<span style="color:var(--color-positive)">✓ ' + _esc(row.customer_id ? _state.customerMap[row.customer_id]?.name || row.customer_name : row.customer_name) + '</span>'
+        : '<select class="orders-new-select import-cust-select" data-erp-name="' + _esc(row.customer_name) + '" style="font-size:12px;height:28px;min-height:unset"><option value="">— Eşleştir —</option>' +
+          _state.customers.map(function(c){ return '<option value="' + c.id + '">' + _esc(c.name) + '</option>'; }).join('') + '</select>';
+      var prodCell = row.product_id
+        ? '<span style="color:var(--color-positive)">✓ ' + _esc(_state.productMap[row.product_id]?.name || row.product_name) + '</span>'
+        : '<select class="orders-new-select import-prod-select" data-erp-name="' + _esc(row.product_name) + '" style="font-size:12px;height:28px;min-height:unset"><option value="">— Eşleştir —</option>' +
+          _state.products.map(function(p){ return '<option value="' + p.id + '">' + _esc(p.name) + '</option>'; }).join('') + '</select>';
+
+      return '<tr>' +
+        '<td style="padding:6px 10px">' + custCell + '</td>' +
+        '<td style="padding:6px 10px">' + prodCell + '</td>' +
+        '<td style="padding:6px 10px;text-align:right">' + fmtQty(row.qty) + '</td>' +
+        '<td style="padding:6px 10px;text-align:right">' + fmtEuro(row.euro) + '</td>' +
+        '<td style="padding:6px 10px">' + (row.month || '—') + '/' + (row.year || '—') + '</td>' +
+        '<td style="padding:6px 10px">' + scoreBar + '</td>' +
+      '</tr>';
     }).join('');
 
-    return '<div class="orders-import-preview visible" id="orders-import-preview">' +
+    return '<div class="orders-import-preview visible">' +
       '<div class="orders-import-preview-header">' +
         '<span class="orders-import-preview-title">İmport Onay</span>' +
         '<button class="btn btn-secondary" id="orders-import-cancel">İptal</button>' +
       '</div>' +
       '<div class="orders-import-summary">' +
-        _sumItem('Müşteri', data.customerCount || 0) +
-        _sumItem('Ürün', data.productCount || 0) +
-        _sumItem('Satır', data.rowCount || 0) +
-        _sumItem('Eşleşmeyenler', data.unmatchedCount || 0, 'var(--color-warning)') +
+        _sumItem('Müşteri', data.customerCount||0) + _sumItem('Ürün', data.productCount||0) +
+        _sumItem('Satır', data.rowCount||0) + _sumItem('Eşleşmeyen', data.unmatchedCount||0, 'var(--color-warning)') +
       '</div>' +
-      '<div class="orders-import-detail-toggle" id="orders-import-detail-toggle">' +
-        '<span>' + (_state.importDetailVisible ? '▼' : '▶') + ' Ayrıntılı görüntüle</span>' +
-      '</div>' +
-      '<div class="orders-import-detail-body' + (_state.importDetailVisible ? ' visible' : '') + '" id="orders-import-detail-body">' +
-        '<table class="orders-import-detail-table">' +
-          '<thead><tr><th>Müşteri</th><th>Ürün</th><th>Adet</th><th>Euro</th><th>Durum</th></tr></thead>' +
+      '<div style="font-size:12px;color:#4A5068;padding:8px 20px;background:#EEF2FF">Eşleşmeyen satırları dropdown\'dan manuel eşleştirin, ardından "Yükle" butonuna basın.</div>' +
+      '<div class="orders-import-detail-body visible" style="max-height:400px;overflow-y:auto">' +
+        '<table class="orders-import-detail-table" style="width:100%;border-collapse:collapse;font-size:13px">' +
+          '<thead><tr style="background:#F1F3F9">' +
+            '<th style="padding:8px 10px;text-align:left">Müşteri</th><th style="padding:8px 10px;text-align:left">Ürün</th>' +
+            '<th style="padding:8px 10px;text-align:right">Adet</th><th style="padding:8px 10px;text-align:right">Euro</th>' +
+            '<th style="padding:8px 10px;text-align:left">Ay/Yıl</th><th style="padding:8px 10px">Güven</th>' +
+          '</tr></thead>' +
           '<tbody>' + detailRows + '</tbody>' +
         '</table>' +
       '</div>' +
       '<div class="orders-import-actions">' +
-        '<button class="btn btn-primary" id="orders-import-confirm">Evet, yükle</button>' +
+        '<button class="btn btn-primary" id="orders-import-confirm">Yükle</button>' +
       '</div>' +
+    '</div>';
+  }
+
+  function _buildScoreBar(custScore, prodScore) {
+    var avg = ((custScore || 0) + (prodScore || 0)) / 2;
+    var pct = Math.round(avg * 100);
+    var color = pct >= 80 ? '#16A34A' : pct >= 50 ? '#D97706' : '#DC2626';
+    return '<div style="display:flex;align-items:center;gap:4px">' +
+      '<div style="width:60px;height:6px;background:#E2E5EF;border-radius:99px;overflow:hidden">' +
+        '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:99px"></div>' +
+      '</div>' +
+      '<span style="font-size:11px;color:#4A5068">' + pct + '%</span>' +
     '</div>';
   }
 
@@ -471,43 +498,6 @@
       '<span class="orders-import-summary-label">' + label + '</span>' +
       '<span class="orders-import-summary-value"' + (color ? ' style="color:' + color + '"' : '') + '>' + val + '</span>' +
     '</div>';
-  }
-
-  /* ============================================================ THREE-WAY CALC */
-  function _applyThreeWay(rowKey, source, value) {
-    var row = document.querySelector('[data-row-key="' + rowKey + '"]');
-    if (!row) return;
-    var product = _state.productMap[row.getAttribute('data-product-id')];
-    if (!product) return;
-    var price = parseNum(product.avg_price_eur);
-    var ratio = parseNum(product.container_ratio);
-
-    if (source === 'shipped') {
-      var se = row.querySelector('.orders-shipped-euro');
-      if (se) se.textContent = price && value ? fmtEuro(value * price) : '—';
-      _updateTotalEuro(row, value, null, price);
-      return;
-    }
-    var result = calcThreeWay(source, value, price, ratio);
-    var qtyEl  = row.querySelector('.orders-planned-qty');
-    var eurEl  = row.querySelector('.orders-planned-euro');
-    var ctnEl  = row.querySelector('.orders-computed:not(.orders-shipped-euro):not(.orders-total-euro)');
-
-    if (source !== 'qty'  && qtyEl && result.qty  !== null) { qtyEl.setAttribute('data-skip','1'); qtyEl.value = Math.round(result.qty * 100)/100; }
-    if (source !== 'euro' && eurEl && result.euro !== null) { eurEl.setAttribute('data-skip','1'); eurEl.value = Math.round(result.euro); }
-    if (ctnEl && result.container !== null) ctnEl.textContent = fmtQty(result.container);
-    _updateTotalEuro(row, null, result.euro, price);
-  }
-
-  function _updateTotalEuro(row, newShipped, newPlanned, price) {
-    var totalEl = row.querySelector('.orders-total-euro');
-    if (!totalEl) return;
-    var si = row.querySelector('.orders-shipped-qty');
-    var pi = row.querySelector('.orders-planned-euro');
-    var shipped = newShipped !== null ? newShipped : (si ? parseNum(si.value) || 0 : 0);
-    var planned = newPlanned !== null ? newPlanned : (pi ? parseNum(pi.value) || 0 : 0);
-    var total = (price ? shipped * price : 0) + planned;
-    totalEl.textContent = total > 0 ? fmtEuro(total) : '—';
   }
 
   /* ============================================================ SAVE */
@@ -519,17 +509,18 @@
   async function _saveRow(rowKey) {
     var row = document.querySelector('[data-row-key="' + rowKey + '"]');
     if (!row) return;
-    var si = row.querySelector('.orders-shipped-qty');
-    var qi = row.querySelector('.orders-planned-qty');
-    var ni = row.querySelector('.orders-note-input');
-    var shippedQty = si ? (parseNum(si.value) || 0) : 0;
-    var plannedQty = qi ? (parseNum(qi.value) || 0) : 0;
-    var note       = ni ? ni.value : '';
-    var parts      = rowKey.split('__');
-    var order = _state.orders.find(function(o) { return o.customer_id === parts[0] && o.product_id === parts[1]; });
-    var ok = await dbUpsertOrder(Object.assign(order ? { id: order.id } : {}, {
+    var sqEl = row.querySelector('.orders-shipped-qty');
+    var pqEl = row.querySelector('.orders-planned-qty');
+    var niEl = row.querySelector('.orders-note-input:not(.orders-dest-input)');
+    var diEl = row.querySelector('.orders-dest-input');
+    var parts = rowKey.split('__');
+    var existing = _state.orders.find(function(o){ return o.customer_id === parts[0] && o.product_id === parts[1]; });
+    var ok = await dbUpsertOrder(Object.assign(existing ? { id: existing.id } : {}, {
       customer_id: parts[0], product_id: parts[1],
-      shipped_qty: shippedQty, planned_qty: plannedQty, note: note
+      shipped_qty: sqEl ? (parseNum(sqEl.value) || 0) : 0,
+      planned_qty: pqEl ? (parseNum(pqEl.value) || 0) : 0,
+      note: niEl ? niEl.value : '',
+      destination_country: diEl ? (diEl.value.trim() || null) : null
     }));
     if (ok) { _showSaved(); await _loadAll(); emitDataChange('orders', {}); }
   }
@@ -543,61 +534,21 @@
   function _injectSaveIndicator() {
     if (document.getElementById('orders-save-indicator')) return;
     var el = document.createElement('div');
-    el.id = 'orders-save-indicator';
-    el.className = 'orders-save-indicator';
-    el.innerHTML = '✓ Kaydedildi';
+    el.id = 'orders-save-indicator'; el.className = 'orders-save-indicator';
+    el.textContent = '✓ Kaydedildi';
     document.body.appendChild(el);
     _saveIndicator = el;
   }
 
-  /* ============================================================ NEW ROW */
-  function _bindNewRowEvents() {
-    var addBtn = document.getElementById('orders-add-row-btn');
-    if (addBtn) addBtn.addEventListener('click', function() {
-      _state.addRowOpen = true; _render();
-      var s = document.getElementById('orders-new-customer'); if (s) s.focus();
-    });
-    var cancelBtn = document.getElementById('orders-new-cancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', function() { _state.addRowOpen = false; _render(); });
-    var saveBtn = document.getElementById('orders-new-save');
-    if (saveBtn) saveBtn.addEventListener('click', _saveNewRow);
-
-    var si = document.getElementById('orders-new-shipped');
-    var qi = document.getElementById('orders-new-planned-qty');
-    var ei = document.getElementById('orders-new-planned-euro');
-    var ps = document.getElementById('orders-new-product');
-
-    function _calc() {
-      var product = ps ? _state.productMap[ps.value] : null;
-      var price   = product ? parseNum(product.avg_price_eur) : 0;
-      var ratio   = product ? parseNum(product.container_ratio) : null;
-      var sq = si ? parseNum(si.value) || 0 : 0;
-      var pq = qi ? parseNum(qi.value) || 0 : 0;
-      var se = price ? sq * price : 0;
-      var pe = price ? pq * price : 0;
-      var ct = ratio && ratio > 0 ? (sq + pq) / ratio : null;
-      var seEl = document.getElementById('orders-new-shipped-euro');
-      var cEl  = document.getElementById('orders-new-container');
-      var tEl  = document.getElementById('orders-new-total-euro');
-      if (seEl) seEl.textContent = se > 0 ? fmtEuro(se) : '—';
-      if (cEl)  cEl.textContent  = ct !== null ? fmtQty(ct) : '—';
-      if (tEl)  tEl.textContent  = (se + pe) > 0 ? fmtEuro(se + pe) : '—';
-      if (ei && document.activeElement === qi) ei.value = pe > 0 ? Math.round(pe) : '';
-    }
-    if (si) si.addEventListener('input', _calc);
-    if (qi) qi.addEventListener('input', _calc);
-    if (ei) ei.addEventListener('input', _calc);
-    if (ps) ps.addEventListener('change', _calc);
-  }
-
   async function _saveNewRow() {
-    var cid = (document.getElementById('orders-new-customer') || {}).value || '';
-    var pid = (document.getElementById('orders-new-product')  || {}).value || '';
+    var cid  = (document.getElementById('orders-new-customer') || {}).value || '';
+    var pid  = (document.getElementById('orders-new-product')  || {}).value || '';
     if (!cid || !pid) { showToast('Müşteri ve ürün seçilmeli'); return; }
-    var sq = parseNum((document.getElementById('orders-new-shipped')      || {}).value) || 0;
-    var pq = parseNum((document.getElementById('orders-new-planned-qty')  || {}).value) || 0;
-    var note = (document.getElementById('orders-new-note') || {}).value || '';
-    var ok = await dbUpsertOrder({ customer_id: cid, product_id: pid, shipped_qty: sq, planned_qty: pq, note: note });
+    var sq   = parseNum((document.getElementById('orders-new-shipped') || {}).value) || 0;
+    var pq   = parseNum((document.getElementById('orders-new-planned') || {}).value) || 0;
+    var dest = ((document.getElementById('orders-new-dest')  || {}).value || '').trim();
+    var note = ((document.getElementById('orders-new-note')  || {}).value || '');
+    var ok = await dbUpsertOrder({ customer_id: cid, product_id: pid, shipped_qty: sq, planned_qty: pq, destination_country: dest || null, note: note });
     if (ok) { _showSaved(); _state.addRowOpen = false; await _loadAll(); _render(); emitDataChange('orders', {}); }
     else showToast('Kaydedilemedi');
   }
@@ -606,15 +557,34 @@
   function _handleImportFile(file) {
     if (!file || typeof processImportFile !== 'function') return;
     processImportFile(file, _state.customers, _state.products, function(preview) {
-      _state.importPreviewData = preview;
-      _state.importDetailVisible = false;
-      _render();
+      _state.importPreviewData = preview; _state.importDetailVisible = true; _render();
     });
   }
 
   async function _confirmImport() {
     if (!_state.importPreviewData) return;
     var rows = _state.importPreviewData.rows || [];
+
+    // Collect manual overrides from UI
+    document.querySelectorAll('.import-cust-select').forEach(function(sel) {
+      if (!sel.value) return;
+      var erpName = sel.getAttribute('data-erp-name');
+      var row = rows.find(function(r){ return r.customer_name === erpName && !r.customer_id; });
+      if (row) {
+        row.customer_id = sel.value;
+        if (typeof recordImportMapping === 'function') recordImportMapping('customer', erpName, _state.customerMap[sel.value]?.name, true);
+      }
+    });
+    document.querySelectorAll('.import-prod-select').forEach(function(sel) {
+      if (!sel.value) return;
+      var erpName = sel.getAttribute('data-erp-name');
+      var row = rows.find(function(r){ return r.product_name === erpName && !r.product_id; });
+      if (row) {
+        row.product_id = sel.value;
+        if (typeof recordImportMapping === 'function') recordImportMapping('product', erpName, _state.productMap[sel.value]?.name, true);
+      }
+    });
+
     var done = 0;
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
@@ -635,111 +605,76 @@
         });
       }
     });
-    document.addEventListener('nsdata:screenActivated', function(e) {
-      if (e.detail.screen === 'orders') _render();
-    });
-    document.addEventListener('nsdata:filterCleared', function() {
-      _state.searchQuery = ''; _state.filters = { countries: [], products: [] }; _render();
-    });
-    // Close dropdown on outside click
+    document.addEventListener('nsdata:screenActivated', function(e) { if (e.detail.screen === 'orders') _render(); });
+    document.addEventListener('nsdata:filterCleared', function() { _state.searchQuery = ''; _state.filters = { countries: [], products: [] }; _render(); });
     document.addEventListener('click', function(e) {
-      if (_state.openDropdown && !e.target.closest('.orders-filterbar')) {
-        _state.openDropdown = null; _render();
-      }
+      if (_state.openDropdown && !e.target.closest('.orders-filterbar')) { _state.openDropdown = null; _render(); }
     });
   }
 
   function _bindScreenEvents() {
     // Search
-    var searchEl = document.getElementById('orders-search');
-    if (searchEl) {
-      var dSearch = debounce(function(v) { _state.searchQuery = v.trim(); _render(); }, 250);
-      searchEl.addEventListener('input', function() { dSearch(searchEl.value); });
-    }
+    var se = document.getElementById('orders-search');
+    if (se) se.addEventListener('input', debounce(function(){ _state.searchQuery = se.value.trim(); _render(); }, 250));
 
-    // Filter buttons
-    document.querySelectorAll('.orders-filter-btn').forEach(function(btn) {
+    // Filter btns
+    document.querySelectorAll('[data-filter]').forEach(function(btn) {
+      if (!btn.classList.contains('orders-filter-btn') && !btn.classList.contains('orders-chip-x') && !btn.classList.contains('orders-dd-reset')) return;
       btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var key = btn.getAttribute('data-filter');
-        _state.openDropdown = _state.openDropdown === key ? null : key;
-        _render();
+        if (btn.classList.contains('orders-filter-btn')) {
+          e.stopPropagation();
+          var key = btn.getAttribute('data-filter');
+          _state.openDropdown = _state.openDropdown === key ? null : key;
+          _render(); return;
+        }
+        if (btn.classList.contains('orders-chip-x')) {
+          var f = btn.getAttribute('data-filter'); var v = btn.getAttribute('data-value');
+          if (f === 'search') _state.searchQuery = '';
+          else if (f === 'country') _state.filters.countries = _state.filters.countries.filter(function(x){ return x !== v; });
+          else if (f === 'product') _state.filters.products = _state.filters.products.filter(function(x){ return x !== v; });
+          _render(); return;
+        }
+        if (btn.classList.contains('orders-dd-reset')) {
+          var f = btn.getAttribute('data-filter');
+          if (f === 'country') _state.filters.countries = [];
+          else if (f === 'product') _state.filters.products = [];
+          _render();
+        }
       });
     });
 
-    // Dropdown checkboxes
+    var clearAll = document.getElementById('orders-chips-clear');
+    if (clearAll) clearAll.addEventListener('click', function(){ _state.searchQuery = ''; _state.filters = { countries: [], products: [] }; _render(); });
+
+    // Checkboxes
     document.querySelectorAll('.orders-dd-cb').forEach(function(cb) {
       cb.addEventListener('change', function() {
-        var filter = cb.getAttribute('data-filter');
-        var value  = cb.getAttribute('data-value');
-        if (filter === 'country') {
-          if (cb.checked) { if (!_state.filters.countries.includes(value)) _state.filters.countries.push(value); }
-          else _state.filters.countries = _state.filters.countries.filter(function(v){ return v !== value; });
-        } else if (filter === 'product') {
-          if (cb.checked) { if (!_state.filters.products.includes(value)) _state.filters.products.push(value); }
-          else _state.filters.products = _state.filters.products.filter(function(v){ return v !== value; });
-        }
+        var f = cb.getAttribute('data-filter'); var v = cb.getAttribute('data-value');
+        if (f === 'country') { if (cb.checked) { if (!_state.filters.countries.includes(v)) _state.filters.countries.push(v); } else _state.filters.countries = _state.filters.countries.filter(function(x){ return x !== v; }); }
+        else if (f === 'product') { if (cb.checked) { if (!_state.filters.products.includes(v)) _state.filters.products.push(v); } else _state.filters.products = _state.filters.products.filter(function(x){ return x !== v; }); }
         _render();
       });
     });
 
-    // Column visibility
     document.querySelectorAll('.orders-colvis-cb').forEach(function(cb) {
-      cb.addEventListener('change', function() {
-        _state.hiddenCols[cb.getAttribute('data-col')] = !cb.checked;
-        _render();
-      });
+      cb.addEventListener('change', function() { _state.hiddenCols[cb.getAttribute('data-col')] = !cb.checked; _render(); });
     });
 
-    // Dropdown search (live filter of items)
     document.querySelectorAll('.orders-dd-search').forEach(function(inp) {
       inp.addEventListener('input', function() {
         var q = inp.value.toLowerCase();
-        var list = inp.closest('.orders-dropdown').querySelector('.orders-dd-list');
-        if (!list) return;
-        list.querySelectorAll('.orders-dd-item').forEach(function(item) {
+        inp.closest('.orders-dropdown').querySelectorAll('.orders-dd-item').forEach(function(item) {
           item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
         });
       });
     });
 
-    // Reset buttons
-    document.querySelectorAll('.orders-dd-reset').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var filter = btn.getAttribute('data-filter');
-        if (filter === 'country') _state.filters.countries = [];
-        else if (filter === 'product') _state.filters.products = [];
-        _render();
-      });
-    });
-
-    // Chip remove
-    document.querySelectorAll('.orders-chip-x').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var filter = btn.getAttribute('data-filter');
-        var value  = btn.getAttribute('data-value');
-        if (filter === 'country') _state.filters.countries = _state.filters.countries.filter(function(v){ return v !== value; });
-        else if (filter === 'product') _state.filters.products = _state.filters.products.filter(function(v){ return v !== value; });
-        else if (filter === 'search') _state.searchQuery = '';
-        _render();
-      });
-    });
-
-    var clearAll = document.getElementById('orders-chips-clear');
-    if (clearAll) clearAll.addEventListener('click', function() {
-      _state.searchQuery = ''; _state.filters = { countries: [], products: [] }; _render();
-    });
-
-    // Sort headers
+    // Sort
     document.querySelectorAll('.orders-th--sortable').forEach(function(th) {
       th.addEventListener('click', function() {
         var col = th.getAttribute('data-sort');
-        if (_state.sort.col === col) {
-          if (_state.sort.dir === 'asc') _state.sort.dir = 'desc';
-          else { _state.sort.col = null; _state.sort.dir = 'asc'; }
-        } else {
-          _state.sort.col = col; _state.sort.dir = 'desc';
-        }
+        if (_state.sort.col === col) { if (_state.sort.dir === 'asc') _state.sort.dir = 'desc'; else { _state.sort.col = null; _state.sort.dir = 'asc'; } }
+        else { _state.sort.col = col; _state.sort.dir = 'desc'; }
         _render();
       });
     });
@@ -749,83 +684,69 @@
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         var cid = btn.getAttribute('data-customer-id');
-        _state.collapsed[cid] = !_state.collapsed[cid];
-        _render();
+        _state.collapsed[cid] = !_state.collapsed[cid]; _render();
       });
     });
 
     // Customer name click
     document.querySelectorAll('.orders-customer-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var id = btn.getAttribute('data-customer-id');
-        if (id) navigateTo('customer', { id: id });
-      });
-    });
-
-    // Inactive toggle
-    var inactiveToggle = document.getElementById('orders-inactive-toggle');
-    if (inactiveToggle) inactiveToggle.addEventListener('click', function() {
-      _state.showInactive = !_state.showInactive; _render();
+      btn.addEventListener('click', function() { var id = btn.getAttribute('data-customer-id'); if (id) navigateTo('customer', { id: id }); });
     });
 
     // Export
-    var exportBtn = document.getElementById('orders-export-excel');
-    if (exportBtn) exportBtn.addEventListener('click', function() {
-      if (typeof exportOrdersToExcel === 'function') exportOrdersToExcel(_state.orders, _state.products, _state.customers);
-    });
+    var expBtn = document.getElementById('orders-export-excel');
+    if (expBtn) expBtn.addEventListener('click', function() { if (typeof exportOrdersToExcel === 'function') exportOrdersToExcel(_state.orders, _state.products, _state.customers); });
 
     // Import
-    var importInput = document.getElementById('orders-import-input');
-    if (importInput) importInput.addEventListener('change', function() {
-      if (importInput.files[0]) _handleImportFile(importInput.files[0]);
-      importInput.value = '';
-    });
-    var importCancel  = document.getElementById('orders-import-cancel');
-    var importConfirm = document.getElementById('orders-import-confirm');
-    var importDetail  = document.getElementById('orders-import-detail-toggle');
-    if (importCancel)  importCancel.addEventListener('click', function() { _state.importPreviewData = null; _render(); });
-    if (importConfirm) importConfirm.addEventListener('click', _confirmImport);
-    if (importDetail)  importDetail.addEventListener('click', function() {
-      _state.importDetailVisible = !_state.importDetailVisible;
-      var body = document.getElementById('orders-import-detail-body');
-      if (body) body.classList.toggle('visible', _state.importDetailVisible);
-    });
+    var impInp = document.getElementById('orders-import-input');
+    if (impInp) impInp.addEventListener('change', function() { if (impInp.files[0]) _handleImportFile(impInp.files[0]); impInp.value = ''; });
+    var impCancel = document.getElementById('orders-import-cancel');
+    if (impCancel) impCancel.addEventListener('click', function() { _state.importPreviewData = null; _render(); });
+    var impConfirm = document.getElementById('orders-import-confirm');
+    if (impConfirm) impConfirm.addEventListener('click', _confirmImport);
 
-    // Inputs
-    document.querySelectorAll('.orders-shipped-qty').forEach(function(inp) {
-      inp.addEventListener('focus', function() { _state.activeRowId = inp.getAttribute('data-row-key'); });
-      inp.addEventListener('input', function() {
-        var rk = inp.getAttribute('data-row-key');
-        _applyThreeWay(rk, 'shipped', parseNum(inp.value) || 0);
-        _scheduleRowSave(rk);
-      });
-    });
-    document.querySelectorAll('.orders-planned-qty').forEach(function(inp) {
-      inp.addEventListener('focus', function() { _state.activeRowId = inp.getAttribute('data-row-key'); });
-      inp.addEventListener('input', function() {
-        if (inp.getAttribute('data-skip') === '1') { inp.removeAttribute('data-skip'); return; }
-        var rk = inp.getAttribute('data-row-key');
-        _applyThreeWay(rk, 'qty', parseNum(inp.value));
-        _scheduleRowSave(rk);
-      });
-    });
-    document.querySelectorAll('.orders-planned-euro').forEach(function(inp) {
-      inp.addEventListener('focus', function() { _state.activeRowId = inp.getAttribute('data-row-key'); });
-      inp.addEventListener('input', function() {
-        if (inp.getAttribute('data-skip') === '1') { inp.removeAttribute('data-skip'); return; }
-        var rk = inp.getAttribute('data-row-key');
-        _applyThreeWay(rk, 'euro', parseNum(inp.value));
-        _scheduleRowSave(rk);
-      });
-    });
-    document.querySelectorAll('.orders-note-input').forEach(function(inp) {
-      inp.addEventListener('input', function() {
-        var rk = inp.getAttribute('data-row-key');
-        if (rk) _scheduleRowSave(rk);
-      });
-    });
+    // Add row
+    var addBtn = document.getElementById('orders-add-row-btn');
+    if (addBtn) addBtn.addEventListener('click', function() { _state.addRowOpen = true; _render(); });
+    var cancelNew = document.getElementById('orders-new-cancel');
+    if (cancelNew) cancelNew.addEventListener('click', function() { _state.addRowOpen = false; _render(); });
+    var saveNew = document.getElementById('orders-new-save');
+    if (saveNew) saveNew.addEventListener('click', _saveNewRow);
 
-    _bindNewRowEvents();
+    // Input handlers — three-way
+    function _bindInputGroup(qSel, eSel, cSel, group) {
+      document.querySelectorAll(qSel).forEach(function(inp) {
+        inp.addEventListener('focus', function() { _state.activeRowKey = inp.getAttribute('data-row-key'); });
+        inp.addEventListener('input', function() {
+          if (inp.getAttribute('data-skip') === '1') { inp.removeAttribute('data-skip'); return; }
+          _applyThreeWay(inp.getAttribute('data-row-key'), group, 'qty', parseNum(inp.value));
+          _scheduleRowSave(inp.getAttribute('data-row-key'));
+        });
+      });
+      document.querySelectorAll(eSel).forEach(function(inp) {
+        inp.addEventListener('focus', function() { _state.activeRowKey = inp.getAttribute('data-row-key'); });
+        inp.addEventListener('input', function() {
+          if (inp.getAttribute('data-skip') === '1') { inp.removeAttribute('data-skip'); return; }
+          _applyThreeWay(inp.getAttribute('data-row-key'), group, 'euro', parseNum(inp.value));
+          _scheduleRowSave(inp.getAttribute('data-row-key'));
+        });
+      });
+      document.querySelectorAll(cSel).forEach(function(inp) {
+        inp.addEventListener('focus', function() { _state.activeRowKey = inp.getAttribute('data-row-key'); });
+        inp.addEventListener('input', function() {
+          if (inp.getAttribute('data-skip') === '1') { inp.removeAttribute('data-skip'); return; }
+          _applyThreeWay(inp.getAttribute('data-row-key'), group, 'container', parseNum(inp.value));
+          _scheduleRowSave(inp.getAttribute('data-row-key'));
+        });
+      });
+    }
+
+    _bindInputGroup('.orders-shipped-qty', '.orders-shipped-euro-inp', '.orders-shipped-container', 'shipped');
+    _bindInputGroup('.orders-planned-qty', '.orders-planned-euro-inp', '.orders-planned-container', 'planned');
+
+    document.querySelectorAll('.orders-note-input, .orders-dest-input').forEach(function(inp) {
+      inp.addEventListener('input', function() { var rk = inp.getAttribute('data-row-key'); if (rk) _scheduleRowSave(rk); });
+    });
   }
 
   function _esc(str) {
