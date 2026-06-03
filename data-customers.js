@@ -36,10 +36,8 @@ var CustomerManager = (function() {
   function getAll() { return _customers; }
   function getActive() { return _customers.filter(function(c) { return c.active !== false; }); }
 
-  // Display name: "COMARBOIS — Fas" if sub_market exists
   function displayName(customer) {
     if (!customer) return '';
-    if (customer.sub_market) return customer.name + ' — ' + customer.sub_market;
     return customer.name;
   }
 
@@ -52,8 +50,7 @@ var CustomerManager = (function() {
       var nameDisplay = _esc(displayName(c));
       return '<tr style="' + (c.active === false ? 'opacity:0.5' : '') + '">' +
         '<td style="font-weight:600;padding:10px 16px;font-size:15px">' + nameDisplay + '</td>' +
-        '<td style="padding:10px 16px;color:#4A5068;font-size:15px">' + _esc(c.country || '—') + '</td>' +
-        '<td style="padding:10px 16px;color:#4A5068;font-size:15px">' + _esc(c.sub_market || '—') + '</td>' +
+
         '<td style="padding:10px 16px">' +
           '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px">' +
             '<input type="checkbox" class="customer-active-cb" data-customer-id="' + c.id + '" ' +
@@ -70,8 +67,6 @@ var CustomerManager = (function() {
     return '<table style="width:100%;border-collapse:collapse;font-size:15px">' +
       '<thead><tr style="background:#F1F3F9">' +
         '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">MÜŞTERİ</th>' +
-        '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">ÜLKE</th>' +
-        '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">ALT PAZAR</th>' +
         '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">DURUM</th>' +
         '<th style="padding:10px 16px"></th>' +
       '</tr></thead>' +

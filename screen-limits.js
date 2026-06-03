@@ -56,7 +56,7 @@
   function _buildFilterBar() {
     var allCountries = [];
     _state.customers.forEach(function(c) {
-      if (c.active !== false && c.country && !allCountries.includes(c.country)) allCountries.push(c.country);
+      // country filter removed - destination_country now in orders
     });
     allCountries.sort();
 
@@ -122,8 +122,8 @@
     var fC = _state.filters.countries;
     var customers = _state.customers.filter(function(c) {
       if (c.active === false) return false;
-      if (fC.length && !fC.includes(c.country)) return false;
-      if (q && !c.name.toLowerCase().includes(q) && !(c.country||'').toLowerCase().includes(q)) return false;
+      // country filter: skip - based on orders.destination_country
+      if (q && !c.name.toLowerCase().includes(q)) return false;
       return true;
     });
     var dir = _state.sort.dir === 'asc' ? 1 : -1;
@@ -159,8 +159,7 @@
         '<td class="limits1-td limits1-name-td">' +
           '<button class="limits1-expand-btn" data-cid="' + c.id + '">' + (isExp ? '▼' : '▶') + '</button>' +
           '<button class="limits1-cust-btn" data-customer-id="' + c.id + '">' + (isCrit ? '<span style="color:#DC2626;margin-right:4px">!</span>' : '') + _esc(CustomerManager.displayName(c)) + '</button>' +
-          (c.country ? '<span class="orders-group-country" style="margin-left:6px">' + _esc(c.country) + '</span>' : '') +
-        '</td>' +
+                  '</td>' +
         '<td class="limits1-td limits1-num">' + (lim.total_limit_eur ? fmtEuro(lim.total_limit_eur) : '—') + '</td>' +
         '<td class="limits1-td limits1-num">' + (lim.open_balance_eur ? fmtEuro(lim.open_balance_eur) : '—') + '</td>' +
         '<td class="limits1-td limits1-num">' + fmtEuro(pe) + '</td>' +
@@ -242,8 +241,7 @@
       return '<tr class="limits1-row' + (isCrit ? ' limits1-critical' : '') + '" data-customer-id="' + c.id + '">' +
         '<td class="limits1-td">' +
           '<button class="limits1-cust-btn" data-customer-id="' + c.id + '">' + (isCrit ? '<span style="color:#DC2626;margin-right:4px">!</span>' : '') + _esc(CustomerManager.displayName(c)) + '</button>' +
-          (c.country ? '<span class="orders-group-country" style="margin-left:6px">' + _esc(c.country) + '</span>' : '') +
-        '</td>' +
+                  '</td>' +
         '<td class="limits1-td limits1-num"><input type="number" min="0" class="limits-total-input" data-customer-id="' + c.id + '" value="' + (lim.total_limit_eur||'') + '" placeholder="0" style="height:32px;min-height:unset;width:110px;text-align:right;font-size:14px" /></td>' +
         '<td class="limits1-td limits1-num"><input type="number" min="0" class="limits-balance-input" data-customer-id="' + c.id + '" value="' + (lim.open_balance_eur||'') + '" placeholder="0" style="height:32px;min-height:unset;width:110px;text-align:right;font-size:14px" /></td>' +
         '<td class="limits1-td limits1-num">' + fmtEuro(pe) + '</td>' +

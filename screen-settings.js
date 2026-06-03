@@ -24,10 +24,10 @@
     if (!_state.selectedCustomerId && _state.customers.length) {
       _state.selectedCustomerId = _state.customers.filter(function(c){ return c.active !== false; })[0]?.id || _state.customers[0].id;
     }
-    // Collect unique countries
+    // Countries come from targets scope='country'
     var countries = [];
-    _state.customers.forEach(function(c) {
-      if (c.country && !countries.includes(c.country)) countries.push(c.country);
+    _state.targets.filter(function(t){ return t.scope === 'country' && t.country; }).forEach(function(t) {
+      if (!countries.includes(t.country)) countries.push(t.country);
     });
     countries.sort();
     _state.countries = countries;
@@ -199,8 +199,6 @@
       '<div class="settings-section-body" id="settings-add-customer-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
           '<input type="text" id="settings-new-customer-name" placeholder="Müşteri adı" style="flex:1;min-width:200px;min-height:44px;font-size:15px" />' +
-          '<input type="text" id="settings-new-customer-country" placeholder="Ülke" style="width:150px;min-height:44px;font-size:15px" />' +
-          '<input type="text" id="settings-new-customer-submarket" placeholder="Alt pazar (opsiyonel)" style="width:190px;min-height:44px;font-size:15px" />' +
           '<button class="btn btn-primary" id="settings-save-customer-btn">Kaydet</button>' +
           '<button class="btn btn-secondary" id="settings-cancel-customer-btn">İptal</button>' +
         '</div>' +
@@ -437,11 +435,9 @@
     if (cancelCust) cancelCust.addEventListener('click', function() { addCustForm.style.display = 'none'; });
     var saveCust = document.getElementById('settings-save-customer-btn');
     if (saveCust) saveCust.addEventListener('click', async function() {
-      var name       = (document.getElementById('settings-new-customer-name')       || {}).value || '';
-      var country    = (document.getElementById('settings-new-customer-country')    || {}).value || '';
-      var submarket  = (document.getElementById('settings-new-customer-submarket')  || {}).value || '';
+      var name = (document.getElementById('settings-new-customer-name') || {}).value || '';
       if (!name.trim()) { showToast('Müşteri adı boş olamaz'); return; }
-      var ok = await CustomerManager.upsert({ name: name.trim(), country: country.trim(), sub_market: submarket.trim() || null, active: true });
+      var ok = await CustomerManager.upsert({ name: name.trim(), active: true });
       if (ok) { showToast('Müşteri eklendi'); _state.customers = CustomerManager.getAll(); _render(); }
     });
 
