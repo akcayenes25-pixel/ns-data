@@ -64,48 +64,7 @@
   flex-wrap: wrap;
 }
 
-/* ============================================================
-   IMPORT ZONE
-   ============================================================ */
-
-.orders-import-zone {
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-8) var(--space-6);
-  text-align: center;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  background: var(--color-surface);
-}
-
-.orders-import-zone:hover,
-.orders-import-zone.drag-over {
-  border-color: var(--color-accent);
-  background: #EEF2FF;
-}
-
-.orders-import-zone-icon {
-  font-size: 40px;
-  margin-bottom: var(--space-3);
-  opacity: 0.4;
-}
-
-.orders-import-zone-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.orders-import-zone-sub {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-4);
-}
-
-.orders-import-file-input {
-  display: none;
-}
+/* Import zone removed — single button in toolbar */
 
 /* ============================================================
    IMPORT PREVIEW MODAL
