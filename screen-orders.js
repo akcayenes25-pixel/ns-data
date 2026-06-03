@@ -203,34 +203,24 @@
   }
 
   function _buildThead() {
-    // Üst header: grup başlıkları
-    var topRow = '<tr>';
-    topRow += '<th class="orders-th orders-th--name" rowspan="2">Müşteri / Ürün</th>';
-    COL_GROUPS.forEach(function(g) {
-      var visibleCols = g.cols.filter(function(c){ return !_state.hiddenCols[c.id]; });
-      if (!visibleCols.length) return;
-      var bg = g.color ? 'background:' + g.color + ';border-left:2px solid ' + g.borderColor + ';' : '';
-      topRow += '<th class="orders-th orders-th--group" colspan="' + visibleCols.length + '" style="' + bg + 'text-align:center;font-size:11px;letter-spacing:1px">' + g.label + '</th>';
-    });
-    topRow += '</tr>';
-
-    // Alt header: kolon başlıkları
-    var botRow = '<tr>';
+    // Single unified header row — no rowspan, cleaner
+    var row = '<tr>';
+    row += '<th class="orders-th orders-th--name">Müşteri / Ürün</th>';
     COL_GROUPS.forEach(function(g) {
       g.cols.forEach(function(col) {
         if (_state.hiddenCols[col.id]) return;
         var sortIcon = col.sortable ? (_state.sort.col === col.id ? (_state.sort.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅') : '';
         var bg = g.color ? 'background:' + g.color + ';' : '';
         var bl = g.color ? 'border-left:2px solid ' + g.borderColor + ';' : '';
-        botRow += '<th class="orders-th orders-th--num' + (col.sortable ? ' orders-th--sortable' : '') + '" ' +
+        var groupLabel = g.label ? '<div style="font-size:9px;letter-spacing:0.8px;color:#888;margin-bottom:1px">' + g.label + '</div>' : '';
+        row += '<th class="orders-th orders-th--num' + (col.sortable ? ' orders-th--sortable' : '') + '" ' +
           'style="' + bg + bl + '" ' +
           (col.sortable ? 'data-sort="' + col.id + '"' : '') + '>' +
-          col.label + sortIcon + '</th>';
+          groupLabel + col.label + sortIcon + '</th>';
       });
     });
-    botRow += '</tr>';
-
-    return topRow + botRow;
+    row += '</tr>';
+    return row;
   }
 
   function _buildTableRows() {
