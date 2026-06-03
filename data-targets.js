@@ -80,7 +80,7 @@ var TargetManager = (function() {
 
     // Header: ay kolonları
     var productCols = products.map(function(p) {
-      return '<th colspan="2" style="padding:8px 12px;text-align:center;font-size:12px;font-weight:700;color:#4A5068;border-left:2px solid #E2E5EF">' +
+      return '<th colspan="2" style="padding:10px 16px;text-align:center;font-size:12px;font-weight:700;color:#4A5068;border-left:2px solid #E2E5EF;min-width:220px">' +
         _esc(p.name) + '</th>';
     }).join('');
 
@@ -101,7 +101,7 @@ var TargetManager = (function() {
             'data-scope="customer" data-customer-id="' + customerId + '" ' +
             'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
             'data-tid="' + tid + '" value="' + eurVal + '" placeholder="—" ' +
-            'style="width:90px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'style="width:110px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
             'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
         '</td>' +
         '<td style="padding:4px 6px">' +
@@ -109,7 +109,7 @@ var TargetManager = (function() {
             'data-scope="customer" data-customer-id="' + customerId + '" ' +
             'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
             'data-tid="' + tid + '" value="' + qtyVal + '" placeholder="—" ' +
-            'style="width:80px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'style="width:100px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
             'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
         '</td>';
       }).join('');
@@ -142,7 +142,7 @@ var TargetManager = (function() {
     });
 
     var productCols = products.map(function(p) {
-      return '<th colspan="2" style="padding:8px 12px;text-align:center;font-size:12px;font-weight:700;color:#4A5068;border-left:2px solid #E2E5EF">' +
+      return '<th colspan="2" style="padding:10px 16px;text-align:center;font-size:12px;font-weight:700;color:#4A5068;border-left:2px solid #E2E5EF;min-width:220px">' +
         _esc(p.name) + '</th>';
     }).join('');
 
@@ -163,7 +163,7 @@ var TargetManager = (function() {
             'data-scope="country" data-country="' + _esc(country) + '" ' +
             'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
             'data-tid="' + tid + '" value="' + eurVal + '" placeholder="—" ' +
-            'style="width:90px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'style="width:110px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
             'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
         '</td>' +
         '<td style="padding:4px 6px">' +
@@ -171,7 +171,7 @@ var TargetManager = (function() {
             'data-scope="country" data-country="' + _esc(country) + '" ' +
             'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
             'data-tid="' + tid + '" value="' + qtyVal + '" placeholder="—" ' +
-            'style="width:80px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'style="width:100px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
             'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
         '</td>';
       }).join('');

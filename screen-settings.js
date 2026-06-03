@@ -18,8 +18,9 @@
     var results = await Promise.all([dbGetCustomers(), dbGetProducts(), dbGetTargets(), dbGetProfiles()]);
     _state.customers = results[0];
     _state.products  = results[1];
-    TargetManager.load();
+    _state.targets   = results[2];
     _state.profiles  = results[3];
+    await TargetManager.load();
 
     if (!_state.selectedCustomerId && _state.customers.length) {
       _state.selectedCustomerId = _state.customers.filter(function(c){ return c.active !== false; })[0]?.id || _state.customers[0].id;
