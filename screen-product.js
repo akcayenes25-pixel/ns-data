@@ -40,7 +40,7 @@
 
     var product = _state.productMap[_state.productId];
     if (!product) {
-      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">Urun bulunamadi</div></div>';
+      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">&#xDC;r&#xFC;n bulunamadi</div></div>';
       return;
     }
 
@@ -85,7 +85,7 @@
       '</div>' +
       '<div class="product-header-metrics">' +
         '<div class="product-header-metric">' +
-          '<span class="product-header-metric-label">Kesinlesen</span>' +
+          '<span class="product-header-metric-label">Kesinle&#x15F;en</span>' +
           '<span class="product-header-metric-value">' + fmtEuro(confirmed, true) + '</span>' +
         '</div>' +
         '<div class="product-header-metric">' +
@@ -130,11 +130,11 @@
     }).join('');
 
     return '<div class="product-section-card">' +
-      '<div class="product-section-header">Musteri Siralamas&#x131;</div>' +
+      '<div class="product-section-header">M&#xFC;&#x15F;teri Siralamas&#x131;</div>' +
       '<table class="product-customer-table">' +
         '<thead><tr>' +
-          '<th>#</th><th>MUSTERI</th><th style="text-align:right">CIKAN</th>' +
-          '<th style="text-align:right">CIKACAK</th><th style="text-align:right">BEKLENEN</th>' +
+          '<th>#</th><th>M&#xFC;&#x15F;teri</th><th style="text-align:right">&#xC7;&#x131;kan</th>' +
+          '<th style="text-align:right">&#xC7;&#x131;kacak</th><th style="text-align:right">BEKLENEN</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +
@@ -177,10 +177,10 @@
     }).join('');
 
     return '<div class="product-section-card">' +
-      '<div class="product-section-header">Ulke Dagil&#x131;m&#x131;</div>' +
+      '<div class="product-section-header">&#xDC;lke Dagil&#x131;m&#x131;</div>' +
       '<table class="product-country-table">' +
         '<thead><tr>' +
-          '<th>#</th><th>ULKE</th><th>PAY</th><th style="text-align:right">BEKLENEN</th><th style="text-align:right">%</th>' +
+          '<th>#</th><th>&#xDC;lke</th><th>PAY</th><th style="text-align:right">BEKLENEN</th><th style="text-align:right">%</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +

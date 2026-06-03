@@ -48,7 +48,7 @@
     });
 
     if (!customers.length) {
-      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">Ulke bulunamadi</div></div>';
+      screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">&#xDC;lke bulunamadi</div></div>';
       return;
     }
 
@@ -96,7 +96,7 @@
       '<div class="country-header-name">' + _esc(country) + '</div>' +
       '<div class="country-header-metrics">' +
         '<div class="country-header-metric">' +
-          '<span class="country-header-metric-label">Kesinlesen</span>' +
+          '<span class="country-header-metric-label">Kesinle&#x15F;en</span>' +
           '<span class="country-header-metric-value">' + fmtEuro(confirmed, true) + '</span>' +
         '</div>' +
         '<div class="country-header-metric">' +
@@ -140,7 +140,7 @@
         '</div>' +
         '<div class="country-customer-card-body">' +
           '<div class="country-customer-row">' +
-            '<span class="country-customer-row-label">Kesinlesen</span>' +
+            '<span class="country-customer-row-label">Kesinle&#x15F;en</span>' +
             '<span class="country-customer-row-value">' + fmtEuro(confirmed) + '</span>' +
           '</div>' +
           '<div class="country-customer-row">' +

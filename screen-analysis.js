@@ -113,17 +113,17 @@
 
     return '<div class="analysis-scenario-row">' +
       '<div class="analysis-scenario-card">' +
-        '<span class="analysis-scenario-label">Kesinlesen Ciro</span>' +
+        '<span class="analysis-scenario-label">Kesinle&#x15F;en Ciro</span>' +
         '<span class="analysis-scenario-value" style="color:var(--color-text-primary)">' + fmtEuro(totals.confirmed_eur, true) + '</span>' +
         '<span class="analysis-scenario-sub">Sevk edilmis</span>' +
       '</div>' +
       '<div class="analysis-scenario-card">' +
-        '<span class="analysis-scenario-label">Ay Sonu Ongorisi</span>' +
+        '<span class="analysis-scenario-label">Ay Sonu &#xD6;ng&#xF6;r&#xFC;s&#xFC;</span>' +
         '<span class="analysis-scenario-value" style="color:var(--color-accent);opacity:0.85">' + fmtEuro(totals.expected_eur, true) + '</span>' +
-        '<span class="analysis-scenario-sub">Kesinlesen + Planlanan</span>' +
+        '<span class="analysis-scenario-sub">Kesinle&#x15F;en + Planlanan</span>' +
       '</div>' +
       '<div class="analysis-scenario-card">' +
-        '<span class="analysis-scenario-label">Butce Yuzdesi</span>' +
+        '<span class="analysis-scenario-label">B&#xFC;t&#xE7;e Y&#xFC;zdesi</span>' +
         '<span class="analysis-scenario-value" style="color:' + pctColor + '">' + fmtPct(pct) + '</span>' +
         '<span class="analysis-scenario-sub">Hedef: ' + fmtEuro(totalTarget, true) + '</span>' +
       '</div>' +
@@ -186,13 +186,13 @@
       '</g>';
     }).join('');
 
-    var svg = '<svg class="analysis-bar-chart" viewBox="0 0 ' + svgWidth + ' ' + svgHeight + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Musteri ciro siralamas&#x131;">' +
+    var svg = '<svg class="analysis-bar-chart" viewBox="0 0 ' + svgWidth + ' ' + svgHeight + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="M&#xFC;&#x15F;teri ciro siralamas&#x131;">' +
       bars +
     '</svg>';
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Musteri Bazli Ciro (Beklenen)</span>' +
+        '<span class="analysis-chart-title">M&#xFC;&#x15F;teri Bazli Ciro (Beklenen)</span>' +
         '<button class="analysis-chart-download" id="analysis-dl-customers" aria-label="Indir">&#x21E9;</button>' +
       '</div>' +
       '<div class="analysis-chart-body">' + svg + '</div>' +
@@ -256,7 +256,7 @@
       startAngle = endAngle;
     });
 
-    var svg = '<svg class="analysis-donut-svg" width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Urun dag&#x131;l&#x131;m&#x131;">' +
+    var svg = '<svg class="analysis-donut-svg" width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="&#xDC;r&#xFC;n dag&#x131;l&#x131;m&#x131;">' +
       paths +
       '<text x="90" y="86" text-anchor="middle" font-size="12" font-weight="700" fill="#4A5068" font-family="Inter,sans-serif">Toplam</text>' +
       '<text x="90" y="100" text-anchor="middle" font-size="14" font-weight="800" fill="#0F1117" font-family="Inter,sans-serif">' + fmtEuro(total, true) + '</text>' +
@@ -264,7 +264,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Urun Dag&#x131;l&#x131;m&#x131;</span>' +
+        '<span class="analysis-chart-title">&#xDC;r&#xFC;n Dag&#x131;l&#x131;m&#x131;</span>' +
         '<button class="analysis-chart-download" id="analysis-dl-products" aria-label="Indir">&#x21E9;</button>' +
       '</div>' +
       '<div class="analysis-chart-body">' +
@@ -310,7 +310,7 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Musteri Hedef Isi Haritas&#x131;</span>' +
+        '<span class="analysis-chart-title">M&#xFC;&#x15F;teri Hedef Isi Haritas&#x131;</span>' +
         '<span style="font-size:12px;color:var(--color-text-secondary)">Boyut=Ciro &nbsp; Renk=Hedef%</span>' +
       '</div>' +
       '<div class="analysis-chart-body">' +
@@ -326,7 +326,7 @@
   function _buildDetailToggle() {
     return '<button class="analysis-detail-toggle" id="analysis-detail-toggle">' +
       '<span>' + (_state.detailVisible ? '&#x25B2;' : '&#x25BC;') + '</span>' +
-      '<span>' + (_state.detailVisible ? 'Daha az goster' : 'Daha fazla goster') + '</span>' +
+      '<span>' + (_state.detailVisible ? 'Daha az g&#xF6;ster' : 'Daha fazla g&#xF6;ster') + '</span>' +
     '</button>';
   }
 
@@ -382,12 +382,12 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Ulke Bazli Dagilim</span>' +
+        '<span class="analysis-chart-title">&#xDC;lke Bazli Dagilim</span>' +
       '</div>' +
       '<div class="analysis-chart-body" style="padding:0">' +
         '<table class="analysis-comparison-table">' +
           '<thead><tr>' +
-            '<th>#</th><th>ULKE</th><th>PAZAR PAYI</th><th>BEKLENEN</th><th>%</th>' +
+            '<th>#</th><th>&#xDC;lke</th><th>PAZAR PAYI</th><th>BEKLENEN</th><th>%</th>' +
           '</tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>' +
@@ -419,12 +419,12 @@
 
     return '<div class="analysis-chart-card">' +
       '<div class="analysis-chart-header">' +
-        '<span class="analysis-chart-title">Tam Musteri Siralamas&#x131;</span>' +
+        '<span class="analysis-chart-title">Tam M&#xFC;&#x15F;teri Siralamas&#x131;</span>' +
       '</div>' +
       '<div class="analysis-chart-body" style="padding:0">' +
         '<table class="analysis-comparison-table">' +
           '<thead><tr>' +
-            '<th>#</th><th>MUSTERI</th><th>KESINLESEN</th><th>BEKLENEN</th><th>HEDEF%</th>' +
+            '<th>#</th><th>M&#xFC;&#x15F;teri</th><th>Kesinle&#x15F;en</th><th>BEKLENEN</th><th>HEDEF%</th>' +
           '</tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>' +
@@ -516,7 +516,7 @@
         if (section) section.classList.toggle('visible', _state.detailVisible);
         var icon = toggle.querySelector('span');
         if (icon) icon.textContent = _state.detailVisible ? '▲' : '▼';
-        toggle.querySelectorAll('span')[1].textContent = _state.detailVisible ? 'Daha az goster' : 'Daha fazla goster';
+        toggle.querySelectorAll('span')[1].textContent = _state.detailVisible ? 'Daha az g&#xF6;ster' : 'Daha fazla g&#xF6;ster';
       });
     }
 

@@ -13,7 +13,7 @@ var CustomerManager = (function() {
 
   async function upsert(customer) {
     if (!customer.name || !customer.name.trim()) {
-      showToast('Musteri adi bos olamaz');
+      showToast('M&#xFC;&#x15F;teri adi bos olamaz');
       return false;
     }
     var ok = await dbUpsertCustomer(customer);
@@ -56,8 +56,8 @@ var CustomerManager = (function() {
 
     return '<table style="width:100%;border-collapse:collapse;font-size:15px">' +
       '<thead><tr style="background:#F1F3F9">' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">MUSTERI</th>' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">ULKE</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">M&#xFC;&#x15F;teri</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">&#xDC;lke</th>' +
         '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">DURUM</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +

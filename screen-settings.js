@@ -85,16 +85,16 @@
 
     return '<div class="settings-section">' +
       '<div class="settings-section-header">' +
-        '<span class="settings-section-title">&#x1F3AF; Aylik Hedefler</span>' +
+        '<span class="settings-section-title">&#x1F3AF; Ayl&#x131;k Hedefler</span>' +
       '</div>' +
       '<div class="settings-section-body">' +
         '<div class="settings-target-select">' +
-          '<select id="settings-customer-select" aria-label="Musteri sec">' + customerOptions + '</select>' +
+          '<select id="settings-customer-select" aria-label="M&#xFC;&#x15F;teri sec">' + customerOptions + '</select>' +
           '<select id="settings-year-select" class="settings-year-select" aria-label="Yil sec">' + years.join('') + '</select>' +
         '</div>' +
         '<div class="settings-paste-hint">' +
           '<span>&#x1F4CB;</span>' +
-          'Ipucu: Excel\'den kopyaladig&#x131;n&#x131;z verileri (Euro, Adet sutunlar&#x131;) dogrudan tabloya yapistirabilirsiniz.' +
+          '&#x130;pucu: Excel\'den kopyaladig&#x131;n&#x131;z verileri (Euro, Adet sutunlar&#x131;) dogrudan tabloya yap&#x131;&#x15F;t&#x131;rabilirsiniz.' +
         '</div>' +
         '<div class="settings-target-grid" id="settings-target-grid">' +
           gridHTML +
@@ -112,19 +112,19 @@
 
     return '<div class="settings-section">' +
       '<div class="settings-section-header">' +
-        '<span class="settings-section-title">&#x1F4E6; Urunler ve Fiyatlar</span>' +
-        '<button class="btn btn-primary" id="settings-add-product-btn">+ Urun Ekle</button>' +
+        '<span class="settings-section-title">&#x1F4E6; &#xDC;r&#xFC;nler ve Fiyatlar</span>' +
+        '<button class="btn btn-primary" id="settings-add-product-btn">+ &#xDC;r&#xFC;n Ekle</button>' +
       '</div>' +
       '<div class="settings-section-body no-pad" id="settings-product-table">' +
         tableHTML +
       '</div>' +
       '<div class="settings-section-body" id="settings-add-product-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
         '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">' +
-          '<input type="text" id="settings-new-product-name" placeholder="Urun adi" style="flex:1;min-width:160px;min-height:48px;font-size:15px" />' +
+          '<input type="text" id="settings-new-product-name" placeholder="&#xDC;r&#xFC;n adi" style="flex:1;min-width:160px;min-height:48px;font-size:15px" />' +
           '<input type="number" id="settings-new-product-price" placeholder="Fiyat (EUR)" min="0.01" step="0.01" style="width:140px;min-height:48px;font-size:15px;text-align:right" />' +
-          '<input type="number" id="settings-new-product-ratio" placeholder="Konteyner katsayisi" min="0" style="width:180px;min-height:48px;font-size:15px;text-align:right" />' +
+          '<input type="number" id="settings-new-product-ratio" placeholder="Konteyner katsay&#x131;s&#x131;" min="0" style="width:180px;min-height:48px;font-size:15px;text-align:right" />' +
           '<button class="btn btn-primary" id="settings-save-product-btn">Kaydet</button>' +
-          '<button class="btn btn-secondary" id="settings-cancel-product-btn">Iptal</button>' +
+          '<button class="btn btn-secondary" id="settings-cancel-product-btn">&#x130;ptal</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -139,18 +139,18 @@
 
     return '<div class="settings-section">' +
       '<div class="settings-section-header">' +
-        '<span class="settings-section-title">&#x1F465; Musteriler</span>' +
-        '<button class="btn btn-primary" id="settings-add-customer-btn">+ Musteri Ekle</button>' +
+        '<span class="settings-section-title">&#x1F465; M&#xFC;&#x15F;teriler</span>' +
+        '<button class="btn btn-primary" id="settings-add-customer-btn">+ M&#xFC;&#x15F;teri Ekle</button>' +
       '</div>' +
       '<div class="settings-section-body no-pad" id="settings-customer-table">' +
         tableHTML +
       '</div>' +
       '<div class="settings-section-body" id="settings-add-customer-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
         '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">' +
-          '<input type="text" id="settings-new-customer-name" placeholder="Musteri adi" style="flex:1;min-width:200px;min-height:48px;font-size:15px" />' +
-          '<input type="text" id="settings-new-customer-country" placeholder="Ulke" style="width:160px;min-height:48px;font-size:15px" />' +
+          '<input type="text" id="settings-new-customer-name" placeholder="M&#xFC;&#x15F;teri adi" style="flex:1;min-width:200px;min-height:48px;font-size:15px" />' +
+          '<input type="text" id="settings-new-customer-country" placeholder="&#xDC;lke" style="width:160px;min-height:48px;font-size:15px" />' +
           '<button class="btn btn-primary" id="settings-save-customer-btn">Kaydet</button>' +
-          '<button class="btn btn-secondary" id="settings-cancel-customer-btn">Iptal</button>' +
+          '<button class="btn btn-secondary" id="settings-cancel-customer-btn">&#x130;ptal</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -175,12 +175,12 @@
       '</div>' +
       '<div class="settings-section-body">' +
         '<div class="settings-profile-list">' +
-          (profileRows || '<div style="color:var(--color-text-secondary);font-size:14px">Henuz profil yok</div>') +
+          (profileRows || '<div style="color:var(--color-text-secondary);font-size:14px">Hen&#xFC;z profil yok</div>') +
         '</div>' +
         '<div class="settings-add-profile-form">' +
           '<input type="text" id="settings-new-profile-name" placeholder="Profil adi (ornek: Enes - Fas)" style="min-height:48px;font-size:15px" />' +
-          '<input type="text" id="settings-new-profile-region" placeholder="Bolge (opsiyonel)" style="width:160px;min-height:48px;font-size:15px" />' +
-          '<button class="btn btn-primary" id="settings-add-profile-btn">Profil Olustur</button>' +
+          '<input type="text" id="settings-new-profile-region" placeholder="B&#xF6;lge (opsiyonel)" style="width:160px;min-height:48px;font-size:15px" />' +
+          '<button class="btn btn-primary" id="settings-add-profile-btn">Profil Olu&#x15F;tur</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -196,8 +196,8 @@
       confirmHTML = '<div class="settings-confirm-box visible">' +
         '<div class="settings-confirm-text">Emin misiniz? Onay vermeden once verileri Excel olarak indirmenizi oneririz.</div>' +
         '<div class="settings-confirm-actions">' +
-          '<button class="btn btn-danger" id="settings-month-close-final">Evet, Ayi Kapat ve Temizle</button>' +
-          '<button class="btn btn-secondary" id="settings-month-close-cancel">Iptal</button>' +
+          '<button class="btn btn-danger" id="settings-month-close-final">Evet, Ay&#x131; Kapat ve Temizle</button>' +
+          '<button class="btn btn-secondary" id="settings-month-close-cancel">&#x130;ptal</button>' +
         '</div>' +
       '</div>';
     }
@@ -209,12 +209,12 @@
       '<div class="settings-section-body">' +
         '<div class="settings-month-close-card">' +
           '<div class="settings-month-close-text">' +
-            '<div class="settings-month-close-title">Ayi Kapat</div>' +
-            '<div class="settings-month-close-desc">Siparisler, limitler ve odemeler silinir. Musteriler, urunler ve hedefler korunur.</div>' +
+            '<div class="settings-month-close-title">Ay&#x131; Kapat</div>' +
+            '<div class="settings-month-close-desc">Sipari&#x15F;ler, limitler ve odemeler silinir. M&#xFC;&#x15F;teriler, &#xFC;r&#xFC;nler ve hedefler korunur.</div>' +
           '</div>' +
           '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">' +
-            '<button class="btn btn-secondary" id="settings-export-before-close">Once Excel\'e Indir</button>' +
-            '<button class="btn btn-danger" id="settings-month-close-btn">Ayi Kapat</button>' +
+            '<button class="btn btn-secondary" id="settings-export-before-close">&#xD6;nce Excel\'e Indir</button>' +
+            '<button class="btn btn-danger" id="settings-month-close-btn">Ay&#x131; Kapat</button>' +
           '</div>' +
         '</div>' +
         confirmHTML +
@@ -230,10 +230,10 @@
     var confirmHTML = '';
     if (_state.confirmMode === 'soft') {
       confirmHTML = '<div class="settings-confirm-box visible">' +
-        '<div class="settings-confirm-text">Siparisler, limitler ve odemeler silinecek. Musteriler, urunler ve hedefler korunacak. Emin misiniz?</div>' +
+        '<div class="settings-confirm-text">Sipari&#x15F;ler, limitler ve odemeler silinecek. M&#xFC;&#x15F;teriler, &#xFC;r&#xFC;nler ve hedefler korunacak. Emin misiniz?</div>' +
         '<div class="settings-confirm-actions">' +
           '<button class="btn btn-danger" id="settings-soft-reset-final">Evet, Sil</button>' +
-          '<button class="btn btn-secondary" id="settings-soft-reset-cancel">Iptal</button>' +
+          '<button class="btn btn-secondary" id="settings-soft-reset-cancel">&#x130;ptal</button>' +
         '</div>' +
       '</div>';
     }
@@ -241,8 +241,8 @@
       confirmHTML = '<div class="settings-confirm-box visible">' +
         '<div class="settings-confirm-text">TUM VERILER silinecek. Bu islem geri alinamaz. Emin misiniz?</div>' +
         '<div class="settings-confirm-actions">' +
-          '<button class="btn btn-danger" id="settings-hard-reset-final">Evet, Her Seyi Sil</button>' +
-          '<button class="btn btn-secondary" id="settings-hard-reset-cancel">Iptal</button>' +
+          '<button class="btn btn-danger" id="settings-hard-reset-final">Evet, Her &#x15F;eyi sil</button>' +
+          '<button class="btn btn-secondary" id="settings-hard-reset-cancel">&#x130;ptal</button>' +
         '</div>' +
       '</div>';
     }
@@ -253,12 +253,12 @@
       '</div>' +
       '<div class="settings-section-body" style="display:flex;flex-direction:column;gap:var(--space-4)">' +
         '<div class="settings-reset-row">' +
-          '<div class="settings-reset-desc">Siparis, limit ve odeme verilerini sil. Musteri, urun ve hedefler kalsin.</div>' +
-          '<button class="btn btn-danger" id="settings-soft-reset-btn">Verileri Sifirla</button>' +
+          '<div class="settings-reset-desc">Siparis, limit ve odeme verilerini sil. M&#xFC;&#x15F;teri, &#xFC;r&#xFC;n ve hedefler kalsin.</div>' +
+          '<button class="btn btn-danger" id="settings-soft-reset-btn">Verileri S&#x131;f&#x131;rla</button>' +
         '</div>' +
         '<div class="settings-reset-row">' +
-          '<div class="settings-reset-desc">Her seyi sil — tamamen temiz baslangic.</div>' +
-          '<button class="btn btn-danger" id="settings-hard-reset-btn">Tamamen Sifirla</button>' +
+          '<div class="settings-reset-desc">Her &#x15F;eyi sil — tamamen temiz baslangic.</div>' +
+          '<button class="btn btn-danger" id="settings-hard-reset-btn">Tamamen S&#x131;f&#x131;rla</button>' +
         '</div>' +
         confirmHTML +
       '</div>' +
@@ -328,12 +328,12 @@
         var price = parseNum((document.getElementById('settings-new-product-price') || {}).value);
         var ratio = parseNum((document.getElementById('settings-new-product-ratio') || {}).value);
 
-        if (!name.trim()) { showToast('Urun adi bos olamaz'); return; }
-        if (!price || price < 0.01) { showToast('Gecerli bir fiyat girin'); return; }
+        if (!name.trim()) { showToast('&#xDC;r&#xFC;n adi bos olamaz'); return; }
+        if (!price || price < 0.01) { showToast('Ge&#xE7;erli bir fiyat girin'); return; }
 
         var ok = await ProductManager.upsert({ name: name.trim(), avg_price_eur: price, container_ratio: ratio, active: true });
         if (ok) {
-          showToast('Urun eklendi');
+          showToast('&#xDC;r&#xFC;n eklendi');
           _state.products = ProductManager.getAll();
           _render();
         }
@@ -363,11 +363,11 @@
         var name    = (document.getElementById('settings-new-customer-name')    || {}).value || '';
         var country = (document.getElementById('settings-new-customer-country') || {}).value || '';
 
-        if (!name.trim()) { showToast('Musteri adi bos olamaz'); return; }
+        if (!name.trim()) { showToast('M&#xFC;&#x15F;teri adi bos olamaz'); return; }
 
         var ok = await CustomerManager.upsert({ name: name.trim(), country: country.trim(), active: true });
         if (ok) {
-          showToast('Musteri eklendi');
+          showToast('M&#xFC;&#x15F;teri eklendi');
           _state.customers = CustomerManager.getAll();
           _render();
         }
@@ -379,7 +379,7 @@
       el.addEventListener('click', function() {
         var link = el.getAttribute('data-link');
         if (link && navigator.clipboard) {
-          navigator.clipboard.writeText(link).then(function() { showToast('Link kopyalandi'); });
+          navigator.clipboard.writeText(link).then(function() { showToast('Link kopyaland&#x131;'); });
         }
       });
     });
@@ -390,10 +390,10 @@
       addProfileBtn.addEventListener('click', async function() {
         var name   = (document.getElementById('settings-new-profile-name')   || {}).value || '';
         var region = (document.getElementById('settings-new-profile-region') || {}).value || '';
-        if (!name.trim()) { showToast('Profil adi bos olamaz'); return; }
+        if (!name.trim()) { showToast('Profil ad&#x131; bo&#x15F; olamaz'); return; }
         var profile = await dbCreateProfile(name.trim(), region.trim());
         if (profile) {
-          showToast('Profil olusturuldu');
+          showToast('Profil olu&#x15F;turuldu');
           _state.profiles = await dbGetProfiles();
           _render();
         }
@@ -426,7 +426,7 @@
       monthCloseFinal.addEventListener('click', async function() {
         var ok = await dbSoftReset();
         if (ok) {
-          showToast('Ay kapatildi. Veriler temizlendi.');
+          showToast('Ay kapat&#x131;ld&#x131;. Veriler temizlendi.');
           _state.confirmMode = null;
           emitDataChange('orders', {});
           _render();
@@ -457,7 +457,7 @@
       softResetFinal.addEventListener('click', async function() {
         var ok = await dbSoftReset();
         if (ok) {
-          showToast('Veriler sifirlandi');
+          showToast('Veriler s&#x131;f&#x131;rland&#x131;');
           _state.confirmMode = null;
           emitDataChange('orders', {});
           _render();
@@ -488,7 +488,7 @@
       hardResetFinal.addEventListener('click', async function() {
         var ok = await dbHardReset();
         if (ok) {
-          showToast('Her sey sifirlandi');
+          showToast('Her &#x15F;ey s&#x131;f&#x131;rland&#x131;');
           _state.confirmMode = null;
           emitDataChange('orders', {});
           _render();

@@ -81,12 +81,12 @@
       '<div class="orders-search-wrap">' +
         '<span class="orders-search-icon">&#x1F50D;</span>' +
         '<input type="search" id="orders-search" class="orders-search-input" ' +
-          'placeholder="Musteri veya ulke ara..." aria-label="Musteri ara" ' +
+          'placeholder="M&#xFC;&#x15F;teri veya &#xFC;lke ara..." aria-label="M&#xFC;&#x15F;teri ara" ' +
           'value="' + _esc(_state.searchQuery) + '" />' +
       '</div>' +
       '<div class="orders-toolbar-actions">' +
         '<button class="btn btn-secondary" id="orders-export-excel">Excel olarak indir</button>' +
-        '<button class="btn btn-primary" id="orders-open-import">Veri Yukle (xlsx)</button>' +
+        '<button class="btn btn-primary" id="orders-open-import">Veri Y&#xFC;kle (xlsx)</button>' +
       '</div>' +
     '</div>';
   }
@@ -94,9 +94,9 @@
   function _buildImportZone() {
     return '<div class="orders-import-zone" id="orders-import-zone">' +
       '<div class="orders-import-zone-icon">&#x1F4C2;</div>' +
-      '<div class="orders-import-zone-title">ERP verisini surukle birak</div>' +
+      '<div class="orders-import-zone-title">ERP verisini s&#xFC;r&#xFC;kle b&#x131;rak</div>' +
       '<div class="orders-import-zone-sub">veya asagidaki butonu kullanin</div>' +
-      '<button class="btn btn-primary" id="orders-import-btn">Dosya Sec</button>' +
+      '<button class="btn btn-primary" id="orders-import-btn">Dosya Se&#xE7;</button>' +
       '<input type="file" id="orders-import-input" class="orders-import-file-input" accept=".xlsx,.xls" />' +
     '</div>';
   }
@@ -115,22 +115,22 @@
         '<td>' + _esc(row.product_name) + '</td>' +
         '<td style="text-align:right">' + fmtQty(row.qty) + '</td>' +
         '<td style="text-align:right">' + fmtEuro(row.euro) + '</td>' +
-        '<td>' + (row.matched ? '<span style="color:var(--color-positive)">&#x2713; Eslesti</span>' : '<span style="color:var(--color-warning)">Yeni</span>') + '</td>' +
+        '<td>' + (row.matched ? '<span style="color:var(--color-positive)">&#x2713; E&#x15F;le&#x15F;ti</span>' : '<span style="color:var(--color-warning)">Yeni</span>') + '</td>' +
       '</tr>';
     });
 
     return '<div class="orders-import-preview visible" id="orders-import-preview">' +
       '<div class="orders-import-preview-header">' +
-        '<span class="orders-import-preview-title">Import Onay</span>' +
-        '<button class="btn btn-secondary" id="orders-import-cancel">Iptal</button>' +
+        '<span class="orders-import-preview-title">&#x130;mport Onay</span>' +
+        '<button class="btn btn-secondary" id="orders-import-cancel">&#x130;ptal</button>' +
       '</div>' +
       '<div class="orders-import-summary">' +
         '<div class="orders-import-summary-item">' +
-          '<span class="orders-import-summary-label">Musteri</span>' +
+          '<span class="orders-import-summary-label">M&#xFC;&#x15F;teri</span>' +
           '<span class="orders-import-summary-value">' + (data.customerCount || 0) + '</span>' +
         '</div>' +
         '<div class="orders-import-summary-item">' +
-          '<span class="orders-import-summary-label">Urun</span>' +
+          '<span class="orders-import-summary-label">&#xDC;r&#xFC;n</span>' +
           '<span class="orders-import-summary-value">' + (data.productCount || 0) + '</span>' +
         '</div>' +
         '<div class="orders-import-summary-item">' +
@@ -143,18 +143,18 @@
         '</div>' +
       '</div>' +
       '<div class="orders-import-detail-toggle" id="orders-import-detail-toggle">' +
-        '<span>' + (_state.importDetailVisible ? '&#x25BC;' : '&#x25B6;') + ' Detayli goruntule</span>' +
+        '<span>' + (_state.importDetailVisible ? '&#x25BC;' : '&#x25B6;') + ' Ayr&#x131;nt&#x131;l&#x131; g&#xF6;r&#xFC;nt&#xFC;le</span>' +
       '</div>' +
       '<div class="orders-import-detail-body ' + detailClass + '" id="orders-import-detail-body">' +
         '<table class="orders-import-detail-table">' +
           '<thead><tr>' +
-            '<th>MUSTERI</th><th>URUN</th><th>ADET</th><th>EURO</th><th>DURUM</th>' +
+            '<th>M&#xFC;&#x15F;teri</th><th>&#xDC;r&#xFC;n</th><th>ADET</th><th>EURO</th><th>DURUM</th>' +
           '</tr></thead>' +
           '<tbody>' + detailRows + '</tbody>' +
         '</table>' +
       '</div>' +
       '<div class="orders-import-actions">' +
-        '<button class="btn btn-primary" id="orders-import-confirm">Evet, yukle</button>' +
+        '<button class="btn btn-primary" id="orders-import-confirm">Evet, y&#xFC;kle</button>' +
       '</div>' +
     '</div>';
   }
@@ -166,13 +166,13 @@
       '<div class="orders-table-wrap">' +
         '<table class="orders-table" role="grid">' +
           '<thead><tr>' +
-            '<th>MUSTERI / URUN</th>' +
-            '<th>CIKAN ADET</th>' +
-            '<th>CIKAN EURO</th>' +
-            '<th>CIKACAK ADET</th>' +
-            '<th>CIKACAK EURO</th>' +
-            '<th>KONTEYNER</th>' +
-            '<th>TOPLAM EURO</th>' +
+            '<th>M&#xFC;&#x15F;teri / &#xDC;r&#xFC;n</th>' +
+            '<th>&#xC7;&#x131;kan Adet</th>' +
+            '<th>&#xC7;&#x131;kan Euro</th>' +
+            '<th>&#xC7;&#x131;kacak Adet</th>' +
+            '<th>&#xC7;&#x131;kacak Euro</th>' +
+            '<th>Konteyner</th>' +
+            '<th>Toplam Euro</th>' +
             '<th>NOT</th>' +
           '</tr></thead>' +
           '<tbody id="orders-tbody">' + rows + '</tbody>' +
@@ -214,7 +214,7 @@
     }
 
     if (!html) {
-      html = '<tr><td colspan="8" class="orders-empty">Veri bulunamadi</td></tr>';
+      html = '<tr><td colspan="8" class="orders-empty">Veri bulunamad&#x131;</td></tr>';
     }
 
     return html;
@@ -265,19 +265,19 @@
 
         // Shipped qty — from ERP, read-only
         '<td>' +
-          '<div class="orders-computed" aria-label="Cikan adet (ERP)">' + (shippedQty || '\u2014') + '</div>' +
+          '<div class="orders-computed" aria-label="&#xC7;&#x131;kan adet (ERP)">' + (shippedQty || '\u2014') + '</div>' +
         '</td>' +
 
         // Shipped euro — computed
         '<td>' +
-          '<div class="orders-computed" aria-label="Cikan euro">' + (shippedEuro > 0 ? fmtEuro(shippedEuro) : '\u2014') + '</div>' +
+          '<div class="orders-computed" aria-label="&#xC7;&#x131;kan euro">' + (shippedEuro > 0 ? fmtEuro(shippedEuro) : '\u2014') + '</div>' +
         '</td>' +
 
         // Planned qty — editable
         '<td>' +
           '<input type="number" min="0" ' +
             'class="orders-input orders-planned-qty" ' +
-            'aria-label="Cikacak adet" ' +
+            'aria-label="&#xC7;&#x131;kacak adet" ' +
             'data-source="qty" ' +
             'data-row-key="' + rowKey + '" ' +
             'value="' + (plannedQty || '') + '" ' +
@@ -288,7 +288,7 @@
         '<td>' +
           '<input type="number" min="0" ' +
             'class="orders-input orders-planned-euro" ' +
-            'aria-label="Cikacak euro" ' +
+            'aria-label="&#xC7;&#x131;kacak euro" ' +
             'data-source="euro" ' +
             'data-row-key="' + rowKey + '" ' +
             'value="' + (plannedEuro || '') + '" ' +
@@ -352,12 +352,12 @@
           '</div>' +
           '<div class="orders-mobile-card-body">' +
             '<div class="orders-mobile-field">' +
-              '<span class="orders-mobile-field-label">Cikacak Adet</span>' +
+              '<span class="orders-mobile-field-label">&#xC7;&#x131;kacak Adet</span>' +
               '<input type="number" min="0" class="orders-input orders-planned-qty" ' +
                 'data-source="qty" data-row-key="' + rowKey + '" ' +
                 'data-customer-id="' + customer.id + '" data-product-id="' + product.id + '" ' +
                 'value="' + (plannedQty || '') + '" placeholder="0" ' +
-                'aria-label="Cikacak adet" />' +
+                'aria-label="&#xC7;&#x131;kacak adet" />' +
             '</div>' +
             '<div class="orders-mobile-field">' +
               '<span class="orders-mobile-field-label">Not</span>' +
@@ -510,7 +510,7 @@
       if (ok) done++;
     }
 
-    showToast(done + ' satir yuklendi');
+    showToast(done + ' satir y&#xFC;klendi');
     _state.importPreviewData = null;
     await _loadAll();
     _render();
@@ -615,7 +615,7 @@
         var body = document.getElementById('orders-import-detail-body');
         if (body) body.classList.toggle('visible', _state.importDetailVisible);
         detailToggle.querySelector('span').textContent =
-          (_state.importDetailVisible ? '&#x25BC;' : '&#x25B6;') + ' Detayli goruntule';
+          (_state.importDetailVisible ? '&#x25BC;' : '&#x25B6;') + ' Ayr&#x131;nt&#x131;l&#x131; g&#xF6;r&#xFC;nt&#xFC;le';
       });
     }
 

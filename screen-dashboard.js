@@ -154,25 +154,25 @@
       // Card 1: Confirmed
       '<div class="dashboard-metric-card">' +
         '<div class="dashboard-metric-label">' +
-          '<span>&#x2713;</span> Kesinlesen Ciro' +
+          '<span>&#x2713;</span> Kesinle&#x15F;en Ciro' +
         '</div>' +
         '<div class="dashboard-metric-value dashboard-confirmed">' + confirmedStr + '</div>' +
-        '<div class="dashboard-metric-sub">Fabrikadan gercekten sevk edildi</div>' +
+        '<div class="dashboard-metric-sub">Fabrikadan ger&#xE7;ekten sevk edildi</div>' +
       '</div>' +
 
       // Card 2: Expected
       '<div class="dashboard-metric-card dashboard-expected-card">' +
         '<div class="dashboard-metric-label">' +
-          '<span>&#x25CB;</span> Ay Sonu Ongorisi' +
+          '<span>&#x25CB;</span> Ay Sonu &#xD6;ng&#xF6;r&#xFC;s&#xFC;' +
         '</div>' +
         '<div class="dashboard-metric-value dashboard-expected">' + expectedStr + '</div>' +
-        '<div class="dashboard-expected-note">Kesinlesen + Planlanan</div>' +
+        '<div class="dashboard-expected-note">Kesinle&#x15F;en + Planlanan</div>' +
       '</div>' +
 
       // Card 3: Budget %
       '<div class="dashboard-metric-card' + (status === 'achieved' ? ' achieved' : '') + '">' +
         '<div class="dashboard-metric-label">' +
-          '<span>&#x25A0;</span> Butce Yuzdesi' +
+          '<span>&#x25A0;</span> B&#xFC;t&#xE7;e Y&#xFC;zdesi' +
         '</div>' +
         '<div class="dashboard-metric-value dashboard-' + status + '">' + pctStr + '</div>' +
         '<div class="dashboard-progress-wrap">' +
@@ -212,7 +212,7 @@
 
     var listHtml = '';
     if (achievers.length === 0) {
-      listHtml = '<div class="dashboard-empty">Henuz hedefini asan musteri yok</div>';
+      listHtml = '<div class="dashboard-empty">Henuz hedefini asan m&#xFC;&#x15F;teri yok</div>';
     } else {
       listHtml = '<ul class="dashboard-achiever-list">';
       achievers.forEach(function(a) {
@@ -230,7 +230,7 @@
     return '<div class="dashboard-achievers-card">' +
       '<div class="dashboard-card-header">' +
         '<span class="dashboard-card-title">' +
-          '<span style="color:var(--color-positive)">&#x2605;</span> Hedefini Asan Musteriler' +
+          '<span style="color:var(--color-positive)">&#x2605;</span> Hedefini Asan M&#xFC;&#x15F;teriler' +
         '</span>' +
         '<span class="badge badge-positive">' + achievers.length + '</span>' +
       '</div>' +
@@ -259,7 +259,7 @@
 
     var listHtml = '';
     if (criticals.length === 0) {
-      listHtml = '<div class="dashboard-empty">Limit sorunu olan musteri yok</div>';
+      listHtml = '<div class="dashboard-empty">Limit sorunu olan m&#xFC;&#x15F;teri yok</div>';
     } else {
       listHtml = '<ul class="dashboard-limit-list">';
       criticals.forEach(function(c) {
@@ -277,7 +277,7 @@
     return '<div class="dashboard-achievers-card">' +
       '<div class="dashboard-card-header">' +
         '<span class="dashboard-card-title">' +
-          '<span style="color:var(--color-negative)">!</span> Limit Uyarilari' +
+          '<span style="color:var(--color-negative)">!</span> Limit Uyar&#x131;lar&#x131;' +
         '</span>' +
         (criticals.length > 0 ? '<span class="badge badge-negative">' + criticals.length + '</span>' : '') +
       '</div>' +
@@ -318,8 +318,8 @@
         '<div class="dashboard-search-wrap">' +
           '<span class="dashboard-search-icon">&#x1F50D;</span>' +
           '<input type="search" id="dashboard-search" class="dashboard-search-input" ' +
-            'placeholder="Musteri veya ulke ara..." ' +
-            'aria-label="Musteri veya ulke ara" ' +
+            'placeholder="M&#xFC;&#x15F;teri veya &#xFC;lke ara..." ' +
+            'aria-label="M&#xFC;&#x15F;teri veya &#xFC;lke ara" ' +
             'value="' + _escHtml(_state.searchQuery) + '" />' +
         '</div>' +
       '</div>' +
@@ -327,16 +327,16 @@
         '<table class="dashboard-table" role="grid">' +
           '<thead>' +
             '<tr>' +
-              '<th scope="col">MUSTERI</th>' +
-              '<th scope="col">ULKE</th>' +
-              '<th scope="col">KESINLESEN</th>' +
+              '<th scope="col">M&#xFC;&#x15F;teri</th>' +
+              '<th scope="col">&#xDC;lke</th>' +
+              '<th scope="col">Kesinle&#x15F;en</th>' +
               '<th scope="col">BEKLENEN</th>' +
               '<th scope="col">HEDEF</th>' +
-              '<th scope="col">BUTCE %</th>' +
+              '<th scope="col">B&#xFC;t&#xE7;e %</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody id="dashboard-tbody">' +
-            (rows || '<tr><td colspan="6" class="dashboard-empty">Veri bulunamadi</td></tr>') +
+            (rows || '<tr><td colspan="6" class="dashboard-empty">Veri bulunamad&#x131;</td></tr>') +
           '</tbody>' +
         '</table>' +
       '</div>' +

@@ -9,8 +9,8 @@ const CHANGELOG = {
     date: 'Haziran 2026',
     items: [
       'Uygulama ilk surumu yayinlandi.',
-      'Dashboard, Siparisler, Limitler, Analiz ekranlari aktif.',
-      'Cari, Ulke ve Urun detay panelleri eklendi.',
+      'Dashboard, Sipari&#x15F;ler, Limitler, Analiz ekranlari aktif.',
+      'Cari, &#xDC;lke ve &#xDC;r&#xFC;n detay panelleri eklendi.',
       'Supabase gercek zamanli veri senkronizasyonu.',
       'Excel import ve export destegi.',
       'PDF rapor alma ozelligi.',
@@ -125,7 +125,7 @@ function initNetworkStatus() {
       banner.classList.add('hidden');
     } else {
       var timeStr = _lastOnlineTime ? formatTime(_lastOnlineTime) : 'bilinmiyor';
-      bannerText.textContent = 'Internet baglantisi yok — son guncelleme: ' + timeStr;
+      bannerText.textContent = '&#x130;nternet ba&#x11F;lant&#x131;s&#x131; yok — son g&#xFC;ncelleme: ' + timeStr;
       banner.classList.remove('hidden');
     }
   }
@@ -152,18 +152,18 @@ function updateDataAge(timestamp) {
   var label = '';
   if (diffDays === 0) {
     if (diffHours === 0) {
-      label = 'Az once guncellendi';
+      label = 'Az &#xF6;nce g&#xFC;ncellendi';
     } else {
-      label = diffHours + ' saat once guncellendi';
+      label = diffHours + ' saat &#xF6;nce g&#xFC;ncellendi';
     }
   } else if (diffDays === 1) {
-    label = 'Dun guncellendi';
+    label = 'Dun g&#xFC;ncellendi';
   } else {
-    label = diffDays + ' gun once guncellendi';
+    label = diffDays + ' g&#xFC;n &#xF6;nce g&#xFC;ncellendi';
   }
 
   if (el) el.textContent = label;
-  if (footerEl) footerEl.textContent = 'Son guncelleme: ' + formatDateTime(then);
+  if (footerEl) footerEl.textContent = 'Son g&#xFC;ncelleme: ' + formatDateTime(then);
 }
 
 /* ============================================================

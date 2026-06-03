@@ -21,11 +21,11 @@ function processImportFile(file, customers, products, callback) {
       callback(preview);
     } catch (err) {
       console.error('Import parse error:', err);
-      showToast('Dosya okunamadi. Lutfen gecerli bir xlsx dosyasi secin.');
+      showToast('Dosya okunamad&#x131;. Lutfen ge&#xE7;erli bir xlsx dosyasi secin.');
     }
   };
   reader.onerror = function() {
-    showToast('Dosya okunamadi.');
+    showToast('Dosya okunamad&#x131;.');
   };
   reader.readAsArrayBuffer(file);
 }
@@ -45,8 +45,8 @@ function _buildPreview(rows, customers, products) {
 
   rows.forEach(function(row) {
     // Normalize column names — handle Turkish ERP export
-    var rawCustomer = String(row['CAR&#x130;'] || row['CARI'] || row['Cari'] || row['musteri'] || '').trim();
-    var rawProduct  = String(row['&#xDC;R&#xDC;N'] || row['URUN'] || row['urun'] || row['Urun'] || '').trim();
+    var rawCustomer = String(row['CAR&#x130;'] || row['CARI'] || row['Cari'] || row['m&#xFC;&#x15F;teri'] || '').trim();
+    var rawProduct  = String(row['&#xDC;R&#xDC;N'] || row['&#xDC;r&#xFC;n'] || row['&#xFC;r&#xFC;n'] || row['&#xDC;r&#xFC;n'] || '').trim();
     var rawQty      = row['ADET'] || row['adet'] || row['Adet'] || 0;
     var rawEuro     = row['EURO'] || row['euro'] || row['Euro'] || 0;
     var rawMonth    = String(row['AY'] || row['ay'] || '').trim();

@@ -51,7 +51,7 @@
   function _render() {
     var screen = document.getElementById('screen-customer');
     if (!screen || !_state.customer) {
-      if (screen) screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">Musteri bulunamadi</div></div>';
+      if (screen) screen.innerHTML = '<div class="empty-state"><div class="empty-state-title">M&#xFC;&#x15F;teri bulunamadi</div></div>';
       return;
     }
     screen.innerHTML = _buildHTML();
@@ -120,7 +120,7 @@
           (isLimitCritical(0, 0) ? '' : '') +
         '</div>' +
         '<div class="customer-header-country" id="customer-country-btn" data-country="' + _esc(c.country || '') + '">' +
-          '<span>&#x1F30D;</span> ' + _esc(c.country || 'Ulke yok') +
+          '<span>&#x1F30D;</span> ' + _esc(c.country || '&#xDC;lke yok') +
         '</div>' +
       '</div>' +
       '<div class="customer-header-right">' +
@@ -138,7 +138,7 @@
 
     return '<div class="customer-metrics-row">' +
       '<div class="customer-metric-card">' +
-        '<span class="customer-metric-label">Kesinlesen Ciro</span>' +
+        '<span class="customer-metric-label">Kesinle&#x15F;en Ciro</span>' +
         '<span class="customer-metric-value">' + fmtEuro(confirmed) + '</span>' +
       '</div>' +
       '<div class="customer-metric-card">' +
@@ -146,7 +146,7 @@
         '<span class="customer-metric-value accent">' + fmtEuro(expected) + '</span>' +
       '</div>' +
       '<div class="customer-metric-card">' +
-        '<span class="customer-metric-label">Planlanan Cikis</span>' +
+        '<span class="customer-metric-label">Planlanan &#xC7;&#x131;k&#x131;&#x15F;</span>' +
         '<span class="customer-metric-value">' + fmtEuro(plannedEuro) + '</span>' +
       '</div>' +
       '<div class="customer-metric-card">' +
@@ -185,11 +185,11 @@
     }).filter(Boolean).join('');
 
     return '<div class="customer-section-card">' +
-      '<div class="customer-section-header">Urun Bazli Dagilim</div>' +
+      '<div class="customer-section-header">&#xDC;r&#xFC;n Bazli Dagilim</div>' +
       '<table class="customer-product-table">' +
         '<thead><tr>' +
-          '<th>URUN</th><th style="text-align:right">CIKAN</th><th style="text-align:right">CIKACAK</th>' +
-          '<th style="text-align:right">KESINLESEN</th><th style="text-align:right">BEKLENEN</th>' +
+          '<th>&#xDC;r&#xFC;n</th><th style="text-align:right">&#xC7;&#x131;kan</th><th style="text-align:right">&#xC7;&#x131;kacak</th>' +
+          '<th style="text-align:right">Kesinle&#x15F;en</th><th style="text-align:right">BEKLENEN</th>' +
         '</tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="5" style="text-align:center;padding:24px;color:#4A5068">Veri yok</td></tr>') + '</tbody>' +
       '</table>' +
@@ -250,7 +250,7 @@
 
     return '<div style="display:flex;flex-direction:column;gap:var(--space-5)">' +
       '<div class="customer-section-card">' +
-        '<div class="customer-section-header">Urun Karmas&#x131;</div>' +
+        '<div class="customer-section-header">&#xDC;r&#xFC;n Karmas&#x131;</div>' +
         '<div class="customer-donut-wrap">' +
           svg +
           '<div class="customer-donut-legend">' + legend + '</div>' +
@@ -260,11 +260,11 @@
         '<div class="customer-section-header">Limit Durumu</div>' +
         '<div class="customer-limit-row">' +
           '<div class="customer-limit-box conservative">' +
-            '<span class="customer-limit-label">Su an kullanilabilir</span>' +
+            '<span class="customer-limit-label">&#x15E;u an kullanilabilir</span>' +
             '<span class="customer-limit-value ' + consClass + '">' + (conservative !== null ? fmtEuro(conservative) : '\u2014') + '</span>' +
           '</div>' +
           '<div class="customer-limit-box optimistic">' +
-            '<span class="customer-limit-label">Odeme gelince</span>' +
+            '<span class="customer-limit-label">&#xD6;deme gelince</span>' +
             '<span class="customer-limit-value ' + optClass + '">' + (optimistic !== null ? fmtEuro(optimistic) : '\u2014') + '</span>' +
           '</div>' +
         '</div>' +
@@ -287,7 +287,7 @@
       '<div class="customer-section-header">Notlar</div>' +
       (notesHtml
         ? '<div class="customer-notes-list">' + notesHtml + '</div>'
-        : '<div class="customer-notes-empty">Bu musteri icin not yok</div>') +
+        : '<div class="customer-notes-empty">Bu m&#xFC;&#x15F;teri icin not yok</div>') +
     '</div>';
   }
 

@@ -15,7 +15,7 @@ function exportOrdersToExcel(orders, products, customers) {
   var customerMap = buildCustomerMap(customers);
 
   var wsData = [
-    ['Musteri', 'Ulke', 'Urun', 'Cikan Adet', 'Cikan Euro', 'Cikacak Adet', 'Cikacak Euro', 'Toplam Euro', 'Not', 'Son Guncelleme']
+    ['M&#xFC;&#x15F;teri', '&#xDC;lke', '&#xDC;r&#xFC;n', '&#xC7;&#x131;kan Adet', '&#xC7;&#x131;kan Euro', '&#xC7;&#x131;kacak Adet', '&#xC7;&#x131;kacak Euro', 'Toplam Euro', 'Not', 'Son Guncelleme']
   ];
 
   orders.forEach(function(order) {
@@ -51,13 +51,13 @@ function exportOrdersToExcel(orders, products, customers) {
   ];
 
   var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Siparisler');
+  XLSX.utils.book_append_sheet(wb, ws, 'Sipari&#x15F;ler');
 
   var now      = new Date();
   var dateStr  = now.getFullYear() + '-' +
     String(now.getMonth() + 1).padStart(2, '0') + '-' +
     String(now.getDate()).padStart(2, '0');
-  var fileName = 'NSDATA-Siparisler-' + dateStr + '.xlsx';
+  var fileName = 'NSDATA-Sipari&#x15F;ler-' + dateStr + '.xlsx';
 
   XLSX.writeFile(wb, fileName);
   showToast('Excel indirildi');
@@ -74,8 +74,8 @@ function exportLimitsToExcel(limits, customers, payments, orders, products, curr
   var customerMap = buildCustomerMap(customers);
 
   var wsData = [
-    ['Musteri', 'Ulke', 'Toplam Limit', 'Acik Bakiye', 'Planlanan Cikis',
-     'Su An Kullanilabilir', 'Odeme Gelince Kullanilabilir', 'Bu Ayki Odemeler']
+    ['M&#xFC;&#x15F;teri', '&#xDC;lke', 'Toplam Limit', 'A&#xE7;&#x131;k Bakiye', 'Planlanan &#xC7;&#x131;k&#x131;&#x15F;',
+     'Su An Kullanilabilir', '&#xD6;deme Gelince Kullanilabilir', 'Bu Ayki &#xD6;demeler']
   ];
 
   customers.forEach(function(c) {

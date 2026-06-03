@@ -18,7 +18,7 @@ var ProductManager = (function() {
     if (product.avg_price_eur !== undefined) {
       var price = parseNum(product.avg_price_eur);
       if (price === null || price < 0.01) {
-        showToast('Fiyat en az 0.01 olmalidir');
+        showToast('Fiyat en az 0.01 olmal&#x131;d&#x131;r');
         return false;
       }
       product.avg_price_eur = price;
@@ -34,14 +34,14 @@ var ProductManager = (function() {
   async function updatePrice(productId, newPrice) {
     var price = parseNum(newPrice);
     if (price === null || price < 0.01) {
-      showToast('Gecersiz fiyat');
+      showToast('Ge&#xE7;ersiz fiyat');
       return false;
     }
     var ok = await dbUpdateProductPrice(productId, price);
     if (ok) {
       _products = await dbGetProducts();
       emitDataChange('products', {});
-      showToast('Fiyat guncellendi');
+      showToast('Fiyat g&#xFC;ncellendi');
     }
     return ok;
   }
@@ -85,9 +85,9 @@ var ProductManager = (function() {
 
     return '<table style="width:100%;border-collapse:collapse;font-size:15px">' +
       '<thead><tr style="background:#F1F3F9">' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">URUN</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">&#xDC;r&#xFC;n</th>' +
         '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Ort. Fiyat (EUR)</th>' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Konteyner Katsayisi</th>' +
+        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Konteyner Katsay&#x131;s&#x131;</th>' +
         '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">DURUM</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +

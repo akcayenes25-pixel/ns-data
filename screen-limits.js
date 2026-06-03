@@ -91,7 +91,7 @@
 
     return _buildToolbar() +
       '<div class="limits-grid">' +
-        (cards || '<div class="limits-empty">Musteri bulunamadi</div>') +
+        (cards || '<div class="limits-empty">M&#xFC;&#x15F;teri bulunamadi</div>') +
       '</div>';
   }
 
@@ -100,7 +100,7 @@
       '<div class="limits-search-wrap">' +
         '<span class="limits-search-icon">&#x1F50D;</span>' +
         '<input type="search" id="limits-search" class="limits-search-input" ' +
-          'placeholder="Musteri veya ulke ara..." aria-label="Musteri ara" ' +
+          'placeholder="M&#xFC;&#x15F;teri veya &#xFC;lke ara..." aria-label="M&#xFC;&#x15F;teri ara" ' +
           'value="' + _esc(_state.searchQuery) + '" />' +
       '</div>' +
     '</div>';
@@ -167,7 +167,7 @@
           'placeholder="0" />' +
       '</div>' +
       '<div class="limits-field">' +
-        '<label class="limits-field-label" for="limits-balance-' + customerId + '">Acik Bakiye (EUR)</label>' +
+        '<label class="limits-field-label" for="limits-balance-' + customerId + '">A&#xE7;&#x131;k Bakiye (EUR)</label>' +
         '<input type="number" min="0" ' +
           'id="limits-balance-' + customerId + '" ' +
           'class="limits-field-input limits-balance-input" ' +
@@ -181,7 +181,7 @@
 
   function _buildPlannedRow(plannedEuro) {
     return '<div class="limits-planned-row">' +
-      '<span class="limits-planned-label">Bu ay planlanan cikis</span>' +
+      '<span class="limits-planned-label">Bu ay planlanan &#xE7;&#x131;k&#x131;&#x15F;</span>' +
       '<span class="limits-planned-value">' + fmtEuro(plannedEuro || 0) + '</span>' +
     '</div>';
   }
@@ -200,14 +200,14 @@
 
     return '<div class="limits-result-row">' +
       '<div class="' + consBoxClass + '">' +
-        '<span class="limits-result-label">Su an kullanilabilir limit</span>' +
+        '<span class="limits-result-label">&#x15E;u an kullan&#x131;labilir limit</span>' +
         '<span class="limits-result-value ' + consClass + '">' + (conservative !== null ? fmtEuro(conservative) : '\u2014') + '</span>' +
-        '<span class="limits-result-sub">Odeme beklenmeden</span>' +
+        '<span class="limits-result-sub">&#xD6;deme beklenmeden</span>' +
       '</div>' +
       '<div class="limits-result-box optimistic">' +
-        '<span class="limits-result-label">Odeme gelince kullanilabilir limit</span>' +
+        '<span class="limits-result-label">&#xD6;deme gelince kullan&#x131;labilir limit</span>' +
         '<span class="limits-result-value ' + optClass + '">' + (optimistic !== null ? fmtEuro(optimistic) : '\u2014') + '</span>' +
-        '<span class="limits-result-sub">Bu ayki teyitli odemeler dahil</span>' +
+        '<span class="limits-result-sub">Bu ayki teyitli &#xF6;demeler dahil</span>' +
       '</div>' +
     '</div>';
   }
@@ -226,7 +226,7 @@
             'class="limits-payment-date-input" ' +
             'data-payment-id="' + p.id + '" ' +
             'data-customer-id="' + customerId + '" ' +
-            'aria-label="Odeme tarihi" ' +
+            'aria-label="&#xD6;deme tarihi" ' +
             'value="' + dateVal + '" />' +
         '</div>' +
         '<div class="limits-payment-amount">' +
@@ -234,26 +234,26 @@
             'class="limits-payment-amount-input" ' +
             'data-payment-id="' + p.id + '" ' +
             'data-customer-id="' + customerId + '" ' +
-            'aria-label="Odeme tutari (EUR)" ' +
+            'aria-label="&#xD6;deme tutar&#x131; (EUR)" ' +
             'value="' + (p.amount_eur || '') + '" ' +
             'placeholder="EUR" />' +
         '</div>' +
-        (sameMonth ? '<span class="limits-payment-same-month-tag" aria-label="Bu ay icinde"><span>&#x2713;</span> Bu ay</span>' : '') +
+        (sameMonth ? '<span class="limits-payment-same-month-tag" aria-label="Bu ay i&#xE7;inde"><span>&#x2713;</span> Bu ay</span>' : '') +
         '<button class="limits-payment-delete" ' +
           'data-payment-id="' + p.id + '" ' +
-          'aria-label="Odemeyi sil">&times;</button>' +
+          'aria-label="&#xD6;demeyi sil">&times;</button>' +
       '</div>';
     });
 
     return '<div class="limits-payments-section" data-customer-id="' + customerId + '">' +
       '<div class="limits-payments-header">' +
-        '<span class="limits-payments-title">Gelecek Odemeler</span>' +
+        '<span class="limits-payments-title">Gelecek &#xD6;demeler</span>' +
       '</div>' +
       '<div class="limits-payment-list" id="limits-payment-list-' + customerId + '">' +
         rowsHtml +
       '</div>' +
       '<button class="limits-add-payment-btn" data-customer-id="' + customerId + '">' +
-        '<span>+</span> Odeme Ekle' +
+        '<span>+</span> &#xD6;deme Ekle' +
       '</button>' +
     '</div>';
   }
