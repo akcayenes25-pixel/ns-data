@@ -99,7 +99,7 @@
       '<div class="settings-section-header">' +
         '<span class="settings-section-title">🎯 Aylık Hedefler</span>' +
         '<label class="btn btn-secondary" style="cursor:pointer;font-size:13px;height:36px">' +
-          'Excel'den Yükle' +
+          'Excel\'den Yükle' +
           '<input type="file" id="settings-target-import-input" accept=".xlsx,.xls" style="display:none" />' +
         '</label>' +
       '</div>' +

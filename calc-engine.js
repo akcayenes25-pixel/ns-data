@@ -134,7 +134,7 @@ function calcGrandTotals(orders, productMap) {
 
 /* ============================================================
    DESTINATION COUNTRY AGGREGATION
-   Orders'daki destination_country'ye göre grupla
+   Orders destination_country kolonuna gore grupla
    ============================================================ */
 function calcCountrySummaries(orders, productMap, customers) {
   var map = {};

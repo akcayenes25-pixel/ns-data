@@ -9,16 +9,16 @@ const CHANGELOG = {
     date: 'Haziran 2026',
     items: [
       'destination_country mimarisi tamamlandı — ülke bilgisi artık sipariş satırında.',
-      'Dashboard: ülke kolonu orders.destination_country'den geliyor.',
+      'Dashboard: ülke kolonu orders.destination_country üzerinden geliyor.',
       'Müşteri detay: sipariş ülkeleri dinamik gösteriliyor.',
-      'Ülke detay ekranı destination_country'ye göre çalışıyor.',
+      'Ülke detay ekranı destination_country üzerinden çalışıyor.',
       'Euro format denetimi tamamlandı.',
     ]
   },
   'v1.5.0': {
     date: 'Haziran 2026',
     items: [
-      'Hedef import — Excel'den müşteri ve ülke bazlı hedef yükleme.',
+      'Hedef import — Excel ile müşteri ve ülke bazlı hedef yükleme.',
       'Yüksek DPI / Retina ekran desteği eklendi.',
       'Tüm dosyalarda Türkçe karakter ve entity final temizliği.',
     ]
