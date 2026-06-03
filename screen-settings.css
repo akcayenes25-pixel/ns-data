@@ -1,0 +1,253 @@
+/* NSDATA - screen-settings.css */
+/* All classes prefixed with settings- */
+
+#screen-settings {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+#screen-settings.active {
+  display: flex;
+}
+
+/* ============================================================
+   SECTION CARDS
+   ============================================================ */
+
+.settings-section {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.settings-section-header {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-section-body {
+  padding: var(--space-5) var(--space-6);
+}
+
+.settings-section-body.no-pad {
+  padding: 0;
+}
+
+/* ============================================================
+   TARGET CUSTOMER SELECTOR
+   ============================================================ */
+
+.settings-target-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.settings-target-select select {
+  min-height: var(--touch-min);
+  font-size: 15px;
+  font-weight: 600;
+  min-width: 240px;
+  cursor: pointer;
+}
+
+.settings-year-select {
+  min-height: var(--touch-min);
+  font-size: 15px;
+  font-weight: 600;
+  min-width: 100px;
+  cursor: pointer;
+}
+
+.settings-target-grid {
+  overflow-x: auto;
+}
+
+.settings-paste-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding: var(--space-3) var(--space-4);
+  background: #EEF2FF;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ============================================================
+   RESET SECTION
+   ============================================================ */
+
+.settings-reset-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.settings-reset-desc {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  flex: 1;
+  min-width: 200px;
+}
+
+/* ============================================================
+   PROFILE LIST
+   ============================================================ */
+
+.settings-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-profile-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  flex-wrap: wrap;
+}
+
+.settings-profile-name {
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.settings-profile-link {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-family: monospace;
+  background: var(--color-surface-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+}
+
+.settings-profile-link:hover {
+  background: var(--color-border);
+}
+
+.settings-add-profile-form {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.settings-add-profile-form input {
+  flex: 1;
+  min-width: 160px;
+  min-height: var(--touch-min);
+  font-size: 15px;
+}
+
+/* ============================================================
+   MONTH CLOSE
+   ============================================================ */
+
+.settings-month-close-card {
+  background: #FEF2F2;
+  border: 1.5px solid rgba(220,38,38,0.25);
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.settings-month-close-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-month-close-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-negative);
+}
+
+.settings-month-close-desc {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   CONFIRM DIALOG (inline)
+   ============================================================ */
+
+.settings-confirm-box {
+  background: var(--color-surface);
+  border: 2px solid var(--color-negative);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  margin-top: var(--space-4);
+  display: none;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.settings-confirm-box.visible {
+  display: flex;
+}
+
+.settings-confirm-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-negative);
+}
+
+.settings-confirm-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .settings-reset-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .settings-month-close-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

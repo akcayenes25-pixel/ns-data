@@ -1,0 +1,433 @@
+/* NSDATA - screen-analysis.css */
+/* All classes prefixed with analysis- */
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+
+#screen-analysis {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+#screen-analysis.active {
+  display: flex;
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+
+.analysis-toolbar {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  position: sticky;
+  top: var(--nav-height);
+  z-index: 20;
+  box-shadow: var(--shadow-sm);
+}
+
+.analysis-toolbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.analysis-export-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ============================================================
+   DEFAULT 5 CHARTS GRID
+   ============================================================ */
+
+.analysis-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+.analysis-main-grid .analysis-chart-card:first-child {
+  grid-column: 1 / -1;
+}
+
+/* ============================================================
+   CHART CARD
+   ============================================================ */
+
+.analysis-chart-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.analysis-chart-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.analysis-chart-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.analysis-chart-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.analysis-chart-download {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.analysis-chart-download:hover {
+  background: var(--color-surface-2);
+  color: var(--color-accent);
+}
+
+.analysis-chart-body {
+  padding: var(--space-5);
+  position: relative;
+}
+
+/* ============================================================
+   CANVAS — high DPI
+   ============================================================ */
+
+.analysis-canvas {
+  width: 100%;
+  display: block;
+  cursor: pointer;
+}
+
+/* ============================================================
+   SCENARIO SUMMARY CARDS (top row)
+   ============================================================ */
+
+.analysis-scenario-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.analysis-scenario-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.analysis-scenario-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.analysis-scenario-value {
+  font-size: 32px;
+  font-weight: 800;
+  font-feature-settings: 'tnum' on;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.analysis-scenario-sub {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   BAR CHART (SVG-based, no library)
+   ============================================================ */
+
+.analysis-bar-chart {
+  width: 100%;
+  overflow: visible;
+}
+
+.analysis-bar-rect {
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.analysis-bar-rect:hover {
+  opacity: 0.80;
+}
+
+.analysis-bar-label {
+  font-size: 12px;
+  fill: var(--color-text-secondary, #4A5068);
+  font-family: 'Inter', sans-serif;
+}
+
+.analysis-bar-value {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--color-text-primary, #0F1117);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ============================================================
+   DONUT CHART
+   ============================================================ */
+
+.analysis-donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.analysis-donut-svg {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.analysis-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 140px;
+}
+
+.analysis-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  min-height: var(--touch-min);
+}
+
+.analysis-legend-item:hover .analysis-legend-label {
+  color: var(--color-accent);
+}
+
+.analysis-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.analysis-legend-label {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+  truncate: ellipsis;
+}
+
+.analysis-legend-pct {
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  font-feature-settings: 'tnum' on;
+}
+
+/* ============================================================
+   HEATMAP (customer grid)
+   ============================================================ */
+
+.analysis-heatmap-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.analysis-heatmap-cell {
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+  min-height: 70px;
+  min-width: 100px;
+}
+
+.analysis-heatmap-cell:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.analysis-heatmap-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-heatmap-pct {
+  font-size: 18px;
+  font-weight: 800;
+  color: #FFFFFF;
+  font-feature-settings: 'tnum' on;
+}
+
+/* ============================================================
+   DETAIL SECTION (expandable)
+   ============================================================ */
+
+.analysis-detail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+  transition: background var(--transition-fast);
+}
+
+.analysis-detail-toggle:hover {
+  background: #EEF2FF;
+}
+
+.analysis-detail-section {
+  display: none;
+}
+
+.analysis-detail-section.visible {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.analysis-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+/* ============================================================
+   COMPARISON TABLE
+   ============================================================ */
+
+.analysis-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.analysis-comparison-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1.5px solid var(--color-border);
+  text-align: left;
+  background: var(--color-surface-2);
+}
+
+.analysis-comparison-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-feature-settings: 'tnum' on;
+}
+
+.analysis-comparison-table tr:hover td {
+  background: var(--color-surface-2);
+  cursor: pointer;
+}
+
+.analysis-rank-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  width: 28px;
+}
+
+/* ============================================================
+   TOOLTIP
+   ============================================================ */
+
+.analysis-tooltip {
+  position: fixed;
+  background: var(--color-text-primary);
+  color: #FFFFFF;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 500;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  display: none;
+}
+
+.analysis-tooltip.visible {
+  display: block;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .analysis-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-main-grid .analysis-chart-card:first-child {
+    grid-column: auto;
+  }
+
+  .analysis-scenario-row {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-scenario-value {
+    font-size: 26px;
+  }
+
+  .analysis-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-donut-wrap {
+    flex-direction: column;
+  }
+}

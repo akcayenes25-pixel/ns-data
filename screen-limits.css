@@ -1,0 +1,416 @@
+/* NSDATA - screen-limits.css */
+/* All classes prefixed with limits- */
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+
+#screen-limits {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+#screen-limits.active {
+  display: flex;
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+
+.limits-toolbar {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  position: sticky;
+  top: var(--nav-height);
+  z-index: 20;
+  box-shadow: var(--shadow-sm);
+}
+
+.limits-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.limits-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.limits-search-input {
+  padding-left: 36px;
+  min-height: var(--touch-min);
+  font-size: 15px;
+}
+
+/* ============================================================
+   CUSTOMER LIMIT CARDS GRID
+   ============================================================ */
+
+.limits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: var(--space-5);
+}
+
+/* ============================================================
+   LIMIT CARD
+   ============================================================ */
+
+.limits-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.limits-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.limits-card.limits-critical {
+  border-color: var(--color-negative);
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.10);
+}
+
+/* Card header */
+.limits-card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.limits-card-name-btn {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  padding: 0;
+}
+
+.limits-card-name-btn:hover {
+  text-decoration: underline;
+}
+
+.limits-card-country {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+/* Card body */
+.limits-card-body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ============================================================
+   INPUT ROW (Total limit + Open balance)
+   ============================================================ */
+
+.limits-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.limits-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.limits-field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.limits-field-input {
+  min-height: var(--touch-min);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: right;
+  font-feature-settings: 'tnum' on;
+}
+
+/* ============================================================
+   RESULT ROW (Conservative + Optimistic)
+   ============================================================ */
+
+.limits-result-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.limits-result-box {
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.limits-result-box.conservative {
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+}
+
+.limits-result-box.optimistic {
+  background: #EEF2FF;
+  border: 1.5px solid rgba(79,70,229,0.20);
+}
+
+.limits-result-box.critical {
+  background: #FEF2F2;
+  border: 1.5px solid rgba(220,38,38,0.25);
+}
+
+.limits-result-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.limits-result-value {
+  font-size: 22px;
+  font-weight: 800;
+  font-feature-settings: 'tnum' on;
+  line-height: 1.2;
+}
+
+.limits-result-value.positive { color: var(--color-positive); }
+.limits-result-value.warning  { color: var(--color-warning); }
+.limits-result-value.negative { color: var(--color-negative); }
+.limits-result-value.accent   { color: var(--color-accent); }
+
+.limits-result-sub {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   PLANNED EURO ROW
+   ============================================================ */
+
+.limits-planned-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+
+.limits-planned-label {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.limits-planned-value {
+  font-weight: 700;
+  font-feature-settings: 'tnum' on;
+  color: var(--color-text-primary);
+}
+
+/* ============================================================
+   PAYMENTS SECTION
+   ============================================================ */
+
+.limits-payments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.limits-payments-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.limits-payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.limits-payment-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.limits-payment-row.same-month {
+  border-color: var(--color-positive);
+  background: #F0FDF4;
+}
+
+.limits-payment-date {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.limits-payment-date input {
+  min-height: var(--touch-min);
+  font-size: 14px;
+  width: 140px;
+}
+
+.limits-payment-amount input {
+  min-height: var(--touch-min);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+  width: 130px;
+  font-feature-settings: 'tnum' on;
+}
+
+.limits-payment-delete {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-negative);
+  font-size: 18px;
+  transition: background var(--transition-fast);
+}
+
+.limits-payment-delete:hover {
+  background: #FEE2E2;
+}
+
+.limits-payment-same-month-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-positive);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.limits-add-payment-btn {
+  width: 100%;
+  height: var(--touch-min);
+  border: 1.5px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: var(--space-2);
+  background: var(--color-surface);
+}
+
+.limits-add-payment-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: #EEF2FF;
+}
+
+/* ============================================================
+   SAVE INDICATOR
+   ============================================================ */
+
+.limits-save-indicator {
+  position: fixed;
+  bottom: calc(var(--footer-height) + var(--space-3));
+  right: var(--space-6);
+  background: var(--color-positive);
+  color: #FFFFFF;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.limits-save-indicator.visible {
+  opacity: 1;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.limits-empty {
+  padding: var(--space-12);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .limits-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .limits-result-row {
+    grid-template-columns: 1fr;
+  }
+
+  .limits-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .limits-result-value {
+    font-size: 20px;
+  }
+}

@@ -1,0 +1,190 @@
+/* NSDATA - screen-product.css */
+/* All classes prefixed with product- */
+
+#screen-product {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+#screen-product.active {
+  display: flex;
+}
+
+.product-back-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.product-back-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.product-back-btn:hover {
+  background: var(--color-surface-2);
+}
+
+.product-breadcrumb {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.product-breadcrumb-current {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.product-header-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.product-header-name {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.product-header-price {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+.product-header-metrics {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.product-header-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-end;
+}
+
+.product-header-metric-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.product-header-metric-value {
+  font-size: 24px;
+  font-weight: 800;
+  font-feature-settings: 'tnum' on;
+}
+
+.product-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+.product-section-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.product-section-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1.5px solid var(--color-border);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.product-customer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.product-customer-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1.5px solid var(--color-border);
+  text-align: left;
+  background: var(--color-surface-2);
+}
+
+.product-customer-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-feature-settings: 'tnum' on;
+}
+
+.product-customer-table tr:last-child td {
+  border-bottom: none;
+}
+
+.product-customer-table tr:hover td {
+  background: var(--color-surface-2);
+  cursor: pointer;
+}
+
+.product-country-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.product-country-table th {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1.5px solid var(--color-border);
+  text-align: left;
+  background: var(--color-surface-2);
+}
+
+.product-country-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-feature-settings: 'tnum' on;
+}
+
+.product-country-table tr:last-child td { border-bottom: none; }
+.product-country-table tr:hover td { background: var(--color-surface-2); cursor: pointer; }
+
+@media (max-width: 768px) {
+  .product-two-col { grid-template-columns: 1fr; }
+  .product-header-card { flex-direction: column; align-items: flex-start; }
+  .product-header-metrics { gap: var(--space-4); }
+  .product-header-metric { align-items: flex-start; }
+}

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4F46E5" />
+  <title>NSDATA</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Base styles -->
+  <link rel="stylesheet" href="style-base.css" />
+
+  <!-- Screen styles -->
+  <link rel="stylesheet" href="screen-dashboard.css" />
+  <link rel="stylesheet" href="screen-orders.css" />
+  <link rel="stylesheet" href="screen-limits.css" />
+  <link rel="stylesheet" href="screen-analysis.css" />
+  <link rel="stylesheet" href="screen-customer.css" />
+  <link rel="stylesheet" href="screen-country.css" />
+  <link rel="stylesheet" href="screen-product.css" />
+  <link rel="stylesheet" href="screen-settings.css" />
+</head>
+<body>
+
+  <!-- Network banner -->
+  <div id="network-banner" class="network-banner hidden" role="alert" aria-live="polite">
+    <span id="network-banner-text"></span>
+  </div>
+
+  <!-- Filter banner -->
+  <div id="filter-banner" class="filter-banner hidden" role="status" aria-live="polite">
+    <span id="filter-banner-text"></span>
+    <button id="filter-banner-clear" class="filter-banner-clear" aria-label="Filtreyi kaldir">Filtreyi Kaldir</button>
+  </div>
+
+  <!-- Top navigation -->
+  <nav id="main-nav" class="main-nav" role="navigation" aria-label="Ana navigasyon">
+    <div class="nav-brand">
+      <span class="nav-logo">NSDATA</span>
+      <span class="nav-version" id="nav-version">v1.0.0</span>
+    </div>
+
+    <div class="nav-screens" role="tablist">
+      <button class="nav-btn active" data-screen="dashboard" role="tab" aria-selected="true">Dashboard</button>
+      <button class="nav-btn" data-screen="orders" role="tab" aria-selected="false">Siparisler</button>
+      <button class="nav-btn" data-screen="limits" role="tab" aria-selected="false">Limitler</button>
+      <button class="nav-btn" data-screen="analysis" role="tab" aria-selected="false">Analiz</button>
+      <button class="nav-btn" data-screen="settings" role="tab" aria-selected="false">Ayarlar</button>
+    </div>
+
+    <div class="nav-meta">
+      <span class="nav-data-age" id="nav-data-age"></span>
+      <span class="nav-clock" id="nav-clock"></span>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main id="main-content" role="main">
+
+    <!-- Dashboard screen -->
+    <section id="screen-dashboard" class="screen active" role="tabpanel" aria-label="Dashboard"></section>
+
+    <!-- Orders screen -->
+    <section id="screen-orders" class="screen" role="tabpanel" aria-label="Siparisler"></section>
+
+    <!-- Limits screen -->
+    <section id="screen-limits" class="screen" role="tabpanel" aria-label="Limitler"></section>
+
+    <!-- Analysis screen -->
+    <section id="screen-analysis" class="screen" role="tabpanel" aria-label="Analiz"></section>
+
+    <!-- Settings screen -->
+    <section id="screen-settings" class="screen" role="tabpanel" aria-label="Ayarlar"></section>
+
+    <!-- Customer detail screen -->
+    <section id="screen-customer" class="screen" role="tabpanel" aria-label="Cari Detay"></section>
+
+    <!-- Country detail screen -->
+    <section id="screen-country" class="screen" role="tabpanel" aria-label="Ulke Detay"></section>
+
+    <!-- Product detail screen -->
+    <section id="screen-product" class="screen" role="tabpanel" aria-label="Urun Detay"></section>
+
+  </main>
+
+  <!-- Changelog modal -->
+  <div id="changelog-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Yenilikler">
+    <div class="modal-backdrop" id="changelog-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Yenilikler</h2>
+        <button class="modal-close" id="changelog-close" aria-label="Kapat">&#x2715;</button>
+      </div>
+      <div class="modal-body" id="changelog-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Footer -->
+  <footer class="app-footer" role="contentinfo">
+    <button class="footer-version-badge" id="footer-version-badge" aria-label="Yenilikleri goster">v1.0.0</button>
+    <span class="footer-last-update" id="footer-last-update"></span>
+  </footer>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- XLSX (import/export) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <!-- App core -->
+  <script src="utils.js"></script>
+  <script src="db.js"></script>
+  <script src="calc-engine.js"></script>
+  <script src="import-engine.js"></script>
+  <script src="export-engine.js"></script>
+  <script src="data-products.js"></script>
+  <script src="data-customers.js"></script>
+  <script src="data-targets.js"></script>
+
+  <!-- Screen scripts -->
+  <script src="screen-dashboard.js"></script>
+  <script src="screen-orders.js"></script>
+  <script src="screen-limits.js"></script>
+  <script src="screen-analysis.js"></script>
+  <script src="screen-settings.js"></script>
+  <script src="screen-customer.js"></script>
+  <script src="screen-country.js"></script>
+  <script src="screen-product.js"></script>
+
+  <!-- App bootstrap -->
+  <script src="app.js"></script>
+
+  <!-- Service worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function(err) {
+        console.warn('SW registration failed:', err);
+      });
+    }
+  </script>
+
+</body>
+</html>

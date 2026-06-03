@@ -1,0 +1,374 @@
+/* NSDATA - app.js */
+/* Bootstrap, navigation, clock, network status, toast, changelog */
+/* No business logic here — only app shell management */
+
+const APP_VERSION = 'v1.0.0';
+
+const CHANGELOG = {
+  'v1.0.0': {
+    date: 'Haziran 2026',
+    items: [
+      'Uygulama ilk surumu yayinlandi.',
+      'Dashboard, Siparisler, Limitler, Analiz ekranlari aktif.',
+      'Cari, Ulke ve Urun detay panelleri eklendi.',
+      'Supabase gercek zamanli veri senkronizasyonu.',
+      'Excel import ve export destegi.',
+      'PDF rapor alma ozelligi.',
+    ]
+  }
+};
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+const SCREENS = ['dashboard', 'orders', 'limits', 'analysis', 'settings', 'customer', 'country', 'product'];
+const DETAIL_SCREENS = ['customer', 'country', 'product'];
+
+let activeScreen = 'dashboard';
+
+function navigateTo(screenId, params) {
+  if (!SCREENS.includes(screenId)) return;
+
+  // Update URL state
+  const url = new URL(window.location.href);
+  url.searchParams.set('screen', screenId);
+  if (params) {
+    Object.keys(params).forEach(function(key) {
+      url.searchParams.set(key, params[key]);
+    });
+  } else {
+    // Clear detail params when navigating to main screens
+    url.searchParams.delete('id');
+  }
+  window.history.pushState({ screen: screenId, params: params || {} }, '', url.toString());
+
+  _activateScreen(screenId);
+}
+
+function _activateScreen(screenId) {
+  activeScreen = screenId;
+
+  // Update screen visibility
+  SCREENS.forEach(function(id) {
+    var el = document.getElementById('screen-' + id);
+    if (el) {
+      el.classList.toggle('active', id === screenId);
+    }
+  });
+
+  // Update nav buttons (only for main screens)
+  document.querySelectorAll('.nav-btn').forEach(function(btn) {
+    var target = btn.getAttribute('data-screen');
+    btn.classList.toggle('active', target === screenId);
+    btn.setAttribute('aria-selected', target === screenId ? 'true' : 'false');
+  });
+
+  // Notify screen module
+  var event = new CustomEvent('nsdata:screenActivated', { detail: { screen: screenId } });
+  document.dispatchEvent(event);
+}
+
+function initNavigation() {
+  document.querySelectorAll('.nav-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var target = btn.getAttribute('data-screen');
+      if (target) navigateTo(target);
+    });
+  });
+
+  // Browser back/forward
+  window.addEventListener('popstate', function(e) {
+    var screen = (e.state && e.state.screen) ? e.state.screen : 'dashboard';
+    _activateScreen(screen);
+  });
+
+  // Restore from URL on load
+  var urlParams = new URLSearchParams(window.location.search);
+  var screen = urlParams.get('screen');
+  if (screen && SCREENS.includes(screen)) {
+    _activateScreen(screen);
+  }
+}
+
+/* ============================================================
+   CLOCK
+   ============================================================ */
+function initClock() {
+  var clockEl = document.getElementById('nav-clock');
+  if (!clockEl) return;
+
+  function tick() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var s = String(now.getSeconds()).padStart(2, '0');
+    clockEl.textContent = h + ':' + m + ':' + s;
+  }
+
+  tick();
+  setInterval(tick, 1000);
+}
+
+/* ============================================================
+   NETWORK STATUS
+   ============================================================ */
+var _lastOnlineTime = null;
+
+function initNetworkStatus() {
+  var banner = document.getElementById('network-banner');
+  var bannerText = document.getElementById('network-banner-text');
+  if (!banner || !bannerText) return;
+
+  function updateBanner() {
+    if (navigator.onLine) {
+      _lastOnlineTime = new Date();
+      banner.classList.add('hidden');
+    } else {
+      var timeStr = _lastOnlineTime ? formatTime(_lastOnlineTime) : 'bilinmiyor';
+      bannerText.textContent = 'Internet baglantisi yok — son guncelleme: ' + timeStr;
+      banner.classList.remove('hidden');
+    }
+  }
+
+  window.addEventListener('online', updateBanner);
+  window.addEventListener('offline', updateBanner);
+  updateBanner();
+}
+
+/* ============================================================
+   DATA AGE DISPLAY
+   ============================================================ */
+function updateDataAge(timestamp) {
+  var el = document.getElementById('nav-data-age');
+  var footerEl = document.getElementById('footer-last-update');
+  if (!timestamp) return;
+
+  var now = new Date();
+  var then = new Date(timestamp);
+  var diffMs = now - then;
+  var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  var diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+  var label = '';
+  if (diffDays === 0) {
+    if (diffHours === 0) {
+      label = 'Az once guncellendi';
+    } else {
+      label = diffHours + ' saat once guncellendi';
+    }
+  } else if (diffDays === 1) {
+    label = 'Dun guncellendi';
+  } else {
+    label = diffDays + ' gun once guncellendi';
+  }
+
+  if (el) el.textContent = label;
+  if (footerEl) footerEl.textContent = 'Son guncelleme: ' + formatDateTime(then);
+}
+
+/* ============================================================
+   FILTER BANNER
+   ============================================================ */
+var _activeFilter = null;
+
+function showFilterBanner(label) {
+  var banner = document.getElementById('filter-banner');
+  var text = document.getElementById('filter-banner-text');
+  if (!banner || !text) return;
+  _activeFilter = label;
+  text.textContent = 'Filtre aktif: ' + label;
+  banner.classList.remove('hidden');
+}
+
+function hideFilterBanner() {
+  var banner = document.getElementById('filter-banner');
+  if (!banner) return;
+  _activeFilter = null;
+  banner.classList.add('hidden');
+  var event = new CustomEvent('nsdata:filterCleared');
+  document.dispatchEvent(event);
+}
+
+function initFilterBanner() {
+  var clearBtn = document.getElementById('filter-banner-clear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', hideFilterBanner);
+  }
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+var _toastTimer = null;
+
+function showToast(message, duration) {
+  duration = duration || 2500;
+  var toast = document.getElementById('toast');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.classList.remove('hidden');
+
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function() {
+    toast.classList.add('hidden');
+  }, duration);
+}
+
+/* ============================================================
+   CHANGELOG MODAL
+   ============================================================ */
+var CHANGELOG_SEEN_KEY = 'nsdata_changelog_seen_' + APP_VERSION;
+
+function initChangelog() {
+  var modal = document.getElementById('changelog-modal');
+  var closeBtn = document.getElementById('changelog-close');
+  var backdrop = document.getElementById('changelog-backdrop');
+  var badge = document.getElementById('footer-version-badge');
+  var navVersion = document.getElementById('nav-version');
+
+  if (navVersion) navVersion.textContent = APP_VERSION;
+  if (badge) badge.textContent = APP_VERSION;
+
+  // Populate changelog content
+  _renderChangelog();
+
+  // Open on badge click
+  if (badge) {
+    badge.addEventListener('click', function() {
+      openChangelog();
+    });
+  }
+
+  // Close handlers
+  if (closeBtn) closeBtn.addEventListener('click', closeChangelog);
+  if (backdrop) backdrop.addEventListener('click', closeChangelog);
+
+  // Keyboard close
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeChangelog();
+  });
+
+  // Auto-show on first visit for this version
+  var seen = localStorage.getItem(CHANGELOG_SEEN_KEY);
+  if (!seen) {
+    setTimeout(openChangelog, 800);
+  }
+}
+
+function _renderChangelog() {
+  var body = document.getElementById('changelog-body');
+  if (!body) return;
+
+  var html = '';
+  Object.keys(CHANGELOG).forEach(function(version) {
+    var entry = CHANGELOG[version];
+    html += '<div style="margin-bottom: 20px;">';
+    html += '<div style="font-weight: 700; font-size: 16px; color: #4F46E5; margin-bottom: 4px;">' + version + '</div>';
+    html += '<div style="font-size: 13px; color: #4A5068; margin-bottom: 10px;">' + entry.date + '</div>';
+    html += '<ul style="list-style: none; display: flex; flex-direction: column; gap: 6px;">';
+    entry.items.forEach(function(item) {
+      html += '<li style="display: flex; gap: 8px; align-items: flex-start;">';
+      html += '<span style="color: #16A34A; flex-shrink: 0; margin-top: 2px;">&#x2713;</span>';
+      html += '<span>' + item + '</span>';
+      html += '</li>';
+    });
+    html += '</ul></div>';
+  });
+
+  body.innerHTML = html;
+}
+
+function openChangelog() {
+  var modal = document.getElementById('changelog-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    localStorage.setItem(CHANGELOG_SEEN_KEY, '1');
+  }
+}
+
+function closeChangelog() {
+  var modal = document.getElementById('changelog-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/* ============================================================
+   FORMAT HELPERS (shared across screens)
+   ============================================================ */
+function formatEuro(value, compact) {
+  if (value === null || value === undefined || isNaN(value)) return '—';
+  var num = parseFloat(value);
+
+  if (compact) {
+    if (Math.abs(num) >= 1000000) {
+      return (num / 1000000).toFixed(1).replace('.', ',') + 'M \u20AC';
+    }
+    if (Math.abs(num) >= 1000) {
+      return (num / 1000).toFixed(0) + 'K \u20AC';
+    }
+  }
+
+  return num.toLocaleString('de-DE', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }) + ' \u20AC';
+}
+
+function formatQty(value) {
+  if (value === null || value === undefined || isNaN(value)) return '—';
+  return parseFloat(value).toLocaleString('de-DE', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+}
+
+function formatPercent(value) {
+  if (value === null || value === undefined || isNaN(value)) return '—';
+  return parseFloat(value).toFixed(1) + '%';
+}
+
+function formatTime(date) {
+  if (!date) return '';
+  var h = String(date.getHours()).padStart(2, '0');
+  var m = String(date.getMinutes()).padStart(2, '0');
+  return h + ':' + m;
+}
+
+function formatDateTime(date) {
+  if (!date) return '';
+  var days = ['Paz', 'Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt'];
+  var day = days[date.getDay()];
+  var d = String(date.getDate()).padStart(2, '0');
+  var mo = String(date.getMonth() + 1).padStart(2, '0');
+  var h = String(date.getHours()).padStart(2, '0');
+  var mi = String(date.getMinutes()).padStart(2, '0');
+  return day + ' ' + d + '.' + mo + ' ' + h + ':' + mi;
+}
+
+/* ============================================================
+   REALTIME EVENT BUS
+   ============================================================ */
+function emitDataChange(table, payload) {
+  var event = new CustomEvent('nsdata:dataChanged', {
+    detail: { table: table, payload: payload }
+  });
+  document.dispatchEvent(event);
+}
+
+/* ============================================================
+   BOOTSTRAP
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  // Supabase must init before anything else
+  dbInit();
+
+  initNavigation();
+  initClock();
+  initNetworkStatus();
+  initFilterBanner();
+  initChangelog();
+
+  // Init screen modules (each screen registers itself)
+  var event = new CustomEvent('nsdata:appReady');
+  document.dispatchEvent(event);
+});

@@ -1,0 +1,513 @@
+/* NSDATA - screen-orders.css */
+/* All classes prefixed with orders- */
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+
+#screen-orders {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+#screen-orders.active {
+  display: flex;
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+
+.orders-toolbar {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  position: sticky;
+  top: var(--nav-height);
+  z-index: 20;
+  box-shadow: var(--shadow-sm);
+}
+
+.orders-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.orders-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.orders-search-input {
+  padding-left: 36px;
+  min-height: var(--touch-min);
+  font-size: 15px;
+}
+
+.orders-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   IMPORT ZONE
+   ============================================================ */
+
+.orders-import-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--color-surface);
+}
+
+.orders-import-zone:hover,
+.orders-import-zone.drag-over {
+  border-color: var(--color-accent);
+  background: #EEF2FF;
+}
+
+.orders-import-zone-icon {
+  font-size: 40px;
+  margin-bottom: var(--space-3);
+  opacity: 0.4;
+}
+
+.orders-import-zone-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.orders-import-zone-sub {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.orders-import-file-input {
+  display: none;
+}
+
+/* ============================================================
+   IMPORT PREVIEW MODAL
+   ============================================================ */
+
+.orders-import-preview {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: none;
+}
+
+.orders-import-preview.visible {
+  display: block;
+}
+
+.orders-import-preview-header {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orders-import-preview-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.orders-import-summary {
+  padding: var(--space-4) var(--space-6);
+  background: #EEF2FF;
+  border-bottom: 1.5px solid var(--color-border);
+  font-size: 15px;
+  color: var(--color-text-primary);
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.orders-import-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orders-import-summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.orders-import-summary-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+
+.orders-import-detail-toggle {
+  padding: var(--space-3) var(--space-6);
+  font-size: 13px;
+  color: var(--color-accent);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.orders-import-detail-body {
+  display: none;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.orders-import-detail-body.visible {
+  display: block;
+}
+
+.orders-import-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.orders-import-detail-table th {
+  background: var(--color-surface-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.orders-import-detail-table td {
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.orders-import-actions {
+  padding: var(--space-4) var(--space-6);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  border-top: 1.5px solid var(--color-border);
+}
+
+/* ============================================================
+   ORDERS TABLE CARD
+   ============================================================ */
+
+.orders-table-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.orders-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  min-width: 900px;
+}
+
+.orders-table th {
+  position: sticky;
+  top: calc(var(--nav-height) + 72px);
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1.5px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+  z-index: 4;
+}
+
+.orders-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.orders-table tr:last-child td {
+  border-bottom: none;
+}
+
+.orders-table tr:hover td {
+  background: var(--color-surface-2);
+}
+
+.orders-table tr.orders-active-row td {
+  background: rgba(79,70,229,0.05);
+  border-left: 3px solid var(--color-accent);
+}
+
+.orders-table tr.orders-inactive-section td {
+  opacity: 0.45;
+  font-style: italic;
+}
+
+/* Customer group header row */
+.orders-group-header td {
+  background: var(--color-surface-2) !important;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1.5px solid var(--color-border);
+}
+
+/* ============================================================
+   INPUT CELLS
+   ============================================================ */
+
+.orders-input {
+  width: 110px;
+  min-height: var(--touch-min);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: right;
+  font-feature-settings: 'tnum' on;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.orders-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+
+/* Computed (read-only) field */
+.orders-computed {
+  width: 110px;
+  min-height: var(--touch-min);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: right;
+  font-feature-settings: 'tnum' on;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  cursor: default;
+}
+
+/* Note input */
+.orders-note-input {
+  width: 200px;
+  min-height: var(--touch-min);
+  font-size: 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast);
+  resize: none;
+}
+
+.orders-note-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+
+/* ============================================================
+   CUSTOMER NAME CELL
+   ============================================================ */
+
+.orders-customer-btn {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  padding: 0;
+  white-space: nowrap;
+}
+
+.orders-customer-btn:hover {
+  text-decoration: underline;
+}
+
+.orders-product-name {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   INACTIVE CUSTOMERS SECTION
+   ============================================================ */
+
+.orders-inactive-toggle {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface-2);
+  border-top: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  transition: background var(--transition-fast);
+}
+
+.orders-inactive-toggle:hover {
+  background: var(--color-border);
+}
+
+/* ============================================================
+   SAVED INDICATOR
+   ============================================================ */
+
+.orders-save-indicator {
+  position: fixed;
+  bottom: calc(var(--footer-height) + var(--space-3));
+  right: var(--space-6);
+  background: var(--color-positive);
+  color: #FFFFFF;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.orders-save-indicator.visible {
+  opacity: 1;
+}
+
+/* ============================================================
+   MOBILE — card view
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .orders-table-wrap {
+    display: none;
+  }
+
+  .orders-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .orders-mobile-card {
+    background: var(--color-surface);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .orders-mobile-card-header {
+    padding: var(--space-4) var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface-2);
+  }
+
+  .orders-mobile-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-accent);
+  }
+
+  .orders-mobile-card-body {
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .orders-mobile-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .orders-mobile-field-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .orders-input,
+  .orders-computed,
+  .orders-note-input {
+    width: 100%;
+  }
+}
+
+@media (min-width: 769px) {
+  .orders-card-list {
+    display: none;
+  }
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.orders-empty {
+  padding: var(--space-12);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
