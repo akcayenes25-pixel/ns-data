@@ -2,9 +2,20 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v1.1.0';
+const APP_VERSION = 'v1.2.0';
 
 const CHANGELOG = {
+  'v1.2.0': {
+    date: 'Haziran 2026',
+    items: [
+      'Siparişler ekranı — TradingView filtre bar, chip sistemi, kolon sort, kolon göster/gizle, grup collapse.',
+      'Limitler ekranı — filtre bar, ülke filtresi, sort, sub_market desteği.',
+      'Hedef sistemi yeniden tasarlandı — ürün × müşteri ve ürün × ülke bazlı hedefler.',
+      'Müşteri alt pazar (sub_market) desteği eklendi.',
+      'Ayarlar ekranında hedef sekmeleri: Müşteri Hedefleri / Ülke Hedefleri.',
+      'Müşteri ekleme formuna alt pazar alanı eklendi.',
+    ]
+  },
   'v1.1.0': {
     date: 'Haziran 2026',
     items: [

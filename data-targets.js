@@ -1,5 +1,5 @@
 /* NSDATA - data-targets.js */
-/* Target management — annual targets per customer, permanent storage */
+/* Target management — customer×product + country×product scope */
 
 var TargetManager = (function() {
   'use strict';
@@ -7,10 +7,8 @@ var TargetManager = (function() {
   var _targets = [];
   var _saveTimer = null;
 
-  var MONTHS_TR = [
-    'Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
-    'Temmuz','Ağustos','Eylül','Ekim','Kasim','Aralik'
-  ];
+  var MONTHS_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+                   'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 
   async function load() {
     _targets = await dbGetTargets();
@@ -18,8 +16,7 @@ var TargetManager = (function() {
   }
 
   async function upsert(target) {
-    if (!target.customer_id || !target.month || !target.year) return false;
-    var ok = await dbUpsertTarget(target);
+    var ok = await dbUpsertTargetByKey(target);
     if (ok) {
       _targets = await dbGetTargets();
       emitDataChange('targets', {});
@@ -29,154 +26,228 @@ var TargetManager = (function() {
 
   function getAll() { return _targets; }
 
-  function getForCustomer(customerId) {
-    return _targets.filter(function(t) { return t.customer_id === customerId; });
+  function getForCustomerProduct(customerId, productId, month, year) {
+    return _targets.find(function(t) {
+      return t.scope === 'customer' &&
+             t.customer_id === customerId &&
+             t.product_id  === productId &&
+             t.month === month && t.year === year;
+    }) || null;
   }
 
-  function getForMonth(month, year) {
-    return _targets.filter(function(t) { return t.month === month && t.year === year; });
+  function getForCountryProduct(country, productId, month, year) {
+    return _targets.find(function(t) {
+      return t.scope === 'country' &&
+             t.country === country &&
+             t.product_id === productId &&
+             t.month === month && t.year === year;
+    }) || null;
   }
 
-  // Build annual target grid HTML for a customer
-  function buildAnnualGridHTML(customerId, year) {
+  // Get all customer targets for a specific month/year, keyed by customer_id+product_id
+  function getCustomerTargetMap(month, year) {
+    var map = {};
+    _targets.filter(function(t) {
+      return t.scope === 'customer' && t.month === month && t.year === year;
+    }).forEach(function(t) {
+      var key = t.customer_id + '__' + t.product_id;
+      map[key] = t;
+    });
+    return map;
+  }
+
+  // Get all country targets for a specific month/year, keyed by country+product_id
+  function getCountryTargetMap(month, year) {
+    var map = {};
+    _targets.filter(function(t) {
+      return t.scope === 'country' && t.month === month && t.year === year;
+    }).forEach(function(t) {
+      var key = (t.country || '') + '__' + t.product_id;
+      map[key] = t;
+    });
+    return map;
+  }
+
+  /* ============================================================
+     SETTINGS UI — Müşteri × Ürün hedef grid
+     ============================================================ */
+  function buildCustomerGridHTML(customerId, year, products) {
+    if (!customerId || !products.length) return '<div style="color:#4A5068;padding:16px">Ürün bulunamadı.</div>';
+
     var yearTargets = _targets.filter(function(t) {
-      return t.customer_id === customerId && t.year === year;
+      return t.scope === 'customer' && t.customer_id === customerId && t.year === year;
     });
 
-    var rows = MONTHS_TR.map(function(monthName, idx) {
-      var month  = idx + 1;
-      var target = yearTargets.find(function(t) { return t.month === month; });
-      var targetEur = target ? (target.target_eur || '') : '';
-      var targetQty = target ? (target.target_qty || '') : '';
-      var targetId  = target ? target.id : '';
+    // Header: ay kolonları
+    var productCols = products.map(function(p) {
+      return '<th colspan="2" style="padding:8px 12px;text-align:center;font-size:12px;font-weight:700;color:#4A5068;border-left:2px solid #E2E5EF">' +
+        _esc(p.name) + '</th>';
+    }).join('');
 
-      return '<tr>' +
-        '<td style="font-weight:600;padding:10px 16px;white-space:nowrap">' + monthName + ' ' + year + '</td>' +
-        '<td style="padding:10px 16px">' +
-          '<input type="number" min="0" ' +
-            'class="target-eur-input" ' +
-            'data-customer-id="' + customerId + '" ' +
-            'data-month="' + month + '" ' +
-            'data-year="' + year + '" ' +
-            'data-target-id="' + targetId + '" ' +
-            'value="' + targetEur + '" ' +
-            'placeholder="EUR hedef" ' +
-            'style="width:140px;text-align:right;min-height:48px;font-size:15px;font-weight:700;' +
-            'border:1.5px solid #E2E5EF;border-radius:6px;padding:8px 12px" />' +
+    var subCols = products.map(function() {
+      return '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:600;color:#4A5068;border-left:2px solid #E2E5EF">Euro</th>' +
+             '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:600;color:#4A5068">Adet</th>';
+    }).join('');
+
+    var rows = MONTHS_TR.map(function(monthName, idx) {
+      var month = idx + 1;
+      var cells = products.map(function(p) {
+        var t = yearTargets.find(function(x) { return x.product_id === p.id && x.month === month; });
+        var eurVal = t ? (t.target_eur || '') : '';
+        var qtyVal = t ? (t.target_qty || '') : '';
+        var tid    = t ? t.id : '';
+        return '<td style="padding:4px 6px;border-left:2px solid #E2E5EF">' +
+          '<input type="number" min="0" class="tgt-eur" ' +
+            'data-scope="customer" data-customer-id="' + customerId + '" ' +
+            'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
+            'data-tid="' + tid + '" value="' + eurVal + '" placeholder="—" ' +
+            'style="width:90px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
         '</td>' +
-        '<td style="padding:10px 16px">' +
-          '<input type="number" min="0" ' +
-            'class="target-qty-input" ' +
-            'data-customer-id="' + customerId + '" ' +
-            'data-month="' + month + '" ' +
-            'data-year="' + year + '" ' +
-            'data-target-id="' + targetId + '" ' +
-            'value="' + targetQty + '" ' +
-            'placeholder="Adet hedef" ' +
-            'style="width:130px;text-align:right;min-height:48px;font-size:15px;font-weight:700;' +
-            'border:1.5px solid #E2E5EF;border-radius:6px;padding:8px 12px" />' +
-        '</td>' +
+        '<td style="padding:4px 6px">' +
+          '<input type="number" min="0" class="tgt-qty" ' +
+            'data-scope="customer" data-customer-id="' + customerId + '" ' +
+            'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
+            'data-tid="' + tid + '" value="' + qtyVal + '" placeholder="—" ' +
+            'style="width:80px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
+        '</td>';
+      }).join('');
+
+      return '<tr style="border-bottom:1px solid #E2E5EF">' +
+        '<td style="padding:6px 12px;font-weight:600;font-size:14px;white-space:nowrap;min-width:100px">' + monthName + ' ' + year + '</td>' +
+        cells +
       '</tr>';
     }).join('');
 
-    return '<table style="width:100%;border-collapse:collapse;font-size:15px">' +
-      '<thead><tr style="background:#F1F3F9">' +
-        '<th style="padding:10px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Ay</th>' +
-        '<th style="padding:10px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Euro Hedef</th>' +
-        '<th style="padding:10px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">Adet Hedef</th>' +
-      '</tr></thead>' +
-      '<tbody>' + rows + '</tbody>' +
-    '</table>';
+    return '<div style="overflow-x:auto">' +
+      '<table style="border-collapse:collapse;font-size:14px;min-width:100%">' +
+        '<thead>' +
+          '<tr style="background:#F1F3F9"><th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">AY</th>' + productCols + '</tr>' +
+          '<tr style="background:#F8F9FC"><th></th>' + subCols + '</tr>' +
+        '</thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>';
+  }
+
+  /* ============================================================
+     SETTINGS UI — Ülke × Ürün hedef grid
+     ============================================================ */
+  function buildCountryGridHTML(country, year, products) {
+    if (!country || !products.length) return '';
+
+    var yearTargets = _targets.filter(function(t) {
+      return t.scope === 'country' && t.country === country && t.year === year;
+    });
+
+    var productCols = products.map(function(p) {
+      return '<th colspan="2" style="padding:8px 12px;text-align:center;font-size:12px;font-weight:700;color:#4A5068;border-left:2px solid #E2E5EF">' +
+        _esc(p.name) + '</th>';
+    }).join('');
+
+    var subCols = products.map(function() {
+      return '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:600;color:#4A5068;border-left:2px solid #E2E5EF">Euro</th>' +
+             '<th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:600;color:#4A5068">Adet</th>';
+    }).join('');
+
+    var rows = MONTHS_TR.map(function(monthName, idx) {
+      var month = idx + 1;
+      var cells = products.map(function(p) {
+        var t = yearTargets.find(function(x) { return x.product_id === p.id && x.month === month; });
+        var eurVal = t ? (t.target_eur || '') : '';
+        var qtyVal = t ? (t.target_qty || '') : '';
+        var tid    = t ? t.id : '';
+        return '<td style="padding:4px 6px;border-left:2px solid #E2E5EF">' +
+          '<input type="number" min="0" class="tgt-eur" ' +
+            'data-scope="country" data-country="' + _esc(country) + '" ' +
+            'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
+            'data-tid="' + tid + '" value="' + eurVal + '" placeholder="—" ' +
+            'style="width:90px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
+        '</td>' +
+        '<td style="padding:4px 6px">' +
+          '<input type="number" min="0" class="tgt-qty" ' +
+            'data-scope="country" data-country="' + _esc(country) + '" ' +
+            'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
+            'data-tid="' + tid + '" value="' + qtyVal + '" placeholder="—" ' +
+            'style="width:80px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
+            'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
+        '</td>';
+      }).join('');
+
+      return '<tr style="border-bottom:1px solid #E2E5EF">' +
+        '<td style="padding:6px 12px;font-weight:600;font-size:14px;white-space:nowrap;min-width:100px">' + monthName + ' ' + year + '</td>' +
+        cells +
+      '</tr>';
+    }).join('');
+
+    return '<div style="overflow-x:auto">' +
+      '<table style="border-collapse:collapse;font-size:14px;min-width:100%">' +
+        '<thead>' +
+          '<tr style="background:#F1F3F9"><th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">AY</th>' + productCols + '</tr>' +
+          '<tr style="background:#F8F9FC"><th></th>' + subCols + '</tr>' +
+        '</thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>';
   }
 
   function bindGridEvents(container) {
     if (!container) return;
 
-    function _saveRow(input) {
-      var customerId = input.getAttribute('data-customer-id');
-      var month      = parseInt(input.getAttribute('data-month'));
-      var year       = parseInt(input.getAttribute('data-year'));
-      var targetId   = input.getAttribute('data-target-id');
+    function _saveInput(input) {
+      var scope = input.getAttribute('data-scope');
+      var productId = input.getAttribute('data-product-id');
+      var month = parseInt(input.getAttribute('data-month'));
+      var year  = parseInt(input.getAttribute('data-year'));
+      var tid   = input.getAttribute('data-tid');
 
       var row = input.closest('tr');
       if (!row) return;
-
-      var eurInput = row.querySelector('.target-eur-input');
-      var qtyInput = row.querySelector('.target-qty-input');
+      var eurInput = row.querySelector('.tgt-eur[data-product-id="' + productId + '"]');
+      var qtyInput = row.querySelector('.tgt-qty[data-product-id="' + productId + '"]');
 
       var payload = {
-        customer_id: customerId,
-        month:       month,
-        year:        year,
-        target_eur:  eurInput ? (parseNum(eurInput.value) || null) : null,
-        target_qty:  qtyInput ? (parseNum(qtyInput.value) || null) : null
+        scope: scope,
+        product_id: productId,
+        month: month,
+        year:  year,
+        target_eur: eurInput ? (parseNum(eurInput.value) || null) : null,
+        target_qty: qtyInput ? (parseNum(qtyInput.value) || null) : null
       };
-      if (targetId) payload.id = targetId;
+      if (tid) payload.id = tid;
+
+      if (scope === 'customer') {
+        payload.customer_id = input.getAttribute('data-customer-id');
+      } else {
+        payload.country = input.getAttribute('data-country');
+      }
 
       upsert(payload).then(function(ok) {
         if (ok) showToast('Hedef kaydedildi');
       });
     }
 
-    container.querySelectorAll('.target-eur-input, .target-qty-input').forEach(function(input) {
-      input.addEventListener('input', function() {
+    container.querySelectorAll('.tgt-eur, .tgt-qty').forEach(function(input) {
+      input.addEventListener('change', function() {
         if (_saveTimer) clearTimeout(_saveTimer);
-        _saveTimer = setTimeout(function() { _saveRow(input); }, 800);
+        _saveTimer = setTimeout(function() { _saveInput(input); }, 600);
       });
     });
   }
 
-  // Paste handler — detects pasted tabular data and maps to targets
-  function handlePaste(pasteText, customerId, year) {
-    if (!pasteText || !customerId) return [];
-
-    var lines = pasteText.trim().split('\n');
-    var results = [];
-
-    lines.forEach(function(line, idx) {
-      var parts = line.split('\t').map(function(p) { return p.trim(); });
-      if (parts.length < 1) return;
-
-      var month = idx + 1;
-      if (month > 12) return;
-
-      var eurVal = parseNum(parts[0]);
-      var qtyVal = parts[1] !== undefined ? parseNum(parts[1]) : null;
-
-      if (eurVal !== null) {
-        results.push({
-          customer_id: customerId,
-          month:       month,
-          year:        year,
-          target_eur:  eurVal,
-          target_qty:  qtyVal
-        });
-      }
-    });
-
-    return results;
-  }
-
-  async function applyPastedTargets(rows) {
-    var saved = 0;
-    for (var i = 0; i < rows.length; i++) {
-      var ok = await upsert(rows[i]);
-      if (ok) saved++;
-    }
-    if (saved > 0) showToast(saved + ' hedef kaydedildi');
-    return saved;
+  function _esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   return {
-    load: load,
-    upsert: upsert,
-    getAll: getAll,
-    getForCustomer: getForCustomer,
-    getForMonth: getForMonth,
-    buildAnnualGridHTML: buildAnnualGridHTML,
-    bindGridEvents: bindGridEvents,
-    handlePaste: handlePaste,
-    applyPastedTargets: applyPastedTargets,
-    MONTHS_TR: MONTHS_TR
+    load, upsert, getAll,
+    getForCustomerProduct, getForCountryProduct,
+    getCustomerTargetMap, getCountryTargetMap,
+    buildCustomerGridHTML, buildCountryGridHTML,
+    bindGridEvents,
+    MONTHS_TR
   };
 })();

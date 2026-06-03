@@ -1,16 +1,10 @@
 /* NSDATA - db.js */
-/* All Supabase read/write operations live here */
-/* No screen logic, no DOM — pure data layer */
+/* All Supabase read/write operations */
 
 var SUPABASE_URL = 'https://eiltpqvtdojsmjfukkah.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbHRwcXZ0ZG9qc21qZnVra2FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTExMjksImV4cCI6MjA5NjAyNzEyOX0.wHzHUvmGck6bB8PkueCTKd22dB6xb4KdWRO-PDwYS_Y';
 
 var _client = null;
-var _realtimeChannel = null;
-
-/* ============================================================
-   INIT
-   ============================================================ */
 
 function dbInit() {
   try {
@@ -21,36 +15,22 @@ function dbInit() {
   }
 }
 
-/* ============================================================
-   REALTIME
-   ============================================================ */
-
 function dbInitRealtime() {
   if (!_client) return;
-
-  var tables = ['orders', 'limits', 'incoming_payments', 'products', 'customers', 'targets', 'production_calendar'];
-
-  _realtimeChannel = _client
-    .channel('nsdata-realtime')
+  _client.channel('nsdata-realtime')
     .on('postgres_changes', { event: '*', schema: 'public' }, function(payload) {
       emitDataChange(payload.table, payload);
     })
     .subscribe();
 }
 
-/* ============================================================
-   PRODUCTS
-   ============================================================ */
-
+/* PRODUCTS */
 async function dbGetProducts() {
   try {
     var res = await _client.from('products').select('*').order('name');
     if (res.error) throw res.error;
     return res.data || [];
-  } catch (err) {
-    console.error('dbGetProducts:', err);
-    return [];
-  }
+  } catch (err) { console.error('dbGetProducts:', err); return []; }
 }
 
 async function dbUpsertProduct(product) {
@@ -58,41 +38,25 @@ async function dbUpsertProduct(product) {
     var res = await _client.from('products').upsert(product, { onConflict: 'id' });
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbUpsertProduct:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbUpsertProduct:', err); return false; }
 }
 
 async function dbUpdateProductPrice(productId, newPrice) {
   if (!productId || newPrice === null) return false;
-  var safePrice = Math.max(0.01, parseFloat(newPrice));
   try {
-    var res = await _client
-      .from('products')
-      .update({ avg_price_eur: safePrice })
-      .eq('id', productId);
+    var res = await _client.from('products').update({ avg_price_eur: Math.max(0.01, parseFloat(newPrice)) }).eq('id', productId);
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbUpdateProductPrice:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbUpdateProductPrice:', err); return false; }
 }
 
-/* ============================================================
-   CUSTOMERS
-   ============================================================ */
-
+/* CUSTOMERS */
 async function dbGetCustomers() {
   try {
     var res = await _client.from('customers').select('*').order('name');
     if (res.error) throw res.error;
     return res.data || [];
-  } catch (err) {
-    console.error('dbGetCustomers:', err);
-    return [];
-  }
+  } catch (err) { console.error('dbGetCustomers:', err); return []; }
 }
 
 async function dbUpsertCustomer(customer) {
@@ -100,39 +64,24 @@ async function dbUpsertCustomer(customer) {
     var res = await _client.from('customers').upsert(customer, { onConflict: 'id' });
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbUpsertCustomer:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbUpsertCustomer:', err); return false; }
 }
 
 async function dbSetCustomerActive(customerId, active) {
   try {
-    var res = await _client
-      .from('customers')
-      .update({ active: active })
-      .eq('id', customerId);
+    var res = await _client.from('customers').update({ active: active }).eq('id', customerId);
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbSetCustomerActive:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbSetCustomerActive:', err); return false; }
 }
 
-/* ============================================================
-   TARGETS
-   ============================================================ */
-
+/* TARGETS */
 async function dbGetTargets() {
   try {
     var res = await _client.from('targets').select('*');
     if (res.error) throw res.error;
     return res.data || [];
-  } catch (err) {
-    console.error('dbGetTargets:', err);
-    return [];
-  }
+  } catch (err) { console.error('dbGetTargets:', err); return []; }
 }
 
 async function dbUpsertTarget(target) {
@@ -140,25 +89,38 @@ async function dbUpsertTarget(target) {
     var res = await _client.from('targets').upsert(target, { onConflict: 'id' });
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbUpsertTarget:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbUpsertTarget:', err); return false; }
 }
 
-/* ============================================================
-   ORDERS
-   ============================================================ */
+async function dbUpsertTargetByKey(target) {
+  // Upsert by scope+customer_id+product_id+month+year or scope+country+product_id+month+year
+  try {
+    // Find existing
+    var q = _client.from('targets').select('id').eq('scope', target.scope).eq('month', target.month).eq('year', target.year);
+    if (target.scope === 'customer') {
+      q = q.eq('customer_id', target.customer_id).eq('product_id', target.product_id);
+    } else {
+      q = q.eq('country', target.country).eq('product_id', target.product_id);
+    }
+    var existing = await q.maybeSingle();
+    if (existing.error) throw existing.error;
 
+    var payload = Object.assign({}, target);
+    if (existing.data) payload.id = existing.data.id;
+
+    var res = await _client.from('targets').upsert(payload, { onConflict: 'id' });
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbUpsertTargetByKey:', err); return false; }
+}
+
+/* ORDERS */
 async function dbGetOrders() {
   try {
     var res = await _client.from('orders').select('*');
     if (res.error) throw res.error;
     return res.data || [];
-  } catch (err) {
-    console.error('dbGetOrders:', err);
-    return [];
-  }
+  } catch (err) { console.error('dbGetOrders:', err); return []; }
 }
 
 async function dbUpsertOrder(order) {
@@ -168,82 +130,33 @@ async function dbUpsertOrder(order) {
     var res = await _client.from('orders').upsert(order, { onConflict: 'id' });
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbUpsertOrder:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbUpsertOrder:', err); return false; }
 }
 
-// Import: update only shipped_qty + euro, never touch planned_qty or notes
-async function dbImportOrder(customerId, productId, shippedQty, euroValue) {
+async function dbImportOrder(customerId, productId, shippedQty) {
   if (!customerId || !productId) return false;
   try {
-    // Check if row exists
-    var existing = await _client
-      .from('orders')
-      .select('id, planned_qty, note')
-      .eq('customer_id', customerId)
-      .eq('product_id', productId)
-      .maybeSingle();
-
+    var existing = await _client.from('orders').select('id, planned_qty, note').eq('customer_id', customerId).eq('product_id', productId).maybeSingle();
     if (existing.error) throw existing.error;
-
-    var payload = {
-      customer_id: customerId,
-      product_id: productId,
-      shipped_qty: shippedQty,
-      updated_at: new Date().toISOString(),
-      updated_by: 'import'
-    };
-
+    var ts = new Date().toISOString();
     if (existing.data) {
-      // Update only shipped fields, preserve manual fields
-      var res = await _client
-        .from('orders')
-        .update({ shipped_qty: shippedQty, updated_at: payload.updated_at, updated_by: 'import' })
-        .eq('id', existing.data.id);
+      var res = await _client.from('orders').update({ shipped_qty: shippedQty, updated_at: ts, updated_by: 'import' }).eq('id', existing.data.id);
       if (res.error) throw res.error;
     } else {
-      // Insert new row
-      var res = await _client.from('orders').insert(payload);
+      var res = await _client.from('orders').insert({ customer_id: customerId, product_id: productId, shipped_qty: shippedQty, updated_at: ts, updated_by: 'import' });
       if (res.error) throw res.error;
     }
-
     return true;
-  } catch (err) {
-    console.error('dbImportOrder:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbImportOrder:', err); return false; }
 }
 
-async function dbUpdateOrderPlanned(orderId, plannedQty, note) {
-  if (!orderId) return false;
-  var update = { updated_at: new Date().toISOString(), updated_by: 'user' };
-  if (plannedQty !== undefined) update.planned_qty = plannedQty;
-  if (note !== undefined) update.note = note;
-  try {
-    var res = await _client.from('orders').update(update).eq('id', orderId);
-    if (res.error) throw res.error;
-    return true;
-  } catch (err) {
-    console.error('dbUpdateOrderPlanned:', err);
-    return false;
-  }
-}
-
-/* ============================================================
-   LIMITS
-   ============================================================ */
-
+/* LIMITS */
 async function dbGetLimits() {
   try {
     var res = await _client.from('limits').select('*');
     if (res.error) throw res.error;
     return res.data || [];
-  } catch (err) {
-    console.error('dbGetLimits:', err);
-    return [];
-  }
+  } catch (err) { console.error('dbGetLimits:', err); return []; }
 }
 
 async function dbUpsertLimit(limit) {
@@ -252,25 +165,16 @@ async function dbUpsertLimit(limit) {
     var res = await _client.from('limits').upsert(limit, { onConflict: 'id' });
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbUpsertLimit:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbUpsertLimit:', err); return false; }
 }
 
-/* ============================================================
-   INCOMING PAYMENTS
-   ============================================================ */
-
+/* PAYMENTS */
 async function dbGetPayments() {
   try {
     var res = await _client.from('incoming_payments').select('*').order('payment_date');
     if (res.error) throw res.error;
     return res.data || [];
-  } catch (err) {
-    console.error('dbGetPayments:', err);
-    return [];
-  }
+  } catch (err) { console.error('dbGetPayments:', err); return []; }
 }
 
 async function dbUpsertPayment(payment) {
@@ -279,10 +183,7 @@ async function dbUpsertPayment(payment) {
     var res = await _client.from('incoming_payments').upsert(payment, { onConflict: 'id' });
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbUpsertPayment:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbUpsertPayment:', err); return false; }
 }
 
 async function dbDeletePayment(paymentId) {
@@ -291,121 +192,53 @@ async function dbDeletePayment(paymentId) {
     var res = await _client.from('incoming_payments').delete().eq('id', paymentId);
     if (res.error) throw res.error;
     return true;
-  } catch (err) {
-    console.error('dbDeletePayment:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbDeletePayment:', err); return false; }
 }
 
-/* ============================================================
-   PRODUCTION CALENDAR
-   ============================================================ */
-
-async function dbGetProductionCalendar() {
-  try {
-    var res = await _client.from('production_calendar').select('*');
-    if (res.error) throw res.error;
-    return res.data || [];
-  } catch (err) {
-    console.error('dbGetProductionCalendar:', err);
-    return [];
-  }
-}
-
-async function dbUpsertProductionEntry(entry) {
-  if (!entry.order_id) return false;
-  try {
-    var res = await _client.from('production_calendar').upsert(entry, { onConflict: 'id' });
-    if (res.error) throw res.error;
-    return true;
-  } catch (err) {
-    console.error('dbUpsertProductionEntry:', err);
-    return false;
-  }
-}
-
-/* ============================================================
-   PROFILES
-   ============================================================ */
-
+/* PROFILES */
 async function dbGetProfiles() {
   try {
     var res = await _client.from('profiles').select('*').order('name');
     if (res.error) throw res.error;
     return res.data || [];
-  } catch (err) {
-    console.error('dbGetProfiles:', err);
-    return [];
-  }
+  } catch (err) { console.error('dbGetProfiles:', err); return []; }
 }
 
 async function dbCreateProfile(name, region) {
   if (!name) return null;
-  var token = uid();
   try {
-    var res = await _client.from('profiles').insert({
-      name: name,
-      region: region || '',
-      link_token: token
-    }).select().single();
+    var res = await _client.from('profiles').insert({ name: name, region: region || '', link_token: uid() }).select().single();
     if (res.error) throw res.error;
     return res.data;
-  } catch (err) {
-    console.error('dbCreateProfile:', err);
-    return null;
-  }
+  } catch (err) { console.error('dbCreateProfile:', err); return null; }
 }
 
-/* ============================================================
-   SOFT RESET (keep customers + targets + products)
-   ============================================================ */
-
+/* RESETS */
 async function dbSoftReset() {
   try {
-    await _client.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await _client.from('limits').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await _client.from('incoming_payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await _client.from('production_calendar').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    var dummy = '00000000-0000-0000-0000-000000000000';
+    await _client.from('orders').delete().neq('id', dummy);
+    await _client.from('limits').delete().neq('id', dummy);
+    await _client.from('incoming_payments').delete().neq('id', dummy);
     return true;
-  } catch (err) {
-    console.error('dbSoftReset:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbSoftReset:', err); return false; }
 }
-
-/* ============================================================
-   HARD RESET (everything)
-   ============================================================ */
 
 async function dbHardReset() {
   try {
-    var tables = ['orders', 'limits', 'incoming_payments', 'production_calendar', 'targets', 'products', 'customers'];
+    var dummy = '00000000-0000-0000-0000-000000000000';
+    var tables = ['orders', 'limits', 'incoming_payments', 'targets', 'products', 'customers'];
     for (var i = 0; i < tables.length; i++) {
-      await _client.from(tables[i]).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await _client.from(tables[i]).delete().neq('id', dummy);
     }
     return true;
-  } catch (err) {
-    console.error('dbHardReset:', err);
-    return false;
-  }
+  } catch (err) { console.error('dbHardReset:', err); return false; }
 }
-
-/* ============================================================
-   LAST UPDATED TIMESTAMP
-   ============================================================ */
 
 async function dbGetLastUpdated() {
   try {
-    var res = await _client
-      .from('orders')
-      .select('updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    var res = await _client.from('orders').select('updated_at').order('updated_at', { ascending: false }).limit(1).maybeSingle();
     if (res.error) throw res.error;
     return res.data ? res.data.updated_at : null;
-  } catch (err) {
-    console.error('dbGetLastUpdated:', err);
-    return null;
-  }
+  } catch (err) { return null; }
 }

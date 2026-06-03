@@ -1,104 +1,103 @@
 /* NSDATA - screen-settings.js */
-/* Settings screen — targets, products, customers, month close, profiles */
-
 (function() {
   'use strict';
 
   var _state = {
-    customers: [],
-    products: [],
-    targets: [],
-    profiles: [],
+    customers: [], products: [], targets: [], profiles: [],
+    targetMode: 'customer',      // 'customer' | 'country'
     selectedCustomerId: null,
+    selectedCountry: null,
     selectedYear: new Date().getFullYear(),
-    confirmMode: null  // 'soft' | 'hard' | 'month'
+    confirmMode: null
   };
 
-  /* ============================================================
-     INIT
-     ============================================================ */
-
-  document.addEventListener('nsdata:appReady', function() {
-    _bindGlobalEvents();
-  });
+  document.addEventListener('nsdata:appReady', function() { _bindGlobalEvents(); });
 
   async function _loadAll() {
-    var results = await Promise.all([
-      dbGetCustomers(),
-      dbGetProducts(),
-      dbGetTargets(),
-      dbGetProfiles()
-    ]);
+    var results = await Promise.all([dbGetCustomers(), dbGetProducts(), dbGetTargets(), dbGetProfiles()]);
     _state.customers = results[0];
     _state.products  = results[1];
-    _state.targets   = results[2];
+    TargetManager.load();
     _state.profiles  = results[3];
 
     if (!_state.selectedCustomerId && _state.customers.length) {
-      _state.selectedCustomerId = _state.customers[0].id;
+      _state.selectedCustomerId = _state.customers.filter(function(c){ return c.active !== false; })[0]?.id || _state.customers[0].id;
     }
+    // Collect unique countries
+    var countries = [];
+    _state.customers.forEach(function(c) {
+      if (c.country && !countries.includes(c.country)) countries.push(c.country);
+    });
+    countries.sort();
+    _state.countries = countries;
+    if (!_state.selectedCountry && countries.length) _state.selectedCountry = countries[0];
   }
-
-  /* ============================================================
-     RENDER
-     ============================================================ */
 
   function _render() {
     var screen = document.getElementById('screen-settings');
     if (!screen) return;
-    screen.innerHTML = _buildHTML();
+    screen.innerHTML =
+      _buildTargetSection() +
+      _buildProductSection() +
+      _buildCustomerSection() +
+      _buildProfileSection() +
+      _buildMonthCloseSection() +
+      _buildResetSection();
     _bindScreenEvents();
-  }
-
-  function _buildHTML() {
-    return _buildTargetSection() +
-           _buildProductSection() +
-           _buildCustomerSection() +
-           _buildProfileSection() +
-           _buildMonthCloseSection() +
-           _buildResetSection();
   }
 
   /* ============================================================
      TARGET SECTION
      ============================================================ */
-
   function _buildTargetSection() {
-    var customerOptions = _state.customers.map(function(c) {
-      var sel = c.id === _state.selectedCustomerId ? 'selected' : '';
-      return '<option value="' + c.id + '" ' + sel + '>' + _esc(c.name) + '</option>';
-    }).join('');
-
     var years = [];
-    var currentYear = new Date().getFullYear();
-    for (var y = currentYear - 1; y <= currentYear + 2; y++) {
-      years.push('<option value="' + y + '" ' + (y === _state.selectedYear ? 'selected' : '') + '>' + y + '</option>');
+    var cy = new Date().getFullYear();
+    for (var y = cy - 1; y <= cy + 2; y++) {
+      years.push('<option value="' + y + '"' + (y === _state.selectedYear ? ' selected' : '') + '>' + y + '</option>');
     }
 
-    var gridHTML = '';
-    if (_state.selectedCustomerId) {
-      var filtered = _state.targets.filter(function(t) {
-        return t.customer_id === _state.selectedCustomerId;
-      });
-      gridHTML = TargetManager.buildAnnualGridHTML(_state.selectedCustomerId, _state.selectedYear);
+    // Mode tabs
+    var tabs =
+      '<div style="display:flex;gap:8px;margin-bottom:16px">' +
+        '<button class="btn ' + (_state.targetMode === 'customer' ? 'btn-primary' : 'btn-secondary') + '" id="tgt-mode-customer" style="font-size:14px;height:36px">Müşteri Hedefleri</button>' +
+        '<button class="btn ' + (_state.targetMode === 'country'  ? 'btn-primary' : 'btn-secondary') + '" id="tgt-mode-country"   style="font-size:14px;height:36px">Ülke Hedefleri</button>' +
+      '</div>';
+
+    var selector = '';
+    var grid = '';
+
+    if (_state.targetMode === 'customer') {
+      var activeCustomers = _state.customers.filter(function(c){ return c.active !== false; });
+      var custOpts = activeCustomers.map(function(c) {
+        return '<option value="' + c.id + '"' + (c.id === _state.selectedCustomerId ? ' selected' : '') + '>' +
+          _esc(CustomerManager.displayName(c)) + '</option>';
+      }).join('');
+      selector =
+        '<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">' +
+          '<select id="settings-customer-select" style="min-height:44px;font-size:15px;flex:1;min-width:200px">' + custOpts + '</select>' +
+          '<select id="settings-year-select" style="min-height:44px;font-size:15px;width:100px">' + years.join('') + '</select>' +
+        '</div>';
+      grid = _state.selectedCustomerId
+        ? TargetManager.buildCustomerGridHTML(_state.selectedCustomerId, _state.selectedYear, _state.products)
+        : '<div style="color:#4A5068;padding:16px">Müşteri seçin.</div>';
+    } else {
+      var countryOpts = (_state.countries || []).map(function(c) {
+        return '<option value="' + _esc(c) + '"' + (c === _state.selectedCountry ? ' selected' : '') + '>' + _esc(c) + '</option>';
+      }).join('');
+      selector =
+        '<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">' +
+          '<select id="settings-country-select" style="min-height:44px;font-size:15px;flex:1;min-width:200px">' + countryOpts + '</select>' +
+          '<select id="settings-year-select" style="min-height:44px;font-size:15px;width:100px">' + years.join('') + '</select>' +
+        '</div>';
+      grid = _state.selectedCountry
+        ? TargetManager.buildCountryGridHTML(_state.selectedCountry, _state.selectedYear, _state.products)
+        : '<div style="color:#4A5068;padding:16px">Ülke seçin.</div>';
     }
 
     return '<div class="settings-section">' +
-      '<div class="settings-section-header">' +
-        '<span class="settings-section-title">&#x1F3AF; Ayl&#x131;k Hedefler</span>' +
-      '</div>' +
-      '<div class="settings-section-body">' +
-        '<div class="settings-target-select">' +
-          '<select id="settings-customer-select" aria-label="M&#xFC;&#x15F;teri sec">' + customerOptions + '</select>' +
-          '<select id="settings-year-select" class="settings-year-select" aria-label="Yil sec">' + years.join('') + '</select>' +
-        '</div>' +
-        '<div class="settings-paste-hint">' +
-          '<span>&#x1F4CB;</span>' +
-          '&#x130;pucu: Excel\'den kopyaladig&#x131;n&#x131;z verileri (Euro, Adet sutunlar&#x131;) dogrudan tabloya yap&#x131;&#x15F;t&#x131;rabilirsiniz.' +
-        '</div>' +
-        '<div class="settings-target-grid" id="settings-target-grid">' +
-          gridHTML +
-        '</div>' +
+      '<div class="settings-section-header"><span class="settings-section-title">🎯 Aylık Hedefler</span></div>' +
+      '<div class="settings-section-body">' + tabs + selector +
+        '<div id="settings-target-grid">' + grid + '</div>' +
       '</div>' +
     '</div>';
   }
@@ -106,25 +105,21 @@
   /* ============================================================
      PRODUCT SECTION
      ============================================================ */
-
   function _buildProductSection() {
     var tableHTML = ProductManager.buildSettingsHTML(_state.products);
-
     return '<div class="settings-section">' +
       '<div class="settings-section-header">' +
-        '<span class="settings-section-title">&#x1F4E6; &#xDC;r&#xFC;nler ve Fiyatlar</span>' +
-        '<button class="btn btn-primary" id="settings-add-product-btn">+ &#xDC;r&#xFC;n Ekle</button>' +
+        '<span class="settings-section-title">📦 Ürünler ve Fiyatlar</span>' +
+        '<button class="btn btn-primary" id="settings-add-product-btn">+ Ürün Ekle</button>' +
       '</div>' +
-      '<div class="settings-section-body no-pad" id="settings-product-table">' +
-        tableHTML +
-      '</div>' +
+      '<div class="settings-section-body no-pad" id="settings-product-table">' + tableHTML + '</div>' +
       '<div class="settings-section-body" id="settings-add-product-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
-        '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">' +
-          '<input type="text" id="settings-new-product-name" placeholder="&#xDC;r&#xFC;n adi" style="flex:1;min-width:160px;min-height:48px;font-size:15px" />' +
-          '<input type="number" id="settings-new-product-price" placeholder="Fiyat (EUR)" min="0.01" step="0.01" style="width:140px;min-height:48px;font-size:15px;text-align:right" />' +
-          '<input type="number" id="settings-new-product-ratio" placeholder="Konteyner katsay&#x131;s&#x131;" min="0" style="width:180px;min-height:48px;font-size:15px;text-align:right" />' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+          '<input type="text" id="settings-new-product-name" placeholder="Ürün adı" style="flex:1;min-width:160px;min-height:44px;font-size:15px" />' +
+          '<input type="number" id="settings-new-product-price" placeholder="Fiyat (EUR)" min="0.01" step="0.01" style="width:140px;min-height:44px;font-size:15px;text-align:right" />' +
+          '<input type="number" id="settings-new-product-ratio" placeholder="Konteyner katsayısı" min="0" style="width:190px;min-height:44px;font-size:15px;text-align:right" />' +
           '<button class="btn btn-primary" id="settings-save-product-btn">Kaydet</button>' +
-          '<button class="btn btn-secondary" id="settings-cancel-product-btn">&#x130;ptal</button>' +
+          '<button class="btn btn-secondary" id="settings-cancel-product-btn">İptal</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -133,24 +128,21 @@
   /* ============================================================
      CUSTOMER SECTION
      ============================================================ */
-
   function _buildCustomerSection() {
     var tableHTML = CustomerManager.buildSettingsHTML(_state.customers);
-
     return '<div class="settings-section">' +
       '<div class="settings-section-header">' +
-        '<span class="settings-section-title">&#x1F465; M&#xFC;&#x15F;teriler</span>' +
-        '<button class="btn btn-primary" id="settings-add-customer-btn">+ M&#xFC;&#x15F;teri Ekle</button>' +
+        '<span class="settings-section-title">👥 Müşteriler</span>' +
+        '<button class="btn btn-primary" id="settings-add-customer-btn">+ Müşteri Ekle</button>' +
       '</div>' +
-      '<div class="settings-section-body no-pad" id="settings-customer-table">' +
-        tableHTML +
-      '</div>' +
+      '<div class="settings-section-body no-pad" id="settings-customer-table">' + tableHTML + '</div>' +
       '<div class="settings-section-body" id="settings-add-customer-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
-        '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">' +
-          '<input type="text" id="settings-new-customer-name" placeholder="M&#xFC;&#x15F;teri adi" style="flex:1;min-width:200px;min-height:48px;font-size:15px" />' +
-          '<input type="text" id="settings-new-customer-country" placeholder="&#xDC;lke" style="width:160px;min-height:48px;font-size:15px" />' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+          '<input type="text" id="settings-new-customer-name" placeholder="Müşteri adı" style="flex:1;min-width:200px;min-height:44px;font-size:15px" />' +
+          '<input type="text" id="settings-new-customer-country" placeholder="Ülke" style="width:150px;min-height:44px;font-size:15px" />' +
+          '<input type="text" id="settings-new-customer-submarket" placeholder="Alt pazar (opsiyonel)" style="width:190px;min-height:44px;font-size:15px" />' +
           '<button class="btn btn-primary" id="settings-save-customer-btn">Kaydet</button>' +
-          '<button class="btn btn-secondary" id="settings-cancel-customer-btn">&#x130;ptal</button>' +
+          '<button class="btn btn-secondary" id="settings-cancel-customer-btn">İptal</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -159,10 +151,9 @@
   /* ============================================================
      PROFILE SECTION
      ============================================================ */
-
   function _buildProfileSection() {
     var profileRows = _state.profiles.map(function(p) {
-      var link = window.location.origin + '/?profile=' + p.link_token;
+      var link = window.location.origin + window.location.pathname + '?profile=' + p.link_token;
       return '<div class="settings-profile-row">' +
         '<span class="settings-profile-name">' + _esc(p.name) + '</span>' +
         '<span class="settings-profile-link" title="Kopyalamak için tıklayın" data-link="' + link + '">' + link + '</span>' +
@@ -170,51 +161,45 @@
     }).join('');
 
     return '<div class="settings-section">' +
-      '<div class="settings-section-header">' +
-        '<span class="settings-section-title">&#x1F517; Profiller ve Linkler</span>' +
-      '</div>' +
+      '<div class="settings-section-header"><span class="settings-section-title">🔗 Profiller ve Linkler</span></div>' +
       '<div class="settings-section-body">' +
         '<div class="settings-profile-list">' +
-          (profileRows || '<div style="color:var(--color-text-secondary);font-size:14px">Henüz profil yok</div>') +
+          (profileRows || '<div style="color:#4A5068;font-size:14px">Henüz profil yok</div>') +
         '</div>' +
         '<div class="settings-add-profile-form">' +
-          '<input type="text" id="settings-new-profile-name" placeholder="Profil adi (ornek: Enes - Fas)" style="min-height:48px;font-size:15px" />' +
-          '<input type="text" id="settings-new-profile-region" placeholder="B&#xF6;lge (opsiyonel)" style="width:160px;min-height:48px;font-size:15px" />' +
-          '<button class="btn btn-primary" id="settings-add-profile-btn">Profil Olu&#x15F;tur</button>' +
+          '<input type="text" id="settings-new-profile-name" placeholder="Profil adı (örnek: Enes - Fas)" style="min-height:44px;font-size:15px" />' +
+          '<input type="text" id="settings-new-profile-region" placeholder="Bölge (opsiyonel)" style="width:180px;min-height:44px;font-size:15px" />' +
+          '<button class="btn btn-primary" id="settings-add-profile-btn">Profil Oluştur</button>' +
         '</div>' +
       '</div>' +
     '</div>';
   }
 
   /* ============================================================
-     MONTH CLOSE SECTION
+     MONTH CLOSE
      ============================================================ */
-
   function _buildMonthCloseSection() {
     var confirmHTML = '';
     if (_state.confirmMode === 'month') {
       confirmHTML = '<div class="settings-confirm-box visible">' +
-        '<div class="settings-confirm-text">Emin misiniz? Onay vermeden once verileri Excel olarak indirmenizi oneririz.</div>' +
+        '<div class="settings-confirm-text">Emin misiniz? Onay vermeden önce verileri Excel olarak indirmenizi öneririz.</div>' +
         '<div class="settings-confirm-actions">' +
-          '<button class="btn btn-danger" id="settings-month-close-final">Evet, Ay&#x131; Kapat ve Temizle</button>' +
-          '<button class="btn btn-secondary" id="settings-month-close-cancel">&#x130;ptal</button>' +
+          '<button class="btn btn-danger" id="settings-month-close-final">Evet, Ayı Kapat ve Temizle</button>' +
+          '<button class="btn btn-secondary" id="settings-month-close-cancel">İptal</button>' +
         '</div>' +
       '</div>';
     }
-
     return '<div class="settings-section">' +
-      '<div class="settings-section-header">' +
-        '<span class="settings-section-title" style="color:var(--color-negative)">&#x1F4C5; Ay Kapatma</span>' +
-      '</div>' +
+      '<div class="settings-section-header"><span class="settings-section-title" style="color:var(--color-negative)">📅 Ay Kapatma</span></div>' +
       '<div class="settings-section-body">' +
         '<div class="settings-month-close-card">' +
           '<div class="settings-month-close-text">' +
-            '<div class="settings-month-close-title">Ay&#x131; Kapat</div>' +
-            '<div class="settings-month-close-desc">Sipari&#x15F;ler, limitler ve odemeler silinir. M&#xFC;&#x15F;teriler, &#xFC;r&#xFC;nler ve hedefler korunur.</div>' +
+            '<div class="settings-month-close-title">Ayı Kapat</div>' +
+            '<div class="settings-month-close-desc">Siparişler, limitler ve ödemeler silinir. Müşteriler, ürünler ve hedefler korunur.</div>' +
           '</div>' +
-          '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">' +
-            '<button class="btn btn-secondary" id="settings-export-before-close">&#xD6;nce Excel\'e Indir</button>' +
-            '<button class="btn btn-danger" id="settings-month-close-btn">Ay&#x131; Kapat</button>' +
+          '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+            '<button class="btn btn-secondary" id="settings-export-before-close">Önce Excel\'e İndir</button>' +
+            '<button class="btn btn-danger" id="settings-month-close-btn">Ayı Kapat</button>' +
           '</div>' +
         '</div>' +
         confirmHTML +
@@ -225,40 +210,36 @@
   /* ============================================================
      RESET SECTION
      ============================================================ */
-
   function _buildResetSection() {
     var confirmHTML = '';
     if (_state.confirmMode === 'soft') {
       confirmHTML = '<div class="settings-confirm-box visible">' +
-        '<div class="settings-confirm-text">Sipari&#x15F;ler, limitler ve odemeler silinecek. M&#xFC;&#x15F;teriler, &#xFC;r&#xFC;nler ve hedefler korunacak. Emin misiniz?</div>' +
+        '<div class="settings-confirm-text">Siparişler, limitler ve ödemeler silinecek. Müşteriler, ürünler ve hedefler korunacak. Emin misiniz?</div>' +
         '<div class="settings-confirm-actions">' +
           '<button class="btn btn-danger" id="settings-soft-reset-final">Evet, Sil</button>' +
-          '<button class="btn btn-secondary" id="settings-soft-reset-cancel">&#x130;ptal</button>' +
+          '<button class="btn btn-secondary" id="settings-soft-reset-cancel">İptal</button>' +
         '</div>' +
       '</div>';
     }
     if (_state.confirmMode === 'hard') {
       confirmHTML = '<div class="settings-confirm-box visible">' +
-        '<div class="settings-confirm-text">TUM VERILER silinecek. Bu islem geri alinamaz. Emin misiniz?</div>' +
+        '<div class="settings-confirm-text">TÜM VERİLER silinecek. Bu işlem geri alınamaz. Emin misiniz?</div>' +
         '<div class="settings-confirm-actions">' +
-          '<button class="btn btn-danger" id="settings-hard-reset-final">Evet, Her &#x15F;eyi sil</button>' +
-          '<button class="btn btn-secondary" id="settings-hard-reset-cancel">&#x130;ptal</button>' +
+          '<button class="btn btn-danger" id="settings-hard-reset-final">Evet, Her Şeyi Sil</button>' +
+          '<button class="btn btn-secondary" id="settings-hard-reset-cancel">İptal</button>' +
         '</div>' +
       '</div>';
     }
-
     return '<div class="settings-section">' +
-      '<div class="settings-section-header">' +
-        '<span class="settings-section-title" style="color:var(--color-negative)">&#x26A0; Sifirla</span>' +
-      '</div>' +
-      '<div class="settings-section-body" style="display:flex;flex-direction:column;gap:var(--space-4)">' +
+      '<div class="settings-section-header"><span class="settings-section-title" style="color:var(--color-negative)">⚠ Sıfırla</span></div>' +
+      '<div class="settings-section-body" style="display:flex;flex-direction:column;gap:16px">' +
         '<div class="settings-reset-row">' +
-          '<div class="settings-reset-desc">Siparis, limit ve odeme verilerini sil. M&#xFC;&#x15F;teri, &#xFC;r&#xFC;n ve hedefler kalsin.</div>' +
-          '<button class="btn btn-danger" id="settings-soft-reset-btn">Verileri S&#x131;f&#x131;rla</button>' +
+          '<div class="settings-reset-desc">Sipariş, limit ve ödeme verilerini sil. Müşteri, ürün ve hedefler kalsın.</div>' +
+          '<button class="btn btn-danger" id="settings-soft-reset-btn">Verileri Sıfırla</button>' +
         '</div>' +
         '<div class="settings-reset-row">' +
-          '<div class="settings-reset-desc">Her &#x15F;eyi sil — tamamen temiz baslangic.</div>' +
-          '<button class="btn btn-danger" id="settings-hard-reset-btn">Tamamen S&#x131;f&#x131;rla</button>' +
+          '<div class="settings-reset-desc">Her şeyi sil — tamamen temiz başlangıç.</div>' +
+          '<button class="btn btn-danger" id="settings-hard-reset-btn">Tamamen Sıfırla</button>' +
         '</div>' +
         confirmHTML +
       '</div>' +
@@ -266,261 +247,158 @@
   }
 
   /* ============================================================
-     BIND SCREEN EVENTS
+     BIND EVENTS
      ============================================================ */
-
   function _bindScreenEvents() {
-    // Target customer/year selector
-    var custSelect = document.getElementById('settings-customer-select');
-    var yearSelect = document.getElementById('settings-year-select');
+    // Target mode tabs
+    var modeCust = document.getElementById('tgt-mode-customer');
+    var modeCtry = document.getElementById('tgt-mode-country');
+    if (modeCust) modeCust.addEventListener('click', function() { _state.targetMode = 'customer'; _render(); });
+    if (modeCtry) modeCtry.addEventListener('click', function() { _state.targetMode = 'country';  _render(); });
 
-    if (custSelect) {
-      custSelect.addEventListener('change', function() {
-        _state.selectedCustomerId = custSelect.value;
-        var grid = document.getElementById('settings-target-grid');
-        if (grid) grid.innerHTML = TargetManager.buildAnnualGridHTML(_state.selectedCustomerId, _state.selectedYear);
-        TargetManager.bindGridEvents(grid);
-      });
-    }
+    // Customer selector
+    var custSel = document.getElementById('settings-customer-select');
+    var yearSel = document.getElementById('settings-year-select');
+    var ctrySel = document.getElementById('settings-country-select');
 
-    if (yearSelect) {
-      yearSelect.addEventListener('change', function() {
-        _state.selectedYear = parseInt(yearSelect.value);
-        var grid = document.getElementById('settings-target-grid');
-        if (grid) grid.innerHTML = TargetManager.buildAnnualGridHTML(_state.selectedCustomerId, _state.selectedYear);
-        TargetManager.bindGridEvents(grid);
-      });
-    }
+    if (custSel) custSel.addEventListener('change', function() {
+      _state.selectedCustomerId = custSel.value;
+      _refreshGrid();
+    });
+    if (ctrySel) ctrySel.addEventListener('change', function() {
+      _state.selectedCountry = ctrySel.value;
+      _refreshGrid();
+    });
+    if (yearSel) yearSel.addEventListener('change', function() {
+      _state.selectedYear = parseInt(yearSel.value);
+      _refreshGrid();
+    });
 
-    // Target grid events
-    var targetGrid = document.getElementById('settings-target-grid');
-    if (targetGrid) TargetManager.bindGridEvents(targetGrid);
+    // Bind target grid
+    var grid = document.getElementById('settings-target-grid');
+    if (grid) TargetManager.bindGridEvents(grid);
 
-    // Product table events
+    // Products
     var productTable = document.getElementById('settings-product-table');
     if (productTable) ProductManager.bindSettingsEvents(productTable);
 
-    // Customer table events
     var customerTable = document.getElementById('settings-customer-table');
     if (customerTable) CustomerManager.bindSettingsEvents(customerTable);
 
     // Add product
-    var addProductBtn    = document.getElementById('settings-add-product-btn');
-    var addProductForm   = document.getElementById('settings-add-product-form');
-    var saveProductBtn   = document.getElementById('settings-save-product-btn');
-    var cancelProductBtn = document.getElementById('settings-cancel-product-btn');
-
-    if (addProductBtn && addProductForm) {
-      addProductBtn.addEventListener('click', function() {
-        addProductForm.style.display = 'block';
-        var nameInput = document.getElementById('settings-new-product-name');
-        if (nameInput) nameInput.focus();
-      });
-    }
-
-    if (cancelProductBtn && addProductForm) {
-      cancelProductBtn.addEventListener('click', function() { addProductForm.style.display = 'none'; });
-    }
-
-    if (saveProductBtn) {
-      saveProductBtn.addEventListener('click', async function() {
-        var name  = (document.getElementById('settings-new-product-name')  || {}).value || '';
-        var price = parseNum((document.getElementById('settings-new-product-price') || {}).value);
-        var ratio = parseNum((document.getElementById('settings-new-product-ratio') || {}).value);
-
-        if (!name.trim()) { showToast('&#xDC;r&#xFC;n adi bos olamaz'); return; }
-        if (!price || price < 0.01) { showToast('Ge&#xE7;erli bir fiyat girin'); return; }
-
-        var ok = await ProductManager.upsert({ name: name.trim(), avg_price_eur: price, container_ratio: ratio, active: true });
-        if (ok) {
-          showToast('&#xDC;r&#xFC;n eklendi');
-          _state.products = ProductManager.getAll();
-          _render();
-        }
-      });
-    }
+    var addProdBtn  = document.getElementById('settings-add-product-btn');
+    var addProdForm = document.getElementById('settings-add-product-form');
+    if (addProdBtn) addProdBtn.addEventListener('click', function() {
+      addProdForm.style.display = 'block';
+      document.getElementById('settings-new-product-name').focus();
+    });
+    var cancelProd = document.getElementById('settings-cancel-product-btn');
+    if (cancelProd) cancelProd.addEventListener('click', function() { addProdForm.style.display = 'none'; });
+    var saveProd = document.getElementById('settings-save-product-btn');
+    if (saveProd) saveProd.addEventListener('click', async function() {
+      var name  = (document.getElementById('settings-new-product-name')  || {}).value || '';
+      var price = parseNum((document.getElementById('settings-new-product-price') || {}).value);
+      var ratio = parseNum((document.getElementById('settings-new-product-ratio') || {}).value);
+      if (!name.trim()) { showToast('Ürün adı boş olamaz'); return; }
+      if (!price || price < 0.01) { showToast('Geçerli bir fiyat girin'); return; }
+      var ok = await ProductManager.upsert({ name: name.trim(), avg_price_eur: price, container_ratio: ratio, active: true });
+      if (ok) { showToast('Ürün eklendi'); _state.products = ProductManager.getAll(); _render(); }
+    });
 
     // Add customer
-    var addCustomerBtn    = document.getElementById('settings-add-customer-btn');
-    var addCustomerForm   = document.getElementById('settings-add-customer-form');
-    var saveCustomerBtn   = document.getElementById('settings-save-customer-btn');
-    var cancelCustomerBtn = document.getElementById('settings-cancel-customer-btn');
+    var addCustBtn  = document.getElementById('settings-add-customer-btn');
+    var addCustForm = document.getElementById('settings-add-customer-form');
+    if (addCustBtn) addCustBtn.addEventListener('click', function() {
+      addCustForm.style.display = 'block';
+      document.getElementById('settings-new-customer-name').focus();
+    });
+    var cancelCust = document.getElementById('settings-cancel-customer-btn');
+    if (cancelCust) cancelCust.addEventListener('click', function() { addCustForm.style.display = 'none'; });
+    var saveCust = document.getElementById('settings-save-customer-btn');
+    if (saveCust) saveCust.addEventListener('click', async function() {
+      var name       = (document.getElementById('settings-new-customer-name')       || {}).value || '';
+      var country    = (document.getElementById('settings-new-customer-country')    || {}).value || '';
+      var submarket  = (document.getElementById('settings-new-customer-submarket')  || {}).value || '';
+      if (!name.trim()) { showToast('Müşteri adı boş olamaz'); return; }
+      var ok = await CustomerManager.upsert({ name: name.trim(), country: country.trim(), sub_market: submarket.trim() || null, active: true });
+      if (ok) { showToast('Müşteri eklendi'); _state.customers = CustomerManager.getAll(); _render(); }
+    });
 
-    if (addCustomerBtn && addCustomerForm) {
-      addCustomerBtn.addEventListener('click', function() {
-        addCustomerForm.style.display = 'block';
-        var nameInput = document.getElementById('settings-new-customer-name');
-        if (nameInput) nameInput.focus();
-      });
-    }
-
-    if (cancelCustomerBtn && addCustomerForm) {
-      cancelCustomerBtn.addEventListener('click', function() { addCustomerForm.style.display = 'none'; });
-    }
-
-    if (saveCustomerBtn) {
-      saveCustomerBtn.addEventListener('click', async function() {
-        var name    = (document.getElementById('settings-new-customer-name')    || {}).value || '';
-        var country = (document.getElementById('settings-new-customer-country') || {}).value || '';
-
-        if (!name.trim()) { showToast('M&#xFC;&#x15F;teri adi bos olamaz'); return; }
-
-        var ok = await CustomerManager.upsert({ name: name.trim(), country: country.trim(), active: true });
-        if (ok) {
-          showToast('M&#xFC;&#x15F;teri eklendi');
-          _state.customers = CustomerManager.getAll();
-          _render();
-        }
-      });
-    }
-
-    // Profile copy links
+    // Profile links copy
     document.querySelectorAll('.settings-profile-link').forEach(function(el) {
       el.addEventListener('click', function() {
         var link = el.getAttribute('data-link');
         if (link && navigator.clipboard) {
-          navigator.clipboard.writeText(link).then(function() { showToast('Link kopyaland&#x131;'); });
+          navigator.clipboard.writeText(link).then(function() { showToast('Link kopyalandı'); });
         }
       });
     });
 
     // Add profile
     var addProfileBtn = document.getElementById('settings-add-profile-btn');
-    if (addProfileBtn) {
-      addProfileBtn.addEventListener('click', async function() {
-        var name   = (document.getElementById('settings-new-profile-name')   || {}).value || '';
-        var region = (document.getElementById('settings-new-profile-region') || {}).value || '';
-        if (!name.trim()) { showToast('Profil ad&#x131; bo&#x15F; olamaz'); return; }
-        var profile = await dbCreateProfile(name.trim(), region.trim());
-        if (profile) {
-          showToast('Profil olu&#x15F;turuldu');
-          _state.profiles = await dbGetProfiles();
-          _render();
-        }
-      });
-    }
+    if (addProfileBtn) addProfileBtn.addEventListener('click', async function() {
+      var name   = (document.getElementById('settings-new-profile-name')   || {}).value || '';
+      var region = (document.getElementById('settings-new-profile-region') || {}).value || '';
+      if (!name.trim()) { showToast('Profil adı boş olamaz'); return; }
+      var profile = await dbCreateProfile(name.trim(), region.trim());
+      if (profile) { showToast('Profil oluşturuldu'); _state.profiles = await dbGetProfiles(); _render(); }
+    });
 
     // Month close
-    var exportBeforeClose = document.getElementById('settings-export-before-close');
-    var monthCloseBtn     = document.getElementById('settings-month-close-btn');
-    var monthCloseFinal   = document.getElementById('settings-month-close-final');
-    var monthCloseCancel  = document.getElementById('settings-month-close-cancel');
+    var expBtn = document.getElementById('settings-export-before-close');
+    if (expBtn) expBtn.addEventListener('click', async function() {
+      var orders = await dbGetOrders();
+      exportOrdersToExcel(orders, _state.products, _state.customers);
+    });
+    _bindConfirm('settings-month-close-btn', 'month');
+    _bindConfirm('settings-soft-reset-btn',  'soft');
+    _bindConfirm('settings-hard-reset-btn',  'hard');
 
-    if (exportBeforeClose) {
-      exportBeforeClose.addEventListener('click', async function() {
-        var orders    = await dbGetOrders();
-        var products  = _state.products;
-        var customers = _state.customers;
-        exportOrdersToExcel(orders, products, customers);
-      });
-    }
+    var monthFinal = document.getElementById('settings-month-close-final');
+    if (monthFinal) monthFinal.addEventListener('click', async function() {
+      if (await dbSoftReset()) { showToast('Ay kapatıldı.'); _state.confirmMode = null; emitDataChange('orders', {}); _render(); }
+    });
+    var softFinal = document.getElementById('settings-soft-reset-final');
+    if (softFinal) softFinal.addEventListener('click', async function() {
+      if (await dbSoftReset()) { showToast('Veriler sıfırlandı'); _state.confirmMode = null; emitDataChange('orders', {}); _render(); }
+    });
+    var hardFinal = document.getElementById('settings-hard-reset-final');
+    if (hardFinal) hardFinal.addEventListener('click', async function() {
+      if (await dbHardReset()) { showToast('Her şey sıfırlandı'); _state.confirmMode = null; emitDataChange('orders', {}); _render(); }
+    });
 
-    if (monthCloseBtn) {
-      monthCloseBtn.addEventListener('click', function() {
-        _state.confirmMode = 'month';
-        _render();
-      });
-    }
-
-    if (monthCloseFinal) {
-      monthCloseFinal.addEventListener('click', async function() {
-        var ok = await dbSoftReset();
-        if (ok) {
-          showToast('Ay kapat&#x131;ld&#x131;. Veriler temizlendi.');
-          _state.confirmMode = null;
-          emitDataChange('orders', {});
-          _render();
-        }
-      });
-    }
-
-    if (monthCloseCancel) {
-      monthCloseCancel.addEventListener('click', function() {
-        _state.confirmMode = null;
-        _render();
-      });
-    }
-
-    // Soft reset
-    var softResetBtn    = document.getElementById('settings-soft-reset-btn');
-    var softResetFinal  = document.getElementById('settings-soft-reset-final');
-    var softResetCancel = document.getElementById('settings-soft-reset-cancel');
-
-    if (softResetBtn) {
-      softResetBtn.addEventListener('click', function() {
-        _state.confirmMode = 'soft';
-        _render();
-      });
-    }
-
-    if (softResetFinal) {
-      softResetFinal.addEventListener('click', async function() {
-        var ok = await dbSoftReset();
-        if (ok) {
-          showToast('Veriler s&#x131;f&#x131;rland&#x131;');
-          _state.confirmMode = null;
-          emitDataChange('orders', {});
-          _render();
-        }
-      });
-    }
-
-    if (softResetCancel) {
-      softResetCancel.addEventListener('click', function() {
-        _state.confirmMode = null;
-        _render();
-      });
-    }
-
-    // Hard reset
-    var hardResetBtn    = document.getElementById('settings-hard-reset-btn');
-    var hardResetFinal  = document.getElementById('settings-hard-reset-final');
-    var hardResetCancel = document.getElementById('settings-hard-reset-cancel');
-
-    if (hardResetBtn) {
-      hardResetBtn.addEventListener('click', function() {
-        _state.confirmMode = 'hard';
-        _render();
-      });
-    }
-
-    if (hardResetFinal) {
-      hardResetFinal.addEventListener('click', async function() {
-        var ok = await dbHardReset();
-        if (ok) {
-          showToast('Her &#x15F;ey s&#x131;f&#x131;rland&#x131;');
-          _state.confirmMode = null;
-          emitDataChange('orders', {});
-          _render();
-        }
-      });
-    }
-
-    if (hardResetCancel) {
-      hardResetCancel.addEventListener('click', function() {
-        _state.confirmMode = null;
-        _render();
-      });
-    }
+    ['settings-month-close-cancel','settings-soft-reset-cancel','settings-hard-reset-cancel'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('click', function() { _state.confirmMode = null; _render(); });
+    });
   }
 
-  /* ============================================================
-     GLOBAL EVENTS
-     ============================================================ */
+  function _bindConfirm(btnId, mode) {
+    var btn = document.getElementById(btnId);
+    if (btn) btn.addEventListener('click', function() { _state.confirmMode = mode; _render(); });
+  }
+
+  function _refreshGrid() {
+    var grid = document.getElementById('settings-target-grid');
+    if (!grid) return;
+    var html = '';
+    if (_state.targetMode === 'customer' && _state.selectedCustomerId) {
+      html = TargetManager.buildCustomerGridHTML(_state.selectedCustomerId, _state.selectedYear, _state.products);
+    } else if (_state.targetMode === 'country' && _state.selectedCountry) {
+      html = TargetManager.buildCountryGridHTML(_state.selectedCountry, _state.selectedYear, _state.products);
+    }
+    grid.innerHTML = html;
+    TargetManager.bindGridEvents(grid);
+  }
 
   function _bindGlobalEvents() {
     document.addEventListener('nsdata:screenActivated', function(e) {
-      if (e.detail.screen === 'settings') {
-        _loadAll().then(_render);
-      }
+      if (e.detail.screen === 'settings') _loadAll().then(_render);
     });
-
     document.addEventListener('nsdata:dataChanged', function(e) {
-      var affected = ['products', 'customers', 'targets', 'profiles'];
-      if (affected.includes(e.detail.table)) {
-        if (document.getElementById('screen-settings').classList.contains('active')) {
-          _loadAll().then(_render);
-        }
+      var affected = ['products','customers','targets','profiles'];
+      if (affected.includes(e.detail.table) && document.getElementById('screen-settings').classList.contains('active')) {
+        _loadAll().then(_render);
       }
     });
   }
@@ -529,5 +407,4 @@
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-
 })();

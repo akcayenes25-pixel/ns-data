@@ -1,5 +1,5 @@
 /* NSDATA - data-customers.js */
-/* Customer definition management — add, edit, active/passive toggle */
+/* Customer management — sub_market desteği ile */
 
 var CustomerManager = (function() {
   'use strict';
@@ -34,21 +34,31 @@ var CustomerManager = (function() {
   }
 
   function getAll() { return _customers; }
+  function getActive() { return _customers.filter(function(c) { return c.active !== false; }); }
 
-  function getActive() {
-    return _customers.filter(function(c) { return c.active !== false; });
+  // Display name: "COMARBOIS — Fas" if sub_market exists
+  function displayName(customer) {
+    if (!customer) return '';
+    if (customer.sub_market) return customer.name + ' — ' + customer.sub_market;
+    return customer.name;
   }
 
   function buildSettingsHTML(customers) {
+    if (!customers.length) {
+      return '<div style="padding:24px;color:#4A5068;font-size:14px">Henüz müşteri yok.</div>';
+    }
+
     var rows = customers.map(function(c) {
+      var nameDisplay = _esc(displayName(c));
       return '<tr style="' + (c.active === false ? 'opacity:0.5' : '') + '">' +
-        '<td style="font-weight:600;padding:12px 16px">' + _esc(c.name) + '</td>' +
-        '<td style="padding:12px 16px;color:#4A5068">' + _esc(c.country || '—') + '</td>' +
-        '<td style="padding:12px 16px">' +
-          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:48px">' +
+        '<td style="font-weight:600;padding:10px 16px;font-size:15px">' + nameDisplay + '</td>' +
+        '<td style="padding:10px 16px;color:#4A5068;font-size:15px">' + _esc(c.country || '—') + '</td>' +
+        '<td style="padding:10px 16px;color:#4A5068;font-size:15px">' + _esc(c.sub_market || '—') + '</td>' +
+        '<td style="padding:10px 16px">' +
+          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px">' +
             '<input type="checkbox" class="customer-active-cb" data-customer-id="' + c.id + '" ' +
-              (c.active !== false ? 'checked' : '') + ' style="width:20px;height:20px" />' +
-            (c.active !== false ? 'Aktif' : 'Pasif') +
+              (c.active !== false ? 'checked' : '') + ' style="width:18px;height:18px" />' +
+            '<span style="font-size:14px">' + (c.active !== false ? 'Aktif' : 'Pasif') + '</span>' +
           '</label>' +
         '</td>' +
       '</tr>';
@@ -56,9 +66,10 @@ var CustomerManager = (function() {
 
     return '<table style="width:100%;border-collapse:collapse;font-size:15px">' +
       '<thead><tr style="background:#F1F3F9">' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">M&#xFC;&#x15F;teri</th>' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">&#xDC;lke</th>' +
-        '<th style="padding:12px 16px;text-align:left;font-size:12px;text-transform:uppercase;color:#4A5068">DURUM</th>' +
+        '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">MÜŞTERİ</th>' +
+        '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">ÜLKE</th>' +
+        '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">ALT PAZAR</th>' +
+        '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068;letter-spacing:0.4px">DURUM</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
@@ -68,8 +79,7 @@ var CustomerManager = (function() {
     if (!container) return;
     container.querySelectorAll('.customer-active-cb').forEach(function(cb) {
       cb.addEventListener('change', function() {
-        var id = cb.getAttribute('data-customer-id');
-        setActive(id, cb.checked);
+        setActive(cb.getAttribute('data-customer-id'), cb.checked);
       });
     });
   }
@@ -79,5 +89,5 @@ var CustomerManager = (function() {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  return { load: load, upsert: upsert, setActive: setActive, getAll: getAll, getActive: getActive, buildSettingsHTML: buildSettingsHTML, bindSettingsEvents: bindSettingsEvents };
+  return { load, upsert, setActive, getAll, getActive, displayName, buildSettingsHTML, bindSettingsEvents };
 })();

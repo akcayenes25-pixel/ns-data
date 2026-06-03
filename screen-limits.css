@@ -411,3 +411,40 @@
     font-size: 20px;
   }
 }
+
+/* ============================================================
+   FILTER BAR (v1.2.0)
+   ============================================================ */
+.limits-filterbar {
+  position: sticky;
+  top: var(--nav-height);
+  z-index: 30;
+  background: var(--color-surface);
+  border-bottom: 1.5px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+.limits-filterbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-height: 52px;
+}
+.limits-filterbar-inner::-webkit-scrollbar { display: none; }
+
+/* Sub-market badge on card */
+.limits-card-submarket {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-accent);
+  padding: 2px 8px;
+  background: #EEF2FF;
+  border-radius: 99px;
+}
+
+/* Grid spacing */
+.limits-grid {
+  padding: 16px;
+}
