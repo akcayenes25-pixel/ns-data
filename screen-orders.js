@@ -475,9 +475,24 @@
       var val = c.valK === 'cnt' ? m2.cnt : c.valK === 'qty' ? m2.qty : m2.eur;
 
       var singleOrder = leafOrders.length === 1 ? leafOrders[0] : null;
-      if (singleOrder && c.valK === 'cnt' && tarafNow) {
-        var fieldVal = tarafNow === 'cikan' ? singleOrder.cikan : singleOrder.cikacak;
-        cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" data-oid="' + singleOrder.id + '" data-field="' + tarafNow + '" value="' + (fieldVal || '') + '" placeholder="—"/></td>';
+      // Show input if: single order exists (any val), OR no orders (new entry possible)
+      // Input always edits the raw cikan/cikacak qty (Knt) — Euro/Adet are computed
+      var canInput = tarafNow && (singleOrder || leafOrders.length === 0);
+      if (canInput) {
+        var fieldVal = singleOrder ? (tarafNow === 'cikan' ? singleOrder.cikan : singleOrder.cikacak) : 0;
+        var displayVal = c.valK === 'cnt' ? fieldVal :
+                         c.valK === 'qty' ? (fieldVal * (singleOrder ? prd(singleOrder.urun).ratio : 0)) :
+                         (fieldVal * (singleOrder ? prd(singleOrder.urun).ratio * prd(singleOrder.urun).price : 0));
+        // For Knt: editable input; for Adet/Euro: show computed but still allow Knt edit via data attr
+        var inputVal = fieldVal || '';
+        var placeholder = c.valK === 'cnt' ? '—' : fmtVal(displayVal, c.valK) || '—';
+        var oidAttr = singleOrder ? ('data-oid="' + singleOrder.id + '"') : ('data-new-cust="' + (orders[0] ? orders[0].musteri : '') + '" data-new-urun="' + (orders[0] ? orders[0].urun : '') + '" data-new-ulke="' + (orders[0] ? orders[0].ulke : '') + '"');
+        if (c.valK === 'cnt') {
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" value="' + inputVal + '" placeholder="—"/></td>';
+        } else {
+          // Adet/Euro: show computed value as read-only span (Knt input handles the data)
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(displayVal, c.valK) + '</span></td>';
+        }
       } else {
         cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(val, c.valK) + '</span></td>';
       }
@@ -725,19 +740,35 @@
     });
     document.querySelectorAll('#screen-orders .o-ci').forEach(function (inp) {
       inp.addEventListener('change', function () {
-        var oid = inp.dataset.oid, field = inp.dataset.field;
+        var field = inp.dataset.field;
         var val = parseFloat(inp.value) || 0;
-        var order = _state.orders.find(function (o) { return o.id === oid; });
-        if (!order) return;
-        var payload = {
-          id: order._dbId,
-          customer_id: order._customerId,
-          product_id: order._productId,
-          shipped_qty: field === 'cikan' ? val : order.cikan,
-          planned_qty: field === 'cikacak' ? val : order.cikacak,
-          destination_country: order.ulke || null,
-          note: order.note || '',
-        };
+        var payload;
+
+        if (inp.dataset.oid) {
+          // Existing order
+          var order = _state.orders.find(function (o) { return o.id === inp.dataset.oid; });
+          if (!order) return;
+          payload = {
+            id: order._dbId,
+            customer_id: order._customerId,
+            product_id: order._productId,
+            shipped_qty: field === 'cikan' ? val : order.cikan,
+            planned_qty: field === 'cikacak' ? val : order.cikacak,
+            destination_country: order.ulke || null,
+            note: order.note || '',
+          };
+        } else if (inp.dataset.newCust && inp.dataset.newUrun) {
+          // New order — no existing record
+          payload = {
+            customer_id: inp.dataset.newCust,
+            product_id: inp.dataset.newUrun,
+            shipped_qty: field === 'cikan' ? val : 0,
+            planned_qty: field === 'cikacak' ? val : 0,
+            destination_country: inp.dataset.newUlke || null,
+            note: '',
+          };
+        } else { return; }
+
         if (_saveTimer) clearTimeout(_saveTimer);
         _saveTimer = setTimeout(function () {
           dbUpsertOrder(payload).then(function (ok) {
