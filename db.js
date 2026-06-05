@@ -186,6 +186,15 @@ async function dbUpsertPayment(payment) {
   } catch (err) { console.error('dbUpsertPayment:', err); return false; }
 }
 
+async function dbDeleteOrder(orderId) {
+  if (!orderId) return false;
+  try {
+    var res = await _client.from('orders').delete().eq('id', orderId);
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbDeleteOrder:', err); return false; }
+}
+
 async function dbDeletePayment(paymentId) {
   if (!paymentId) return false;
   try {
