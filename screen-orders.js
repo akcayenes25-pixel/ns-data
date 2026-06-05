@@ -129,14 +129,18 @@
 
   /* ============================================================ COMPUTE */
   function compute(orders, taraf) {
-    var cnt = 0, qty = 0, eur = 0;
+    var qty = 0, cnt = 0, eur = 0;
     orders.forEach(function (o) {
       var p = prd(o.urun);
       var ratio = p.ratio || 0, price = p.price || 0;
-      if (!taraf || taraf === 'cikan')   { cnt += o.cikan || 0; qty += (o.cikan || 0) * ratio; eur += (o.cikan || 0) * ratio * price; }
-      if (!taraf || taraf === 'cikacak') { cnt += o.cikacak || 0; qty += (o.cikacak || 0) * ratio; eur += (o.cikacak || 0) * ratio * price; }
+      var val = 0;
+      if (!taraf || taraf === 'cikan')   val += o.cikan || 0;
+      if (!taraf || taraf === 'cikacak') val += o.cikacak || 0;
+      qty += val;
+      cnt += ratio ? val / ratio : 0;
+      eur += val * price;
     });
-    return { cnt: cnt, qty: qty, eur: eur };
+    return { qty: Math.round(qty * 100) / 100, cnt: Math.round(cnt * 1000) / 1000, eur: Math.round(eur) };
   }
 
   /* ============================================================ FILTER */
@@ -475,23 +479,40 @@
       var val = c.valK === 'cnt' ? m2.cnt : c.valK === 'qty' ? m2.qty : m2.eur;
 
       var singleOrder = leafOrders.length === 1 ? leafOrders[0] : null;
-      // Show input if: single order exists (any val), OR no orders (new entry possible)
-      // Input always edits the raw cikan/cikacak qty (Knt) — Euro/Adet are computed
-      var canInput = tarafNow && (singleOrder || leafOrders.length === 0);
+      var noOrder = leafOrders.length === 0;
+      var canInput = tarafNow && (singleOrder || noOrder);
+
       if (canInput) {
-        var fieldVal = singleOrder ? (tarafNow === 'cikan' ? singleOrder.cikan : singleOrder.cikacak) : 0;
-        var displayVal = c.valK === 'cnt' ? fieldVal :
-                         c.valK === 'qty' ? (fieldVal * (singleOrder ? prd(singleOrder.urun).ratio : 0)) :
-                         (fieldVal * (singleOrder ? prd(singleOrder.urun).ratio * prd(singleOrder.urun).price : 0));
-        // For Knt: editable input; for Adet/Euro: show computed but still allow Knt edit via data attr
-        var inputVal = fieldVal || '';
-        var placeholder = c.valK === 'cnt' ? '—' : fmtVal(displayVal, c.valK) || '—';
-        var oidAttr = singleOrder ? ('data-oid="' + singleOrder.id + '"') : ('data-new-cust="' + (orders[0] ? orders[0].musteri : '') + '" data-new-urun="' + (orders[0] ? orders[0].urun : '') + '" data-new-ulke="' + (orders[0] ? orders[0].ulke : '') + '"');
-        if (c.valK === 'cnt') {
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" value="' + inputVal + '" placeholder="—"/></td>';
+        var rawQty = singleOrder ? (tarafNow === 'cikan' ? singleOrder.cikan : singleOrder.cikacak) : 0;
+        var urunId = singleOrder ? singleOrder.urun : '';
+        var ctxMusteri = '', ctxUrun = '', ctxUlke = '';
+        rowContext.forEach(function(rc) {
+          if (rc.dim === 'musteri') ctxMusteri = rc.val;
+          if (rc.dim === 'urun')    ctxUrun    = rc.val;
+          if (rc.dim === 'ulke')    ctxUlke    = rc.val;
+        });
+        if (!ctxUrun && c.leaf && c.leaf.keys) {
+          var urunKey = c.leaf.keys.find(function(k) { return k.dim === 'urun'; });
+          if (urunKey) ctxUrun = urunKey.val;
+        }
+        if (!urunId) urunId = ctxUrun;
+        var prod2 = prd(urunId);
+
+        var oidAttr;
+        if (singleOrder) {
+          oidAttr = 'data-oid="' + singleOrder.id + '" data-rk="' + tarafNow + '_' + singleOrder.id + '"';
         } else {
-          // Adet/Euro: show computed value as read-only span (Knt input handles the data)
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(displayVal, c.valK) + '</span></td>';
+          oidAttr = 'data-new-cust="' + ctxMusteri + '" data-new-urun="' + ctxUrun + '" data-new-ulke="' + ctxUlke + '"';
+        }
+
+        if (c.valK === 'cnt') {
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="qty" value="' + (rawQty || '') + '" placeholder="—"/></td>';
+        } else if (c.valK === 'qty') {
+          var adet = prod2.ratio ? Math.round(rawQty * prod2.ratio * 100) / 100 : rawQty;
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtN(adet) + '</span></td>';
+        } else if (c.valK === 'eur') {
+          var euroVal2 = Math.round(rawQty * prod2.price);
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="euro" value="' + (euroVal2 || '') + '" placeholder="—"/></td>';
         }
       } else {
         cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(val, c.valK) + '</span></td>';
@@ -740,30 +761,69 @@
     });
     document.querySelectorAll('#screen-orders .o-ci').forEach(function (inp) {
       inp.addEventListener('change', function () {
-        var field = inp.dataset.field;
-        var val = parseFloat(inp.value) || 0;
-        var payload;
+        var field  = inp.dataset.field;
+        var source = inp.dataset.source || 'qty';
+        var rawStr = inp.value;
+        if (rawStr === '' || rawStr === null) return; // boş → kaydetme
 
-        if (inp.dataset.oid) {
-          // Existing order
-          var order = _state.orders.find(function (o) { return o.id === inp.dataset.oid; });
+        var rawVal = parseFloat(rawStr);
+        if (isNaN(rawVal) || rawVal < 0) return;
+
+        // three-way: source → newQty (raw adet)
+        var newQty;
+        var prod = null;
+        var oid = inp.dataset.oid;
+        if (oid) {
+          var existOrder = _state.orders.find(function (o) { return o.id === oid; });
+          if (existOrder) prod = prd(existOrder.urun);
+        } else {
+          prod = prd(inp.dataset.newUrun || '');
+        }
+        var price = prod ? (prod.price || 0) : 0;
+        var ratio = prod ? (prod.ratio || 0) : 0;
+
+        if (source === 'qty') {
+          newQty = rawVal;
+        } else if (source === 'euro') {
+          newQty = price > 0 ? rawVal / price : 0;
+        } else if (source === 'container') {
+          newQty = ratio > 0 ? rawVal * ratio : 0;
+        } else {
+          newQty = rawVal;
+        }
+        newQty = Math.round(newQty * 100) / 100;
+
+        // Update sibling inputs in same row (DOM update, no re-render)
+        var rk = inp.dataset.rk;
+        if (rk) {
+          document.querySelectorAll('#screen-orders .o-ci[data-rk="' + rk + '"]').forEach(function(sibling) {
+            if (sibling === inp) return;
+            var sibSource = sibling.dataset.source || 'qty';
+            if (sibSource === 'qty')       sibling.value = newQty || '';
+            else if (sibSource === 'euro') sibling.value = price ? Math.round(newQty * price) : '';
+            else if (sibSource === 'container') sibling.value = ratio ? Math.round(newQty / ratio * 10000) / 10000 : '';
+          });
+        }
+
+        var payload;
+        if (oid) {
+          var order = _state.orders.find(function (o) { return o.id === oid; });
           if (!order) return;
           payload = {
             id: order._dbId,
             customer_id: order._customerId,
             product_id: order._productId,
-            shipped_qty: field === 'cikan' ? val : order.cikan,
-            planned_qty: field === 'cikacak' ? val : order.cikacak,
+            shipped_qty: field === 'cikan' ? newQty : order.cikan,
+            planned_qty: field === 'cikacak' ? newQty : order.cikacak,
             destination_country: order.ulke || null,
             note: order.note || '',
           };
         } else if (inp.dataset.newCust && inp.dataset.newUrun) {
-          // New order — no existing record
           payload = {
             customer_id: inp.dataset.newCust,
             product_id: inp.dataset.newUrun,
-            shipped_qty: field === 'cikan' ? val : 0,
-            planned_qty: field === 'cikacak' ? val : 0,
+            shipped_qty: field === 'cikan' ? newQty : 0,
+            planned_qty: field === 'cikacak' ? newQty : 0,
             destination_country: inp.dataset.newUlke || null,
             note: '',
           };
