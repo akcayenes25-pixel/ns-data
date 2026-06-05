@@ -119,8 +119,9 @@
   }
 
   function fmtN(v) { if (!v || v === 0) return '—'; return Number(v).toLocaleString('de-DE', { maximumFractionDigits: 1 }); }
+  function fmtK(v) { if (!v || v === 0) return '—'; return Number(v).toLocaleString('de-DE', { maximumFractionDigits: 3 }); }
   function fmtE(v) { if (!v || v === 0) return '—'; return Math.round(v).toLocaleString('de-DE') + ' €'; }
-  function fmtVal(v, k) { return k === 'eur' ? fmtE(v) : fmtN(v); }
+  function fmtVal(v, k) { return k === 'eur' ? fmtE(v) : k === 'cnt' ? fmtK(v) : fmtN(v); }
 
   function _esc(str) {
     if (!str) return '';
@@ -506,13 +507,13 @@
         }
 
         if (c.valK === 'cnt') {
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="qty" value="' + (rawQty || '') + '" placeholder="—"/></td>';
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="qty" value="' + (rawQty || '') + '" placeholder="-"/></td>';
         } else if (c.valK === 'qty') {
-          var adet = prod2.ratio ? Math.round(rawQty * prod2.ratio * 100) / 100 : rawQty;
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtN(adet) + '</span></td>';
+          var adetVal = prod2.ratio ? Math.round(rawQty * prod2.ratio * 100) / 100 : rawQty;
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="adet" value="' + (adetVal || '') + '" placeholder="-"/></td>';
         } else if (c.valK === 'eur') {
           var euroVal2 = Math.round(rawQty * prod2.price);
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="euro" value="' + (euroVal2 || '') + '" placeholder="—"/></td>';
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="euro" value="' + (euroVal2 || '') + '" placeholder="-"/></td>';
         }
       } else {
         cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(val, c.valK) + '</span></td>';
@@ -784,6 +785,9 @@
 
         if (source === 'qty') {
           newQty = rawVal;
+        } else if (source === 'adet') {
+          // Adet = raw * ratio → raw = adet / ratio
+          newQty = ratio > 0 ? rawVal / ratio : rawVal;
         } else if (source === 'euro') {
           newQty = price > 0 ? rawVal / price : 0;
         } else if (source === 'container') {
@@ -799,7 +803,8 @@
           document.querySelectorAll('#screen-orders .o-ci[data-rk="' + rk + '"]').forEach(function(sibling) {
             if (sibling === inp) return;
             var sibSource = sibling.dataset.source || 'qty';
-            if (sibSource === 'qty')       sibling.value = newQty || '';
+            if (sibSource === 'qty')        sibling.value = newQty || '';
+            else if (sibSource === 'adet') sibling.value = ratio ? Math.round(newQty * ratio * 100) / 100 : '';
             else if (sibSource === 'euro') sibling.value = price ? Math.round(newQty * price) : '';
             else if (sibSource === 'container') sibling.value = ratio ? Math.round(newQty / ratio * 10000) / 10000 : '';
           });
