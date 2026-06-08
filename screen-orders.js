@@ -1138,20 +1138,20 @@
   function bindOpts() {
     ['compact', 'outline', 'tabular'].forEach(function (f) {
       var el = document.getElementById('o-opt-' + f);
-      if (el) el.addEventListener('click', function () { _S.form = f; render(); });
+      if (el) el.onclick = function () { _S.form = f; render(); };
     });
     var repeat = document.getElementById('o-opt-repeat');
-    if (repeat) repeat.addEventListener('click', function () { if (_S.form !== 'compact') { _S.repeat = !_S.repeat; render(); } });
+    if (repeat) repeat.onclick = function () { if (_S.form !== 'compact') { _S.repeat = !_S.repeat; render(); } };
     var st = document.getElementById('o-opt-st');
-    if (st) st.addEventListener('click', function () { _S.stShow = !_S.stShow; render(); });
+    if (st) st.onclick = function () { _S.stShow = !_S.stShow; render(); };
     var stTop = document.getElementById('o-opt-st-top');
-    if (stTop) stTop.addEventListener('click', function () { if (_S.form !== 'tabular') { _S.stTop = !_S.stTop; render(); } });
+    if (stTop) stTop.onclick = function () { if (_S.form !== 'tabular') { _S.stTop = !_S.stTop; render(); } };
     var gt = document.getElementById('o-opt-gt');
-    if (gt) gt.addEventListener('click', function () { _S.gtShow = !_S.gtShow; render(); });
+    if (gt) gt.onclick = function () { _S.gtShow = !_S.gtShow; render(); };
     var blank = document.getElementById('o-opt-blank');
-    if (blank) blank.addEventListener('click', function () { _S.blankRow = !_S.blankRow; render(); });
+    if (blank) blank.onclick = function () { _S.blankRow = !_S.blankRow; render(); };
     var empty = document.getElementById('o-opt-empty');
-    if (empty) empty.addEventListener('click', function () { _S.showEmpty = !_S.showEmpty; render(); });
+    if (empty) empty.onclick = function () { _S.showEmpty = !_S.showEmpty; render(); };
 
     var viewsBtn = document.getElementById('o-views-btn');
     var viewsMenu = document.getElementById('o-views-menu');
