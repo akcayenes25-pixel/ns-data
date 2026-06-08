@@ -2,10 +2,10 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.23';
+const APP_VERSION = 'v2.0.24';
 
 const CHANGELOG = {
-  'v2.0.23': {
+  'v2.0.24': {
     date: 'Haziran 2026',
     items: [
       'Aktivite logu eklendi — her uygulama açılışı ve tüm silme işlemleri kayıt altına alınıyor.',

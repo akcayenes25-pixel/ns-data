@@ -225,10 +225,10 @@
 }
 #screen-orders .o-ddp.open { display: block; }
 #screen-orders .o-dds {
-  display: block; width: 100%; height: 20px;
-  padding: 0 6px; border: none; border-bottom: 1px solid #D1D1D6;
+  display: block; width: 100%; height: 18px !important; min-height: 0 !important;
+  padding: 0 6px !important; border: none; border-bottom: 1px solid #D1D1D6;
   font-size: 11px; background: #fff; color: #000; outline: none;
-  font-family: inherit; box-sizing: border-box;
+  font-family: inherit; box-sizing: border-box !important;
 }
 #screen-orders .o-ddl { max-height: 200px; overflow-y: auto; padding: 4px 0; }
 #screen-orders .o-ddi { display: flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 11px; cursor: pointer; height: 20px; }
