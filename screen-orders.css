@@ -333,6 +333,7 @@
   background: transparent; text-align: right;
   font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
   color: #000; outline: none; font-family: inherit;
+  cursor: text;
   transition: border-color .15s, background .15s;
 }
 #screen-orders .o-ci:hover { border-color: #AEAEB2; background: #fff; }

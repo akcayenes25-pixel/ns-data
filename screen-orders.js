@@ -790,16 +790,29 @@
         var v = parseFloat(inp.value);
         if (!isNaN(v) && v > 0) { inp.dataset.raw = v; _fmtInp(inp); }
       });
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inp.blur();
+          // Move to next input below
+          var all = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
+          var idx = all.indexOf(inp);
+          if (idx >= 0 && idx < all.length - 1) {
+            all[idx + 1].focus();
+            all[idx + 1].select();
+          }
+        }
+      });
+
       inp.addEventListener('change', function () {
         var field  = inp.dataset.field;
         var source = inp.dataset.source || 'qty';
         var rawStr = inp.value;
-        if (rawStr === '' || rawStr === null) return; // boş → kaydetme
+        if (rawStr === '' || rawStr === null) return;
 
-        var rawVal = parseFloat(rawStr);
+        var rawVal = parseFloat(String(rawStr).replace(/[^0-9.\-]/g, ''));
         if (isNaN(rawVal) || rawVal < 0) return;
 
-        // three-way: source → newQty (raw adet)
         var newQty;
         var prod = null;
         var oid = inp.dataset.oid;
@@ -812,11 +825,8 @@
         var price = prod ? (prod.price || 0) : 0;
         var ratio = prod ? (prod.ratio || 0) : 0;
 
-        if (source === 'qty') {
+        if (source === 'adet') {
           newQty = rawVal;
-        } else if (source === 'adet') {
-          // Adet = raw * ratio → raw = adet / ratio
-          newQty = ratio > 0 ? rawVal / ratio : rawVal;
         } else if (source === 'euro') {
           newQty = price > 0 ? rawVal / price : 0;
         } else if (source === 'container') {
@@ -826,21 +836,29 @@
         }
         newQty = Math.round(newQty * 100) / 100;
 
-        // Update sibling inputs in same row (DOM update, no re-render)
+        // Update sibling inputs immediately (optimistic)
         var rk = inp.dataset.rk;
         if (rk) {
           document.querySelectorAll('#screen-orders .o-ci[data-rk="' + rk + '"]').forEach(function(sibling) {
             if (sibling === inp) return;
             var sibSource = sibling.dataset.source || 'qty';
             var sibRaw;
-            if (sibSource === 'qty')            sibRaw = newQty;
-            else if (sibSource === 'adet')      sibRaw = newQty;
+            if (sibSource === 'adet')      sibRaw = newQty;
             else if (sibSource === 'euro')      sibRaw = price ? Math.round(newQty * price) : 0;
             else if (sibSource === 'container') sibRaw = ratio ? Math.round(newQty / ratio * 10000) / 10000 : 0;
             else sibRaw = newQty;
             sibling.dataset.raw = sibRaw || '';
             _fmtInp(sibling);
           });
+        }
+
+        // Update in-memory state immediately (optimistic, no re-render)
+        if (oid) {
+          var memOrder = _state.orders.find(function (o) { return o.id === oid; });
+          if (memOrder) {
+            if (field === 'cikan') memOrder.cikan = newQty;
+            else memOrder.cikacak = newQty;
+          }
         }
 
         var payload;
@@ -867,19 +885,14 @@
           };
         } else { return; }
 
-        // Minimum validasyon: euro equiv < 0.1 ise kaydetme
-        var _price = prod ? (prod.price||0) : 0;
-        var _ratio = prod ? (prod.ratio||1) : 1;
-        var _euroEquiv = source==='euro' ? newQty : source==='adet' ? (newQty/_ratio)*_price : newQty*_price;
-        if (newQty > 0 && _euroEquiv < 0.1) { showToast('En az 0.1 Euro değerinde sipariş girin'); return; }
-
+        // DB save — no re-render on success
         if (_saveTimer) clearTimeout(_saveTimer);
         _saveTimer = setTimeout(function () {
           dbUpsertOrder(payload).then(function (ok) {
-            if (ok) { showToast('Kaydedildi'); _loadAll().then(function () { renderData(); emitDataChange('orders', {}); }); }
-            else showToast('Kaydedilemedi');
+            if (!ok) { showToast('Kaydedilemedi'); _loadAll().then(function () { renderData(); }); }
+            else { emitDataChange('orders', {}); }
           });
-        }, 600);
+        }, 300);
       });
     });
     document.querySelectorAll('#screen-orders .srt').forEach(function (th) {
