@@ -1,7 +1,7 @@
 /* NSDATA - sw.js */
-/* Service worker — cache version must always match app version */
+/* Service worker — network-first strategy */
 
-var CACHE_NAME = 'nsdata-v2.0.6';
+var CACHE_NAME = 'nsdata-v2.0.7';
 
 var STATIC_ASSETS = [
   '/',
@@ -38,9 +38,7 @@ var STATIC_ASSETS = [
   '/icon-1024.png'
 ];
 
-/* ============================================================
-   INSTALL — cache all static assets
-   ============================================================ */
+/* INSTALL */
 self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
@@ -51,18 +49,13 @@ self.addEventListener('install', function(event) {
   );
 });
 
-/* ============================================================
-   ACTIVATE — delete old caches
-   ============================================================ */
+/* ACTIVATE — delete old caches */
 self.addEventListener('activate', function(event) {
   event.waitUntil(
     caches.keys().then(function(keys) {
       return Promise.all(
-        keys.filter(function(key) {
-          return key !== CACHE_NAME;
-        }).map(function(key) {
-          return caches.delete(key);
-        })
+        keys.filter(function(key) { return key !== CACHE_NAME; })
+            .map(function(key) { return caches.delete(key); })
       );
     }).then(function() {
       return self.clients.claim();
@@ -70,21 +63,15 @@ self.addEventListener('activate', function(event) {
   );
 });
 
-/* ============================================================
-   FETCH — two-door strategy
-   1. Try network first for HTML (always fresh)
-   2. Cache first for static assets
-   3. Fallback to index.html for navigation requests
-   ============================================================ */
+/* FETCH — network-first, cache fallback */
 self.addEventListener('fetch', function(event) {
   var request = event.request;
   var url = new URL(request.url);
 
-  // Skip non-GET and external requests (Supabase, CDN)
   if (request.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
-  // Navigation requests — two-door: try / then /index.html
+  // Navigation — network first, fallback to cached index
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(function() {
@@ -96,32 +83,28 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // Static assets — cache first, network fallback
+  // All assets — network first, update cache, fallback to cache
   event.respondWith(
-    caches.match(request).then(function(cached) {
-      if (cached) return cached;
-      return fetch(request).then(function(response) {
-        // Cache valid responses
-        if (response && response.status === 200 && response.type === 'basic') {
-          var clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(request, clone);
-          });
-        }
-        return response;
-      });
-    }).catch(function() {
-      // Offline fallback for HTML
-      if (request.headers.get('accept') && request.headers.get('accept').includes('text/html')) {
-        return caches.match('/index.html');
+    fetch(request).then(function(response) {
+      if (response && response.status === 200 && response.type === 'basic') {
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(request, clone);
+        });
       }
+      return response;
+    }).catch(function() {
+      return caches.match(request).then(function(cached) {
+        if (cached) return cached;
+        if (request.headers.get('accept') && request.headers.get('accept').includes('text/html')) {
+          return caches.match('/index.html');
+        }
+      });
     })
   );
 });
 
-/* ============================================================
-   MESSAGE — force update from client
-   ============================================================ */
+/* MESSAGE — force update */
 self.addEventListener('message', function(event) {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
