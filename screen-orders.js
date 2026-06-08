@@ -1084,7 +1084,7 @@
       '</div>';
     });
     html += '<div class="o-vm-save-row">' +
-      '<input class="o-vm-inp" id="o-vm-inp" placeholder="Gorunum adi..." maxlength="30"/>' +
+      '<input class="o-vm-inp" id="o-vm-inp" placeholder="Görünüm adı..." maxlength="30"/>' +
       '<button class="o-vm-savebtn" id="o-vm-savebtn">Kaydet</button>' +
     '</div>';
     menu.innerHTML = html;
@@ -1159,8 +1159,17 @@
       viewsBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         var isOpen = viewsMenu.style.display !== 'none';
-        viewsMenu.style.display = isOpen ? 'none' : 'block';
-        if (!isOpen) _renderViewsMenu();
+        if (isOpen) {
+          viewsMenu.style.display = 'none';
+        } else {
+          var rect = viewsBtn.getBoundingClientRect();
+          viewsMenu.style.position = 'fixed';
+          viewsMenu.style.top = (rect.bottom + 4) + 'px';
+          viewsMenu.style.left = rect.left + 'px';
+          viewsMenu.style.zIndex = '9999';
+          viewsMenu.style.display = 'block';
+          _renderViewsMenu();
+        }
       });
       document.addEventListener('click', function(e) {
         if (!viewsMenu.contains(e.target) && e.target !== viewsBtn) {
