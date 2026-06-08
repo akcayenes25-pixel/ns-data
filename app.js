@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v1.6.0';
+const APP_VERSION = 'v2.0.7';
 
 const CHANGELOG = {
   'v1.6.0': {
