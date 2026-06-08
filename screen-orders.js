@@ -13,12 +13,12 @@
 
   /* ============================================================ PIVOT STATE */
   var _S = {
-    rows: ['ulke', 'musteri'],
-    cols: ['urun'],
-    vals: { cnt: true, qty: false, eur: true },
+    rows: ['ulke', 'musteri', 'urun'],
+    cols: ['cikacak', 'cikan'],
+    vals: { cnt: true, qty: true, eur: true },
     form: 'tabular',
     repeat: false,
-    stShow: true,
+    stShow: false,
     stTop: false,
     gtShow: true,
     blankRow: false,
@@ -1076,17 +1076,18 @@
   function _renderViewsMenu() {
     var menu = document.getElementById('o-views-menu');
     if (!menu) return;
-    var html = '';
+    var itemsHtml = '';
     _views.forEach(function(v) {
-      html += '<div class="o-vm-item" data-vid="' + v.id + '">' +
+      itemsHtml += '<div class="o-vm-item" data-vid="' + v.id + '">' +
         '<span class="o-vm-name">' + v.name + '</span>' +
         '<button class="o-vm-del" data-vid="' + v.id + '">×</button>' +
       '</div>';
     });
-    html += '<div class="o-vm-save-row">' +
-      '<input class="o-vm-inp" id="o-vm-inp" placeholder="Görünüm adı..." maxlength="30"/>' +
-      '<button class="o-vm-savebtn" id="o-vm-savebtn">Kaydet</button>' +
-    '</div>';
+    var html = '<div class="o-vm-list">' + itemsHtml + '</div>' +
+      '<div class="o-vm-save-row">' +
+        '<input class="o-vm-inp" id="o-vm-inp" placeholder="Görünüm adı..." maxlength="30"/>' +
+        '<button class="o-vm-savebtn" id="o-vm-savebtn">Kaydet</button>' +
+      '</div>';
     menu.innerHTML = html;
     // Bind view items
     menu.querySelectorAll('.o-vm-item').forEach(function(item) {
@@ -1168,7 +1169,7 @@
           viewsMenu.style.left = rect.left + 'px';
           viewsMenu.style.zIndex = '9999';
           viewsMenu.style.display = 'block';
-          _renderViewsMenu();
+          _loadViews();
         }
       };
       document.onclick = function(e) {
