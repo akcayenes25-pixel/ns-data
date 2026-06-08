@@ -511,7 +511,7 @@
         if (c.valK === 'cnt') {
           cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="container" value="' + (rawQty ? (prod2.ratio ? Math.round(rawQty / prod2.ratio * 10000) / 10000 : rawQty) : '') + '" placeholder="-"/></td>';
         } else if (c.valK === 'qty') {
-          var adetVal = prod2.ratio ? Math.round(rawQty * prod2.ratio * 100) / 100 : rawQty;
+          var adetVal = rawQty;
           cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="adet" value="' + (adetVal || '') + '" placeholder="-"/></td>';
         } else if (c.valK === 'eur') {
           var euroVal2 = Math.round(rawQty * prod2.price);
