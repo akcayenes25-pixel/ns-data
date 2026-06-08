@@ -1199,10 +1199,17 @@
       if (!p) return;
       p.innerHTML = '<input class="o-dds" placeholder="Ara..."/>' +
         '<div class="o-ddl">' + vals.map(function (v) {
-          return '<label class="o-ddi"><input type="checkbox" data-key="' + key + '" data-val="' + _esc(v) + '" ' + (sel.includes(v) ? 'checked' : '') + '/><span>' + _esc(dvLabel(key, v)) + '</span></label>';
+          return '<div class="o-ddi"><input type="checkbox" data-key="' + key + '" data-val="' + _esc(v) + '" ' + (sel.includes(v) ? 'checked' : '') + '/><span>' + _esc(dvLabel(key, v)) + '</span></div>';
         }).join('') + '</div>' +
         '<div class="o-ddf"><button class="o-da" data-key="' + key + '">Tümünü Seç</button><button class="o-dr" data-key="' + key + '">Sıfırla</button></div>';
 
+      p.querySelectorAll('.o-ddi').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+          if (e.target.type === 'checkbox') return;
+          var cb = item.querySelector('input[type=checkbox]');
+          if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+        });
+      });
       p.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
         cb.addEventListener('change', function () {
           var k = cb.dataset.key, v = cb.dataset.val;
