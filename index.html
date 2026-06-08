@@ -143,28 +143,7 @@
   <!-- App bootstrap -->
   <script src="app.js"></script>
 
-  <!-- Service worker -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').then(function(reg) {
-        reg.addEventListener('updatefound', function() {
-          var newSW = reg.installing;
-          if (!newSW) return;
-          newSW.addEventListener('statechange', function() {
-            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-              newSW.postMessage({ type: 'SKIP_WAITING' });
-            }
-          });
-        });
-      }).catch(function(err) {
-        console.warn('SW registration failed:', err);
-      });
-      var refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (!refreshing) { refreshing = true; location.reload(); }
-      });
-    }
-  </script>
+  <!-- Service worker disabled -->
 
 </body>
 </html>
