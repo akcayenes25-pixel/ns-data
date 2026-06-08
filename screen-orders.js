@@ -1156,7 +1156,7 @@
     var viewsBtn = document.getElementById('o-views-btn');
     var viewsMenu = document.getElementById('o-views-menu');
     if (viewsBtn && viewsMenu) {
-      viewsBtn.addEventListener('click', function(e) {
+      viewsBtn.onclick = function(e) {
         e.stopPropagation();
         var isOpen = viewsMenu.style.display !== 'none';
         if (isOpen) {
@@ -1170,12 +1170,12 @@
           viewsMenu.style.display = 'block';
           _renderViewsMenu();
         }
-      });
-      document.addEventListener('click', function(e) {
+      };
+      document.onclick = function(e) {
         if (!viewsMenu.contains(e.target) && e.target !== viewsBtn) {
           viewsMenu.style.display = 'none';
         }
-      });
+      };
     }
   }
 
