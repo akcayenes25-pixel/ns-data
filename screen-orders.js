@@ -1008,6 +1008,117 @@
     document.querySelectorAll('#screen-orders .o-pv-sec[data-zone]').forEach(function (s) { s.classList.remove('can-drop'); });
   }
 
+  /* ============================================================ SAVED VIEWS */
+  var _views = [];
+
+  function _extractConfig() {
+    return {
+      rows: _S.rows.slice(),
+      cols: _S.cols.slice(),
+      vals: Object.assign({}, _S.vals),
+      form: _S.form,
+      stShow: _S.stShow,
+      stTop: _S.stTop,
+      gtShow: _S.gtShow,
+      showEmpty: _S.showEmpty,
+    };
+  }
+
+  function _applyConfig(config) {
+    if (!config) return;
+    if (config.rows) _S.rows = config.rows.slice();
+    if (config.cols) _S.cols = config.cols.slice();
+    if (config.vals) _S.vals = Object.assign({}, config.vals);
+    if (config.form) _S.form = config.form;
+    _S.stShow   = config.stShow !== undefined ? config.stShow : _S.stShow;
+    _S.stTop    = config.stTop  !== undefined ? config.stTop  : _S.stTop;
+    _S.gtShow   = config.gtShow !== undefined ? config.gtShow : _S.gtShow;
+    _S.showEmpty= config.showEmpty !== undefined ? config.showEmpty : _S.showEmpty;
+  }
+
+  async function _loadViews() {
+    try {
+      var res = await window._supabaseClient.from('saved_views').select('*').order('created_at');
+      if (res.error) throw res.error;
+      _views = res.data || [];
+    } catch(e) { _views = []; }
+    _renderViewsMenu();
+  }
+
+  async function _saveView(name) {
+    if (!name || !name.trim()) { showToast('Isim bos olamaz'); return; }
+    var words = name.trim().split(/\s+/);
+    if (words.length > 2) { showToast('Maksimum 2 kelime'); return; }
+    var existing = _views.find(function(v) { return v.name === name.trim(); });
+    if (!existing && _views.length >= 10) { showToast('Maksimum 10 gorunum'); return; }
+    var config = _extractConfig();
+    try {
+      var res;
+      if (existing) {
+        res = await window._supabaseClient.from('saved_views').update({ config: config }).eq('id', existing.id);
+      } else {
+        res = await window._supabaseClient.from('saved_views').insert({ name: name.trim(), config: config });
+      }
+      if (res.error) throw res.error;
+      showToast(existing ? 'Guncellendi' : 'Kaydedildi');
+      await _loadViews();
+    } catch(e) { showToast('Kaydedilemedi'); }
+  }
+
+  async function _deleteView(id) {
+    try {
+      var res = await window._supabaseClient.from('saved_views').delete().eq('id', id);
+      if (res.error) throw res.error;
+      await _loadViews();
+    } catch(e) { showToast('Silinemedi'); }
+  }
+
+  function _renderViewsMenu() {
+    var menu = document.getElementById('o-views-menu');
+    if (!menu) return;
+    var html = '';
+    _views.forEach(function(v) {
+      html += '<div class="o-vm-item" data-vid="' + v.id + '">' +
+        '<span class="o-vm-name">' + v.name + '</span>' +
+        '<button class="o-vm-del" data-vid="' + v.id + '">×</button>' +
+      '</div>';
+    });
+    html += '<div class="o-vm-save-row">' +
+      '<input class="o-vm-inp" id="o-vm-inp" placeholder="Gorunum adi..." maxlength="30"/>' +
+      '<button class="o-vm-savebtn" id="o-vm-savebtn">Kaydet</button>' +
+    '</div>';
+    menu.innerHTML = html;
+    // Bind view items
+    menu.querySelectorAll('.o-vm-item').forEach(function(item) {
+      item.addEventListener('click', function(e) {
+        if (e.target.classList.contains('o-vm-del')) return;
+        var vid = item.dataset.vid;
+        var view = _views.find(function(v) { return v.id === vid; });
+        if (view) { _applyConfig(view.config); render(); _closeViewsMenu(); }
+      });
+    });
+    menu.querySelectorAll('.o-vm-del').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _deleteView(btn.dataset.vid);
+      });
+    });
+    var savebtn = document.getElementById('o-vm-savebtn');
+    if (savebtn) savebtn.addEventListener('click', function() {
+      var inp = document.getElementById('o-vm-inp');
+      if (inp) _saveView(inp.value);
+    });
+    var inp = document.getElementById('o-vm-inp');
+    if (inp) inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { _saveView(inp.value); }
+    });
+  }
+
+  function _closeViewsMenu() {
+    var menu = document.getElementById('o-views-menu');
+    if (menu) menu.style.display = 'none';
+  }
+
   /* ============================================================ OPTS */
   function renderOpts() {
     ['compact', 'outline', 'tabular'].forEach(function (f) {
@@ -1041,6 +1152,23 @@
     if (blank) blank.addEventListener('click', function () { _S.blankRow = !_S.blankRow; render(); });
     var empty = document.getElementById('o-opt-empty');
     if (empty) empty.addEventListener('click', function () { _S.showEmpty = !_S.showEmpty; render(); });
+
+    var viewsBtn = document.getElementById('o-views-btn');
+    var viewsMenu = document.getElementById('o-views-menu');
+    if (viewsBtn && viewsMenu) {
+      viewsBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var isOpen = viewsMenu.style.display !== 'none';
+        viewsMenu.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) _renderViewsMenu();
+      });
+      document.addEventListener('click', function(e) {
+        if (!viewsMenu.contains(e.target) && e.target !== viewsBtn) {
+          viewsMenu.style.display = 'none';
+        }
+      });
+    }
+    _loadViews();
   }
 
   /* ============================================================ FILTERS */
@@ -1306,6 +1434,7 @@
         '<div class="o-opts-g"><span class="o-opts-lbl">Genel Top.</span><button class="o-ob on" id="o-opt-gt">Göster</button></div>' +
         '<div class="o-opts-g"><span class="o-opts-lbl">Boş Satır</span><button class="o-ob" id="o-opt-blank">Ekle</button></div>' +
         '<div class="o-opts-g"><span class="o-opts-lbl">Siparişsiz</span><button class="o-ob" id="o-opt-empty">Göster</button></div>' +
+        '<div class="o-opts-g o-views-wrap"><button class="o-ob" id="o-views-btn">⊞ Görünümler</button><div class="o-views-menu" id="o-views-menu" style="display:none"></div></div>' +
       '</div>' +
       // Filter bar
       '<div class="o-fl">' +

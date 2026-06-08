@@ -9,6 +9,7 @@ var _client = null;
 function dbInit() {
   try {
     _client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window._supabaseClient = _client;
     dbInitRealtime();
   } catch (err) {
     console.error('Supabase init failed:', err);

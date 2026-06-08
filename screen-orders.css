@@ -378,3 +378,37 @@
 #screen-orders .o-import-table td { padding: 7px 12px; border-bottom: 1px solid #D1D1D6; }
 #screen-orders .o-import-actions { padding: 12px 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #D1D1D6; }
 
+
+/* ============================================================ SAVED VIEWS */
+#screen-orders .o-views-wrap { position: relative; }
+#screen-orders .o-views-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 200;
+  background: #fff; border: 1px solid #E2E5EF; border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12); min-width: 200px; padding: 6px;
+}
+#screen-orders .o-vm-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; border-radius: 7px; cursor: pointer; font-size: 13px;
+  font-weight: 500; color: #0F1117; transition: background .1s;
+}
+#screen-orders .o-vm-item:hover { background: #F3F4F6; }
+#screen-orders .o-vm-name { flex: 1; }
+#screen-orders .o-vm-del {
+  background: none; border: none; color: #AEAEB2; font-size: 16px;
+  cursor: pointer; padding: 0 2px; line-height: 1; border-radius: 4px;
+}
+#screen-orders .o-vm-del:hover { color: #DC2626; background: #FEF2F2; }
+#screen-orders .o-vm-save-row {
+  display: flex; gap: 6px; padding: 6px 4px 2px; border-top: 1px solid #E2E5EF; margin-top: 4px;
+}
+#screen-orders .o-vm-inp {
+  flex: 1; height: 30px; padding: 0 8px; border: 1px solid #E2E5EF;
+  border-radius: 6px; font-size: 12px; font-family: inherit; outline: none;
+}
+#screen-orders .o-vm-inp:focus { border-color: #4F46E5; }
+#screen-orders .o-vm-savebtn {
+  height: 30px; padding: 0 10px; background: #4F46E5; color: #fff;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+#screen-orders .o-vm-savebtn:hover { background: #4338CA; }
