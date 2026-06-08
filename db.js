@@ -67,7 +67,12 @@ async function dbGetCustomers() {
 
 async function dbUpsertCustomer(customer) {
   try {
-    var res = await _client.from('customers').upsert(customer, { onConflict: 'id' });
+    var res;
+    if (customer.id) {
+      res = await _client.from('customers').update(customer).eq('id', customer.id);
+    } else {
+      res = await _client.from('customers').insert(customer);
+    }
     if (res.error) throw res.error;
     return true;
   } catch (err) { console.error('dbUpsertCustomer:', err); return false; }
@@ -133,7 +138,9 @@ async function dbUpsertOrder(order) {
   if (!order.customer_id || !order.product_id) return false;
   order.updated_at = new Date().toISOString();
   try {
-    var res = await _client.from('orders').upsert(order, { onConflict: 'id' });
+    var res = order.id
+      ? await _client.from('orders').update(order).eq('id', order.id)
+      : await _client.from('orders').insert(order);
     if (res.error) throw res.error;
     return true;
   } catch (err) { console.error('dbUpsertOrder:', err); return false; }
@@ -168,7 +175,9 @@ async function dbGetLimits() {
 async function dbUpsertLimit(limit) {
   if (!limit.customer_id) return false;
   try {
-    var res = await _client.from('limits').upsert(limit, { onConflict: 'id' });
+    var res = limit.id
+      ? await _client.from('limits').update(limit).eq('id', limit.id)
+      : await _client.from('limits').insert(limit);
     if (res.error) throw res.error;
     return true;
   } catch (err) { console.error('dbUpsertLimit:', err); return false; }
@@ -186,7 +195,9 @@ async function dbGetPayments() {
 async function dbUpsertPayment(payment) {
   if (!payment.customer_id || !payment.amount_eur || !payment.payment_date) return false;
   try {
-    var res = await _client.from('incoming_payments').upsert(payment, { onConflict: 'id' });
+    var res = payment.id
+      ? await _client.from('incoming_payments').update(payment).eq('id', payment.id)
+      : await _client.from('incoming_payments').insert(payment);
     if (res.error) throw res.error;
     return true;
   } catch (err) { console.error('dbUpsertPayment:', err); return false; }
@@ -231,6 +242,7 @@ async function dbCreateProfile(name, region) {
 /* RESETS */
 async function dbSoftReset() {
   try {
+    await dbLog('SOFT_RESET', 'orders,limits,payments', 'settings', 'wiping orders+limits+payments');
     var dummy = '00000000-0000-0000-0000-000000000000';
     await _client.from('orders').delete().neq('id', dummy);
     await _client.from('limits').delete().neq('id', dummy);
@@ -241,6 +253,7 @@ async function dbSoftReset() {
 
 async function dbHardReset() {
   try {
+    await dbLog('HARD_RESET', 'all', 'settings', 'wiping everything including customers+products+targets');
     var dummy = '00000000-0000-0000-0000-000000000000';
     var tables = ['orders', 'limits', 'incoming_payments', 'targets', 'products', 'customers'];
     for (var i = 0; i < tables.length; i++) {
@@ -259,11 +272,46 @@ async function dbGetLastUpdated() {
 }
 
 /* ============================================================
+   ACTIVITY LOG
+   ============================================================ */
+async function dbLog(action, tableName, screen, detail) {
+  try {
+    if (!_client) return;
+    await _client.from('activity_log').insert({
+      action: action,
+      table_name: tableName,
+      screen: screen || 'unknown',
+      detail: detail || ''
+    });
+  } catch (err) { /* silent — never block the app */ }
+}
+
+async function dbLogSnapshot() {
+  try {
+    if (!_client) return;
+    var customers = await _client.from('customers').select('id', { count: 'exact', head: true });
+    var products  = await _client.from('products').select('id',  { count: 'exact', head: true });
+    var custCount = customers.count || 0;
+    var prodCount = products.count  || 0;
+    await dbLog('APP_BOOT', 'snapshot', 'app', 'customers=' + custCount + ' products=' + prodCount + ' version=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?'));
+  } catch (err) { /* silent */ }
+}
+
+async function dbGetActivityLog() {
+  try {
+    var res = await _client.from('activity_log').select('*').order('created_at', { ascending: false }).limit(200);
+    if (res.error) throw res.error;
+    return res.data || [];
+  } catch (err) { console.error('dbGetActivityLog:', err); return []; }
+}
+
+/* ============================================================
    DELETE OPERATIONS
    ============================================================ */
 async function dbDeleteProduct(productId) {
   if (!productId) return false;
   try {
+    await dbLog('DELETE_PRODUCT', 'products', 'settings', 'id=' + productId);
     var res = await _client.from('products').delete().eq('id', productId);
     if (res.error) throw res.error;
     return true;
@@ -273,6 +321,7 @@ async function dbDeleteProduct(productId) {
 async function dbDeleteCustomer(customerId) {
   if (!customerId) return false;
   try {
+    await dbLog('DELETE_CUSTOMER', 'customers', 'settings', 'id=' + customerId);
     var res = await _client.from('customers').delete().eq('id', customerId);
     if (res.error) throw res.error;
     return true;

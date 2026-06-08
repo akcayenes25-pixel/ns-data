@@ -2,9 +2,17 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.12';
+const APP_VERSION = 'v2.0.14';
 
 const CHANGELOG = {
+  'v2.0.14': {
+    date: 'Haziran 2026',
+    items: [
+      'Aktivite logu eklendi — her uygulama açılışı ve tüm silme işlemleri kayıt altına alınıyor.',
+      'Log ekranı: navbar\'da kırmızı Log butonu, son 200 kayıt görüntüleniyor.',
+      'Veri kaybı nedenini tespit etmek için boot snapshot: açılışta müşteri ve ürün sayısı loglanıyor.',
+    ]
+  },
   'v2.0.11': {
     date: 'Haziran 2026',
     items: [
@@ -127,7 +135,7 @@ const CHANGELOG = {
 /* ============================================================
    NAVIGATION
    ============================================================ */
-const SCREENS = ['dashboard', 'orders', 'limits', 'analysis', 'settings', 'customer', 'country', 'product'];
+const SCREENS = ['dashboard', 'orders', 'limits', 'analysis', 'settings', 'log', 'customer', 'country', 'product'];
 const DETAIL_SCREENS = ['customer', 'country', 'product'];
 
 let activeScreen = 'dashboard';
@@ -512,6 +520,9 @@ function emitDataChange(table, payload) {
 document.addEventListener('DOMContentLoaded', function() {
   // Supabase must init before anything else
   dbInit();
+
+  // Log boot snapshot — records customer/product counts at startup
+  setTimeout(dbLogSnapshot, 2000);
 
   initNavigation();
   initClock();

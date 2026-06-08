@@ -47,7 +47,7 @@
   <nav id="main-nav" class="main-nav" role="navigation" aria-label="Ana navigasyon">
     <div class="nav-brand">
       <span class="nav-logo">NSDATA</span>
-      <span class="nav-version" id="nav-version">v2.0.12</span>
+      <span class="nav-version" id="nav-version">v2.0.14</span>
     </div>
 
     <div class="nav-screens" role="tablist">
@@ -56,6 +56,7 @@
       <button class="nav-btn" data-screen="limits" role="tab" aria-selected="false">Limitler</button>
       <button class="nav-btn" data-screen="analysis" role="tab" aria-selected="false">Analiz</button>
       <button class="nav-btn" data-screen="settings" role="tab" aria-selected="false">Ayarlar</button>
+      <button class="nav-btn" data-screen="log" role="tab" aria-selected="false" style="color:#DC2626">Log</button>
     </div>
 
     <div class="nav-meta">
@@ -81,6 +82,9 @@
 
     <!-- Settings screen -->
     <section id="screen-settings" class="screen" role="tabpanel" aria-label="Ayarlar"></section>
+
+    <!-- Activity log screen -->
+    <section id="screen-log" class="screen" role="tabpanel" aria-label="Log"></section>
 
     <!-- Customer detail screen -->
     <section id="screen-customer" class="screen" role="tabpanel" aria-label="Cari Detay"></section>
@@ -110,7 +114,7 @@
 
   <!-- Footer -->
   <footer class="app-footer" role="contentinfo">
-    <button class="footer-version-badge" id="footer-version-badge" aria-label="Yenilikleri goster">v2.0.12</button>
+    <button class="footer-version-badge" id="footer-version-badge" aria-label="Yenilikleri goster">v2.0.14</button>
     <span class="footer-last-update" id="footer-last-update"></span>
   </footer>
 
@@ -136,6 +140,7 @@
   <script src="screen-limits.js"></script>
   <script src="screen-analysis.js"></script>
   <script src="screen-settings.js"></script>
+  <script src="screen-log.js"></script>
   <script src="screen-customer.js"></script>
   <script src="screen-country.js"></script>
   <script src="screen-product.js"></script>
