@@ -5,6 +5,31 @@
 const APP_VERSION = 'v2.0.9';
 
 const CHANGELOG = {
+  'v2.0.9': {
+    date: 'Haziran 2026',
+    items: [
+      'Kaydedilmiş görünümler — mevcut pivot konfigürasyonu isimle kaydedilip Supabase ile senkronize ediliyor.',
+      'Görünümler menüsü: Siparişsiz butonunun yanında dropdown, max 10 görünüm, anında uygulama ve silme.',
+    ]
+  },
+  'v2.0.8': {
+    date: 'Haziran 2026',
+    items: [
+      'Hücre girişi iyileştirildi: optimistik güncelleme ile değer anında ekranda görünüyor, re-render yok.',
+      'Enter tuşu ile kaydet ve alt hücreye geç.',
+      'Input hücrelerinde text cursor ve formatlı görünüm (blur/focus).',
+      'Uygulama versiyonu v1.6.0 → v2.0.7 güncellendi, version bump kuralı 4 dosyaya genişletildi.',
+    ]
+  },
+  'v2.0.7': {
+    date: 'Haziran 2026',
+    items: [
+      'Euro ve konteyner hesabı düzeltildi: 1 konteyner = ratio x fiyat doğru hesaplanıyor.',
+      'Knt, Adet, Euro sütunları doğru değerleri gösteriyor (m.cnt, m.qty, m.eur ayrımı).',
+      'Ürün kayıt sorunu düzeltildi: Ayarlar ekranından eklenen ürünler Supabase de kalıcı.',
+      'Service worker cache sorunu çözüldü: network-first strateji, eski cache otomatik temizleniyor.',
+    ]
+  },
   'v1.6.0': {
     date: 'Haziran 2026',
     items: [
