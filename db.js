@@ -35,7 +35,12 @@ async function dbGetProducts() {
 
 async function dbUpsertProduct(product) {
   try {
-    var res = await _client.from('products').upsert(product, { onConflict: 'id' });
+    var res;
+    if (product.id) {
+      res = await _client.from('products').update(product).eq('id', product.id);
+    } else {
+      res = await _client.from('products').insert(product);
+    }
     if (res.error) throw res.error;
     return true;
   } catch (err) { console.error('dbUpsertProduct:', err); return false; }

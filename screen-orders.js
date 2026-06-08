@@ -466,7 +466,7 @@
       if (c.type === 'total') {
         var taraf = tarafCtx ? tarafCtx.val : null;
         var m = compute(orders, taraf);
-        var tv = c.valK === 'cnt' ? m.qty : c.valK === 'qty' ? (m.qty * (orders[0] ? (prd(orders[0].urun).ratio||1) : 1)) : m.eur;
+        var tv = c.valK === 'cnt' ? m.cnt : c.valK === 'qty' ? m.qty : m.eur;
         cells += '<td style="background:#F3F4F6;border-left:2px solid #000"><span class="o-cv">' + fmtVal(tv, c.valK) + '</span></td>';
         return;
       }
@@ -477,14 +477,13 @@
       var bgNow = tarafNow === 'cikan' ? '#F0FFF4' : tarafNow === 'cikacak' ? '#E0F2FE' : bg;
 
       var m2 = compute(leafOrders, tarafNow);
-      var val = c.valK === 'cnt' ? m2.qty : c.valK === 'qty' ? (m2.qty * (leafOrders[0] ? (prd(leafOrders[0].urun).ratio||1) : 1)) : m2.eur;
+      var val = c.valK === 'cnt' ? m2.cnt : c.valK === 'qty' ? m2.qty : m2.eur;
 
       var singleOrder = leafOrders.length === 1 ? leafOrders[0] : null;
       var noOrder = leafOrders.length === 0;
       var canInput = tarafNow && (singleOrder || noOrder);
 
-      // DEBUG: ilk satır sorunu — konsola yaz
-      if (typeof console !== 'undefined') console.log('[NSDATA] canInput='+canInput+' singleOrder='+(singleOrder?singleOrder.id:'null')+' noOrder='+noOrder+' tarafNow='+tarafNow+' leafLen='+leafOrders.length);
+
 
       if (canInput) {
         var rawQty = singleOrder ? (tarafNow === 'cikan' ? singleOrder.cikan : singleOrder.cikacak) : 0;
@@ -510,7 +509,7 @@
         }
 
         if (c.valK === 'cnt') {
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="qty" value="' + (rawQty || '') + '" placeholder="-"/></td>';
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="container" value="' + (rawQty ? (prod2.ratio ? Math.round(rawQty / prod2.ratio * 10000) / 10000 : rawQty) : '') + '" placeholder="-"/></td>';
         } else if (c.valK === 'qty') {
           var adetVal = prod2.ratio ? Math.round(rawQty * prod2.ratio * 100) / 100 : rawQty;
           cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="adet" value="' + (adetVal || '') + '" placeholder="-"/></td>';
@@ -573,7 +572,7 @@
       var tarafFromCol = colLeafTaraf(c.leaf.keys);
       var taraf = tarafFromCol || fixedTaraf || c.taraf;
       var m2 = compute(leafOrders, taraf);
-      var val = c.valK === 'cnt' ? m2.qty : c.valK === 'qty' ? (m2.qty * (leafOrders[0] ? (prd(leafOrders[0].urun).ratio||1) : 1)) : m2.eur;
+      var val = c.valK === 'cnt' ? m2.cnt : c.valK === 'qty' ? m2.qty : m2.eur;
       var s4 = cls === 'str' ? 'background:#9CA3AF;color:#fff;' : cls === 'gtr' ? 'background:#000;color:#fff;' : 'background:' + BAND_BG[c.bi || 0] + ';';
       cells += '<td style="' + s4 + bl + 'text-align:right;font-weight:700">' + fmtVal(val, c.valK) + '</td>';
     });
