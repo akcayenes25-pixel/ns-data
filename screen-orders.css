@@ -230,10 +230,10 @@
   font-size: 11px; background: #F2F2F7; color: #000; outline: none;
   font-family: inherit;
 }
-#screen-orders .o-ddl { max-height: 200px; overflow-y: auto; padding: 1px 0; }
-#screen-orders .o-ddi { display: flex; align-items: center; gap: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer; line-height: 1.2; min-height: 18px; }
+#screen-orders .o-ddl { max-height: 200px; overflow-y: auto; padding: 4px 0; }
+#screen-orders .o-ddi { display: flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 11px; cursor: pointer; height: 20px; }
 #screen-orders .o-ddi:hover { background: #F2F2F7; }
-#screen-orders .o-ddi input[type=checkbox] { width: 11px; height: 11px; accent-color: #007AFF; flex-shrink: 0; cursor: pointer; }
+#screen-orders .o-ddi input[type=checkbox] { width: 11px; height: 11px; accent-color: #007AFF; flex-shrink: 0; cursor: pointer; margin: 0; }
 #screen-orders .o-ddf { border-top: 1px solid #D1D1D6; padding: 3px 8px; display: flex; justify-content: space-between; }
 #screen-orders .o-ddf button { font-size: 11px; font-weight: 600; color: #007AFF; background: none; border: none; cursor: pointer; font-family: inherit; }
 
