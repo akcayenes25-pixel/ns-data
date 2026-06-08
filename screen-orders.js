@@ -758,11 +758,38 @@
   }
 
   /* ============================================================ TABLE EVENTS */
+  function _fmtInp(inp) {
+    var source = inp.dataset.source || 'qty';
+    var raw = inp.dataset.raw !== undefined ? inp.dataset.raw : inp.value;
+    var v = parseFloat(raw);
+    if (isNaN(v) || v <= 0) return;
+    inp.dataset.raw = v;
+    if (source === 'euro') {
+      inp.value = Math.round(v).toLocaleString('de-DE') + ' €';
+    } else if (source === 'adet') {
+      inp.value = Number(v).toLocaleString('de-DE', { maximumFractionDigits: 1 });
+    } else if (source === 'container') {
+      inp.value = Number(v).toLocaleString('de-DE', { maximumFractionDigits: 3 });
+    } else {
+      inp.value = v;
+    }
+  }
+
   function bindTbl() {
     document.querySelectorAll('#screen-orders .nc-tog').forEach(function (b) {
       b.addEventListener('click', function () { _S.collapsed[b.dataset.gk] = !_S.collapsed[b.dataset.gk]; renderData(); });
     });
     document.querySelectorAll('#screen-orders .o-ci').forEach(function (inp) {
+      _fmtInp(inp);
+      inp.addEventListener('focus', function () {
+        var raw = inp.dataset.raw !== undefined ? inp.dataset.raw : inp.value;
+        var v = parseFloat(raw);
+        if (!isNaN(v) && v > 0) inp.value = v;
+      });
+      inp.addEventListener('blur', function () {
+        var v = parseFloat(inp.value);
+        if (!isNaN(v) && v > 0) { inp.dataset.raw = v; _fmtInp(inp); }
+      });
       inp.addEventListener('change', function () {
         var field  = inp.dataset.field;
         var source = inp.dataset.source || 'qty';
@@ -805,10 +832,14 @@
           document.querySelectorAll('#screen-orders .o-ci[data-rk="' + rk + '"]').forEach(function(sibling) {
             if (sibling === inp) return;
             var sibSource = sibling.dataset.source || 'qty';
-            if (sibSource === 'qty')        sibling.value = newQty || '';
-            else if (sibSource === 'adet') sibling.value = ratio ? Math.round(newQty * ratio * 100) / 100 : '';
-            else if (sibSource === 'euro') sibling.value = price ? Math.round(newQty * price) : '';
-            else if (sibSource === 'container') sibling.value = ratio ? Math.round(newQty / ratio * 10000) / 10000 : '';
+            var sibRaw;
+            if (sibSource === 'qty')            sibRaw = newQty;
+            else if (sibSource === 'adet')      sibRaw = newQty;
+            else if (sibSource === 'euro')      sibRaw = price ? Math.round(newQty * price) : 0;
+            else if (sibSource === 'container') sibRaw = ratio ? Math.round(newQty / ratio * 10000) / 10000 : 0;
+            else sibRaw = newQty;
+            sibling.dataset.raw = sibRaw || '';
+            _fmtInp(sibling);
           });
         }
 
