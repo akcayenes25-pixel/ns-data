@@ -2,9 +2,15 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.9';
+const APP_VERSION = 'v2.0.10';
 
 const CHANGELOG = {
+  'v2.0.10': {
+    date: 'Haziran 2026',
+    items: [
+      'Görünümler menüsü buton tıklama sorunu düzeltildi.',
+    ]
+  },
   'v2.0.9': {
     date: 'Haziran 2026',
     items: [
