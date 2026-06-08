@@ -382,33 +382,39 @@
 /* ============================================================ SAVED VIEWS */
 #screen-orders .o-views-wrap { position: relative; }
 #screen-orders .o-views-menu {
-  position: absolute; top: calc(100% + 6px); right: 0; z-index: 200;
-  background: #fff; border: 1px solid #E2E5EF; border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.12); min-width: 200px; padding: 6px;
+  position: fixed; z-index: 9999;
+  background: #fff; border: 1px solid #E2E5EF; border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.13); width: 180px; padding: 4px;
 }
+#screen-orders .o-vm-list {
+  max-height: 108px; overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin; scrollbar-color: #E2E5EF transparent;
+}
+#screen-orders .o-vm-list::-webkit-scrollbar { width: 4px; }
+#screen-orders .o-vm-list::-webkit-scrollbar-thumb { background: #E2E5EF; border-radius: 4px; }
 #screen-orders .o-vm-item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 7px 10px; border-radius: 7px; cursor: pointer; font-size: 13px;
-  font-weight: 500; color: #0F1117; transition: background .1s;
+  padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 12px;
+  font-weight: 500; color: #0F1117; transition: background .1s; gap: 4px;
 }
 #screen-orders .o-vm-item:hover { background: #F3F4F6; }
-#screen-orders .o-vm-name { flex: 1; }
+#screen-orders .o-vm-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #screen-orders .o-vm-del {
-  background: none; border: none; color: #AEAEB2; font-size: 16px;
-  cursor: pointer; padding: 0 2px; line-height: 1; border-radius: 4px;
+  background: none; border: none; color: #AEAEB2; font-size: 14px;
+  cursor: pointer; padding: 0 2px; line-height: 1; border-radius: 3px; flex-shrink: 0;
 }
 #screen-orders .o-vm-del:hover { color: #DC2626; background: #FEF2F2; }
 #screen-orders .o-vm-save-row {
-  display: flex; gap: 6px; padding: 6px 4px 2px; border-top: 1px solid #E2E5EF; margin-top: 4px;
+  display: flex; gap: 5px; padding: 5px 4px 2px; border-top: 1px solid #E2E5EF; margin-top: 3px;
 }
 #screen-orders .o-vm-inp {
-  flex: 1; height: 30px; padding: 0 8px; border: 1px solid #E2E5EF;
-  border-radius: 6px; font-size: 12px; font-family: inherit; outline: none;
+  flex: 1; height: 28px; padding: 0 7px; border: 1px solid #E2E5EF;
+  border-radius: 5px; font-size: 11px; font-family: inherit; outline: none; min-width: 0;
 }
 #screen-orders .o-vm-inp:focus { border-color: #4F46E5; }
 #screen-orders .o-vm-savebtn {
-  height: 30px; padding: 0 10px; background: #4F46E5; color: #fff;
-  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
-  cursor: pointer; font-family: inherit; white-space: nowrap;
+  height: 28px; padding: 0 8px; background: #4F46E5; color: #fff;
+  border: none; border-radius: 5px; font-size: 11px; font-weight: 600;
+  cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;
 }
 #screen-orders .o-vm-savebtn:hover { background: #4338CA; }

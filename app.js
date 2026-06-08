@@ -2,15 +2,16 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.15';
+const APP_VERSION = 'v2.0.16';
 
 const CHANGELOG = {
-  'v2.0.15': {
+  'v2.0.16': {
     date: 'Haziran 2026',
     items: [
       'Aktivite logu eklendi — her uygulama açılışı ve tüm silme işlemleri kayıt altına alınıyor.',
       'Log ekranı: navbar\'da kırmızı Log butonu, son 200 kayıt görüntüleniyor.',
-      'Veri kaybı nedenini tespit etmek için boot snapshot: açılışta müşteri ve ürün sayısı loglanıyor.',
+      'Alt toplam ve genel toplam butonları düzeltildi — listener birikmesi engellendi.',
+      'Görünümler menüsü: açılışta Supabase\'den taze yükleniyor, kompakt tasarım, kaydırmalı liste.',
     ]
   },
   'v2.0.11': {
