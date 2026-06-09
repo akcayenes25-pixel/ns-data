@@ -927,7 +927,7 @@
     inp.oninput = function() {
       var q = inp.value.toLowerCase().trim();
       if (!q) { sug.style.display = 'none'; return; }
-      var matches = _state.customers.filter(function(c){ return c.name.toLowerCase().includes(q); }).slice(0, 5);
+      var matches = _state.customers.filter(function(c){ return c.name.toLowerCase().startsWith(q); }).slice(0, 5);
       if (!matches.length) { sug.style.display = 'none'; return; }
       sug.innerHTML = matches.map(function(c){
         var alreadySelected = _S.filters.musteri.includes(c.id);
