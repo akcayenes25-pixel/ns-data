@@ -431,11 +431,27 @@
     var baseVals;
     if (dim === 'urun') {
       baseVals = _state.products.filter(function(p){ return p.active !== false; }).map(function(p){ return p.id; });
+    } else if (dim === 'musteri' && _S.showEmpty && _S.filters.musteri.length) {
+      baseVals = _S.filters.musteri.slice();
+    } else if (dim === 'ulke' && _S.showEmpty) {
+      // Orders bos olabilir — once orders'dan al, bos kalirsa filtre var mi bak, yoksa bu dim'i atla
+      var ulkeSeen = {};
+      var ulkeBase = [];
+      _state.orders.forEach(function(o){ if (o.ulke && !ulkeSeen[o.ulke]) { ulkeSeen[o.ulke] = 1; ulkeBase.push(o.ulke); } });
+      if (!ulkeBase.length && _S.filters.ulke.length) ulkeBase = _S.filters.ulke.slice();
+      // Hala bos ise bu dim'i atla — musteri satırları ulke olmadan gelsin
+      baseVals = ulkeBase;
     } else if (_S.showEmpty) {
       baseVals = dimVals(dim, _state.orders);
     } else {
       baseVals = rawVals;
     }
+    // Ulke dim bos kalirsa bir sonraki level'a gec
+    if (dim === 'ulke' && _S.showEmpty && baseVals.length === 0) {
+      _dbgLog('BUILDROWS_BASEVAL', { dim: dim, level: level, skip: 'ULKE_BOS_GECILIYOR', filtersMusteri: _S.filters.musteri.slice() });
+      return buildRowsRecursive(orders, schema, rowContext, level + 1);
+    }
+
     var sortedVals = sortVals(baseVals, dim, orders);
     _dbgLog('BUILDROWS_BASEVAL', {
       dim: dim,
