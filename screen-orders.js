@@ -1751,7 +1751,14 @@
     if (dlBtn && dlMenu) {
       dlBtn.onclick = function(e) {
         e.stopPropagation();
-        dlMenu.style.display = dlMenu.style.display === 'none' ? 'block' : 'none';
+        if (dlMenu.style.display !== 'none') { dlMenu.style.display = 'none'; return; }
+        var rect = dlBtn.getBoundingClientRect();
+        dlMenu.style.position = 'fixed';
+        dlMenu.style.top = (rect.bottom + 4) + 'px';
+        dlMenu.style.right = (window.innerWidth - rect.right) + 'px';
+        dlMenu.style.left = 'auto';
+        dlMenu.style.zIndex = '99999';
+        dlMenu.style.display = 'block';
       };
       document.addEventListener('click', function() { if (dlMenu) dlMenu.style.display = 'none'; });
       var dlFlat = document.getElementById('o-dl-flat');

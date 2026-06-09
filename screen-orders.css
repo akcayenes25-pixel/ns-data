@@ -441,9 +441,9 @@
 /* DOWNLOAD DROPDOWN */
 #screen-orders .o-dl-wrap { position: relative; }
 #screen-orders .o-dl-menu {
-  position: absolute; top: calc(100% + 4px); right: 0;
+  position: fixed;
   background: #1C1C1E; border: 1px solid rgba(255,255,255,.15);
-  border-radius: 8px; overflow: hidden; z-index: 999;
+  border-radius: 8px; overflow: hidden; z-index: 99999;
   min-width: 150px; box-shadow: 0 4px 16px rgba(0,0,0,.4);
 }
 #screen-orders .o-dl-item {
