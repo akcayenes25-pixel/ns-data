@@ -60,13 +60,6 @@
   document.addEventListener('nsdata:appReady', function () { _init(); });
 
   async function _init() {
-    try {
-      var hr = sessionStorage.getItem('nsdata_hidden_rows');
-      if (hr) {
-        _S.hiddenRows = JSON.parse(hr);
-        _dbgLog('SESSION_HIDDEN_ROWS_RESTORED', { hiddenRows: _S.hiddenRows.slice(), count: _S.hiddenRows.length });
-      }
-    } catch(e) {}
     await _loadAll();
     _bindGlobalEvents();
   }
@@ -949,13 +942,11 @@
         if (rkey && _S.hiddenRows.indexOf(rkey) === -1) {
           var before = _S.hiddenRows.slice();
           _S.hiddenRows.push(rkey);
-          try { sessionStorage.setItem('nsdata_hidden_rows', JSON.stringify(_S.hiddenRows)); } catch(e2){}
           _dbgLog('ROW_X_CLICK', {
             rowKey: rkey,
             hiddenRowsBefore: before,
             hiddenRowsAfter: _S.hiddenRows.slice(),
-            filtersMusteri: _S.filters.musteri.slice(),
-            sessionStorageWritten: true
+            filtersMusteri: _S.filters.musteri.slice()
           });
           var tr = b.closest('tr');
           if (tr) {
