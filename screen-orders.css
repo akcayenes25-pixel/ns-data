@@ -457,3 +457,14 @@
 /* DANGER BUTTON */
 #screen-orders .o-ob-danger { color: #DC2626 !important; }
 #screen-orders .o-ob-danger:hover { background: #DC2626 !important; color: #fff !important; }
+
+/* CLEAR FILTERS BUTTON */
+#screen-orders #o-clear-filters-btn {
+  height: 30px; padding: 0 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+  cursor: pointer; font-family: inherit;
+  background: #DC262615; color: #DC2626;
+  border: 1px solid #DC262640;
+  display: inline-flex; align-items: center;
+}
+#screen-orders #o-clear-filters-btn:hover { background: #DC2626; color: #fff; }

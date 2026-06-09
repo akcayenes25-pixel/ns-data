@@ -1520,6 +1520,12 @@
       });
     });
     w.innerHTML = h;
+    // Filtre varsa "Filtreleri Sil" butonunu göster
+    var clearFiltersBtn = document.getElementById('o-clear-filters-btn');
+    if (clearFiltersBtn) {
+      var hasFilters = _S.filters.ulke.length || _S.filters.musteri.length || _S.filters.urun.length;
+      clearFiltersBtn.style.display = hasFilters ? 'inline-flex' : 'none';
+    }
     w.querySelectorAll('.o-ach-x').forEach(function (b) {
       b.onclick = function () {
         var key = b.dataset.key;
@@ -1784,7 +1790,7 @@
         '<div class="o-opts-g"><span class="o-opts-lbl">Siparişsiz</span><button class="o-ob" id="o-opt-empty">Göster</button></div>' +
         '<div class="o-opts-g o-views-wrap"><button class="o-ob" id="o-views-btn">⊞ Görünümler</button><div class="o-views-menu" id="o-views-menu" style="display:none"></div></div>' +
         '<div class="o-opts-g"><button class="o-ob" id="o-btn-pool-all">⬡ Havuza At</button></div>' +
-        '<div class="o-opts-g"><button class="o-ob o-ob-danger" id="o-btn-clear-data">✕ Verileri Temizle</button></div>' +
+        '<div class="o-opts-g"><button class="o-ob o-ob-danger" id="o-btn-reset-data">✕ Sıfırla</button></div>' +
       '</div>' +
       // Filter bar
       '<div class="o-fl">' +
@@ -1792,7 +1798,8 @@
         '<div class="o-dda"><button class="o-fb" id="o-fb-ulke">Ülke <span class="o-fb-b" id="o-fbb-ulke" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-ulke"></div></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-musteri">Müşteri <span class="o-fb-b" id="o-fbb-musteri" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-musteri"></div></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-urun">Ürün <span class="o-fb-b" id="o-fbb-urun" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-urun"></div></div>' +
-        '<div id="o-chips" style="display:flex;gap:4px;align-items:center;flex-shrink:0"></div>' +
+        '<button class="o-fb" id="o-clear-filters-btn" style="display:none">✕ Filtreleri Sil</button>' +
+        '<div id="o-chips" style="display:none"></div>' +
       '</div>' +
       // Add row bar
       '<div class="o-addrow-bar" id="o-addrow-bar" style="display:none"></div>' +
@@ -1819,31 +1826,37 @@
       render();
     };
 
-    // Verileri Temizle
-    var clearDataBtn = document.getElementById('o-btn-clear-data');
-    if (clearDataBtn) {
-      clearDataBtn.onclick = function() {
-        if (!confirm('Tüm sipariş verileri silinecek. Bu işlem geri alınamaz. Emin misin?')) return;
+    // Sıfırla — tüm siparişlerin qty değerlerini 0'a güncelle
+    var resetDataBtn = document.getElementById('o-btn-reset-data');
+    if (resetDataBtn) {
+      resetDataBtn.onclick = function() {
+        if (!confirm('Tüm sipariş miktarları sıfırlanacak. Emin misin?')) return;
         var orders = _state.orders.slice();
+        if (!orders.length) { showToast('Sıfırlanacak veri yok'); return; }
         var done = 0;
-        if (!orders.length) { showToast('Silinecek veri yok'); return; }
-        _dbgLog('CLEAR_DATA_START', {
-          orderCount: orders.length,
-          filtersMusteri: _S.filters.musteri.slice(),
-          rows: _S.rows.slice(),
-          cols: _S.cols.slice()
-        });
         orders.forEach(function(o) {
-          dbDeleteOrder(o.id).then(function() {
+          dbUpsertOrder({ id: o.id, customer_id: o.musteri, product_id: o.urun, shipped_qty: 0, planned_qty: 0, destination_country: o.ulke, note: o.note || '' }).then(function() {
             done++;
             if (done === orders.length) {
-              _dbgLog('CLEAR_DATA_DONE', { deletedCount: done, filtersMusteri: _S.filters.musteri.slice() });
-              _state.orders = [];
+              _state.orders.forEach(function(order){ order.cikan = 0; order.cikacak = 0; });
               renderData();
-              showToast('Tüm veriler silindi');
+              showToast('Tüm miktarlar sıfırlandı');
             }
           });
         });
+      };
+    }
+
+    // Tüm Filtreleri Sil
+    var clearFiltersBtn = document.getElementById('o-clear-filters-btn');
+    if (clearFiltersBtn) {
+      clearFiltersBtn.onclick = function() {
+        _S.filters.ulke = [];
+        _S.filters.musteri = [];
+        _S.filters.urun = [];
+        _S.hiddenRows = [];
+        renderFL();
+        renderData();
       };
     }
 
