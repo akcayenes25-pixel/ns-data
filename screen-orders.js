@@ -1720,6 +1720,8 @@
         '<div class="o-opts-g"><span class="o-opts-lbl">Boş Satır</span><button class="o-ob" id="o-opt-blank">Ekle</button></div>' +
         '<div class="o-opts-g"><span class="o-opts-lbl">Siparişsiz</span><button class="o-ob" id="o-opt-empty">Göster</button></div>' +
         '<div class="o-opts-g o-views-wrap"><button class="o-ob" id="o-views-btn">⊞ Görünümler</button><div class="o-views-menu" id="o-views-menu" style="display:none"></div></div>' +
+        '<div class="o-opts-g"><button class="o-ob" id="o-btn-pool-all">⬡ Havuza At</button></div>' +
+        '<div class="o-opts-g"><button class="o-ob o-ob-danger" id="o-btn-clear-data">✕ Verileri Temizle</button></div>' +
       '</div>' +
       // Filter bar
       '<div class="o-fl">' +
@@ -1744,6 +1746,33 @@
     // Bind add row toggle
     var addToggle = document.getElementById('o-addrow-toggle');
     if (addToggle) addToggle.addEventListener('click', function () { _state.addRowOpen = !_state.addRowOpen; renderAddRow(); });
+
+    // Havuza At
+    var poolAllBtn = document.getElementById('o-btn-pool-all');
+    if (poolAllBtn) poolAllBtn.onclick = function() {
+      _S.rows = [];
+      _S.cols = [];
+      render();
+    };
+
+    // Verileri Temizle
+    var clearDataBtn = document.getElementById('o-btn-clear-data');
+    if (clearDataBtn) {
+      clearDataBtn.onclick = function() {
+        if (!confirm('Tüm sipariş verileri silinecek. Bu işlem geri alınamaz. Emin misin?')) return;
+        var orders = _state.orders.slice();
+        var done = 0;
+        if (!orders.length) { showToast('Silinecek veri yok'); return; }
+        orders.forEach(function(o) {
+          dbDeleteOrder(o.id).then(function() {
+            done++;
+            if (done === orders.length) {
+              _loadAll().then(function() { render(); showToast('Tüm veriler silindi'); });
+            }
+          });
+        });
+      };
+    }
 
     // Dropdown toggle
     var dlBtn = document.getElementById('o-dl-btn');

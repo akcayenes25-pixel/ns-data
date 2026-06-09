@@ -189,7 +189,7 @@ function exportOrdersFlat(orders, products, customers) {
     'Musteri', 'Ulke', 'Urun',
     'Cikan Adet', 'Cikan Euro',
     'Cikacak Adet', 'Cikacak Euro',
-    'Toplam Euro', 'Not', 'Son Guncelleme'
+    'Toplam Euro', 'Not'
   ]];
 
   orders.forEach(function(order) {
@@ -197,30 +197,32 @@ function exportOrdersFlat(orders, products, customers) {
     var product  = productMap[order.urun || order.product_id];
     if (!customer || !product) return;
 
-    var price   = parseNum(product.avg_price_eur) || 0;
+    var price   = parseNum(product.avg_price_eur || product.price) || 0;
     var shipped = parseNum(order.cikan || order.shipped_qty) || 0;
     var planned = parseNum(order.cikacak || order.planned_qty) || 0;
 
     wsData.push([
       customer.name,
-      customer.country || '',
+      order.ulke || '',
       product.name,
       shipped,
       Math.round(shipped * price),
       planned,
       Math.round(planned * price),
       Math.round((shipped + planned) * price),
-      order.note || '',
-      order.updated_at ? new Date(order.updated_at).toLocaleString('tr-TR') : ''
+      order.note || ''
     ]);
   });
 
+  // Auto column widths
+  var colWidths = wsData[0].map(function(_, ci) {
+    return Math.min(50, Math.max.apply(null, wsData.map(function(row) {
+      return String(row[ci] || '').length;
+    })) + 2);
+  });
+
   var ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [
-    { wch: 30 }, { wch: 15 }, { wch: 20 },
-    { wch: 12 }, { wch: 14 }, { wch: 14 },
-    { wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 20 }
-  ];
+  ws['!cols'] = colWidths.map(function(w) { return { wch: w }; });
 
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Siparisler');

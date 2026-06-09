@@ -453,3 +453,7 @@
   cursor: pointer; font-family: inherit; white-space: nowrap;
 }
 #screen-orders .o-dl-item:hover { background: rgba(255,255,255,.1); }
+
+/* DANGER BUTTON */
+#screen-orders .o-ob-danger { color: #DC2626 !important; }
+#screen-orders .o-ob-danger:hover { background: #DC2626 !important; color: #fff !important; }
