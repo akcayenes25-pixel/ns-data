@@ -441,6 +441,14 @@
     sortedVals.forEach(function (val) {
       var groupOrders = orders.filter(function (o) { return dv(o, dim) === val; });
       if (dim !== 'urun' && !_S.showEmpty && !groupOrders.length) return;
+      // Check hiddenRows for musteri+urun combination
+      if (dim === 'urun') {
+        var musteriCtx = rowContext.find(function(r){ return r.dim === 'musteri'; });
+        if (musteriCtx) {
+          var rkey = musteriCtx.val + '|' + val;
+          if (_S.hiddenRows.indexOf(rkey) !== -1) return;
+        }
+      }
       var groupKey = rowContext.map(function (c) { return c.val; }).join('|') + '|' + val;
       var label = dvLabel(dim, val);
       var newContext = rowContext.concat([{ dim: dim, val: val }]);
@@ -939,23 +947,27 @@
       b.onclick = function(e) {
         e.stopPropagation();
         var rkey = b.dataset.rkey;
-        if (rkey && _S.hiddenRows.indexOf(rkey) === -1) {
-          var before = _S.hiddenRows.slice();
+        if (!rkey) return;
+        var musteriId = rkey.split('|')[0];
+        // Add to hiddenRows
+        if (_S.hiddenRows.indexOf(rkey) === -1) {
           _S.hiddenRows.push(rkey);
-          _dbgLog('ROW_X_CLICK', {
-            rowKey: rkey,
-            hiddenRowsBefore: before,
-            hiddenRowsAfter: _S.hiddenRows.slice(),
-            filtersMusteri: _S.filters.musteri.slice()
-          });
-          var tr = b.closest('tr');
-          if (tr) {
-            tr.style.transition = 'opacity 0.2s';
-            tr.style.opacity = '0';
-            setTimeout(function(){ renderData(); }, 200);
-          }
+        }
+        // Remove customer from filter and clear their hiddenRows
+        _S.filters.musteri = _S.filters.musteri.filter(function(x){ return x !== musteriId; });
+        _S.hiddenRows = _S.hiddenRows.filter(function(r){ return !r.startsWith(musteriId + '|'); });
+        _dbgLog('ROW_X_CLICK', {
+          rowKey: rkey, musteriId: musteriId,
+          filtersMusteri: _S.filters.musteri.slice(),
+          hiddenRows: _S.hiddenRows.slice()
+        });
+        var tr = b.closest('tr');
+        if (tr) {
+          tr.style.transition = 'opacity 0.2s';
+          tr.style.opacity = '0';
+          setTimeout(function(){ renderFL(); renderData(); }, 200);
         } else {
-          _dbgLog('ROW_X_CLICK_SKIP', { rowKey: rkey, reason: rkey ? 'already_hidden' : 'no_rkey', hiddenRows: _S.hiddenRows.slice() });
+          renderFL(); renderData();
         }
       };
     });
