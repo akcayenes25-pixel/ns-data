@@ -226,13 +226,19 @@
     var cols = _S.cols;
     if (!cols.length) return [{ keys: [], label: '', bi: 0 }];
     var bothTarefs = cols.includes('cikan') && cols.includes('cikacak');
+
+    function colDimVals(dim) {
+      if (dim === 'urun') return _state.products.filter(function(p){ return p.active !== false; }).map(function(p){ return p.id; });
+      return dimVals(dim, orders);
+    }
+
     if (bothTarefs) {
       var ciIdx = cols.indexOf('cikan'), ckIdx = cols.indexOf('cikacak');
       var tarafOrder = ciIdx < ckIdx ? ['cikan', 'cikacak'] : ['cikacak', 'cikan'];
       var otherCols = cols.filter(function (d) { return !isTarafDim(d); });
       var combos = [[]];
       otherCols.forEach(function (dim) {
-        var vals = dimVals(dim, orders), next = [];
+        var vals = colDimVals(dim), next = [];
         combos.forEach(function (combo) { vals.forEach(function (v) { next.push(combo.concat([{ dim: dim, val: v }])); }); });
         combos = next;
       });
@@ -244,7 +250,7 @@
     }
     var combos2 = [[]];
     cols.forEach(function (dim) {
-      var vals = dimVals(dim, orders), next = [];
+      var vals = colDimVals(dim), next = [];
       combos2.forEach(function (combo) { vals.forEach(function (v) { next.push(combo.concat([{ dim: dim, val: v }])); }); });
       combos2 = next;
     });
@@ -539,12 +545,8 @@
     var urunCtx = rowContext.find(function(r){ return r.dim === 'urun'; });
     var rowKey = (musteriCtx ? musteriCtx.val : '') + '|' + (urunCtx ? urunCtx.val : '');
     var xBtn = '<button class="o-row-hide-btn" data-rkey="' + _esc(rowKey) + '">×</button>';
-    var firstCellIdx = cells.indexOf('<td');
-    if (firstCellIdx !== -1) {
-      var insertAt = cells.indexOf('>', firstCellIdx) + 1;
-      cells = cells.slice(0, insertAt) + xBtn + cells.slice(insertAt);
-    }
-    return '<tr class="' + rowCls + '">' + cells + '</tr>';
+    // Insert X button as very first child of entire row (before all cells)
+    return '<tr class="' + rowCls + '"><td class="o-row-hide-td">' + xBtn + '</td>' + cells + '</tr>';
   }
 
   /* ============================================================ AGG ROWS */
@@ -598,7 +600,7 @@
       cells += '<td style="' + s4 + bl + 'text-align:right;font-weight:700">' + fmtVal(val, c.valK) + '</td>';
     });
 
-    return '<tr class="' + cls + '">' + cells + '</tr>';
+    return '<tr class="' + cls + '"><td style="width:20px;padding:0' + (cls === 'gtr' ? ';background:#000' : cls === 'str' ? ';background:#9CA3AF' : '') + '"></td>' + cells + '</tr>';
   }
 
   /* ============================================================ RENDER HEADER */
@@ -612,12 +614,15 @@
     var nColDims = effectiveColDimCount();
     var nHdrRows = Math.max(nColDims, 1) + 1;
 
-    var cg = '<colgroup>';
+    var cg = '<colgroup><col style="width:20px;min-width:20px">';
     schema.forEach(function (c) { cg += '<col style="width:' + c.w + 'px;min-width:' + c.w + 'px">'; });
     cg += '</colgroup>';
 
     var rows = [];
     for (var r = 0; r < nHdrRows; r++) rows.push('');
+
+    // Add empty TH for X button column
+    rows[0] += '<th rowspan="' + nHdrRows + '" style="width:20px;min-width:20px;padding:0"></th>';
 
     nameCols.forEach(function (c) {
       var nameKey = 'name_' + c.dim;
@@ -747,7 +752,7 @@
 
     renderHeader(schema, orders);
 
-    var cg = '<colgroup>';
+    var cg = '<colgroup><col style="width:20px;min-width:20px">';
     schema.forEach(function (c) { cg += '<col style="width:' + c.w + 'px;min-width:' + c.w + 'px">'; });
     cg += '</colgroup>';
     var dt = document.getElementById('o-dt');
@@ -804,31 +809,32 @@
     inp.value = savedVal;
     inp.style.cssText = 'flex:1;border:none;outline:none;font-size:12px;background:transparent;height:100%;font-family:inherit;min-width:0';
 
+    document.querySelectorAll('#o-cust-sug').forEach(function(el){ el.remove(); });
     var sug = document.createElement('div');
     sug.id = 'o-cust-sug';
     sug.style.cssText = 'position:fixed;background:#fff;border:1px solid #E2E5EF;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.13);z-index:9999;display:none;font-size:12px;min-width:180px;max-width:240px';
     document.body.appendChild(sug);
 
-    inp.addEventListener('input', function() {
+    inp.oninput = function() {
       var q = inp.value.toLowerCase().trim();
       if (!q) { sug.style.display = 'none'; return; }
       var matches = _state.customers.filter(function(c){ return c.name.toLowerCase().includes(q); }).slice(0, 5);
       if (!matches.length) { sug.style.display = 'none'; return; }
       sug.innerHTML = matches.map(function(c){
         var alreadySelected = _S.filters.musteri.includes(c.id);
-        return '<div style="padding:4px 10px;cursor:pointer;' + (alreadySelected ? 'color:#999' : '') + '" data-id="' + c.id + '" data-name="' + _esc(c.name) + '" data-selected="' + alreadySelected + '">' + _esc(c.name) + (alreadySelected ? ' ✓' : '') + '</div>';
+        return '<div style="padding:4px 10px;cursor:pointer;' + (alreadySelected ? 'color:#999' : '') + '" data-id="' + c.id + '" data-name="' + _esc(c.name) + '" data-selected="' + alreadySelected + '">' + _esc(c.name) + (alreadySelected ? ' \u2713' : '') + '</div>';
       }).join('');
       var rect = inp.getBoundingClientRect();
       sug.style.top = rect.bottom + 2 + 'px';
       sug.style.left = rect.left + 'px';
       sug.style.display = 'block';
-    });
+    };
 
-    sug.addEventListener('click', function(e) {
+    sug.onclick = function(e) {
       var item = e.target.closest('[data-id]');
       if (!item) return;
       if (item.dataset.selected === 'true') {
-        showToast(item.dataset.name + ' zaten seçili');
+        showToast(item.dataset.name + ' zaten secili');
         return;
       }
       var id = item.dataset.id;
@@ -838,10 +844,10 @@
       sug.style.display = 'none';
       inp.value = '';
       render();
-    });
+    };
 
-    document.addEventListener('click', function closeSug(e) {
-      if (!sug.contains(e.target) && e.target !== inp) {
+    document.addEventListener('click', function(e) {
+      if (sug && !sug.contains(e.target) && e.target !== inp) {
         sug.style.display = 'none';
       }
     });
@@ -1360,10 +1366,10 @@
     });
     w.innerHTML = h;
     w.querySelectorAll('.o-ach-x').forEach(function (b) {
-      b.addEventListener('click', function () {
+      b.onclick = function () {
         _S.filters[b.dataset.key] = _S.filters[b.dataset.key].filter(function (x) { return x !== b.dataset.val; });
         renderFL(); renderData();
-      });
+      };
     });
   }
 
@@ -1372,7 +1378,7 @@
       var btn = document.getElementById('o-fb-' + key);
       var p   = document.getElementById('o-ddp-' + key);
       if (!btn || !p) return;
-      btn.addEventListener('click', function (e) {
+      btn.onclick = function (e) {
         e.stopPropagation();
         var open = p.classList.contains('open');
         document.querySelectorAll('#screen-orders .o-ddp').forEach(function (x) { x.classList.remove('open'); });
@@ -1382,7 +1388,7 @@
           p.style.left = r.left + 'px';
           p.classList.add('open');
         }
-      });
+      };
     });
     document.addEventListener('click', function (e) {
       if (!e.target.closest('#screen-orders .o-dda')) {
