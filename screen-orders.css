@@ -418,3 +418,16 @@
   cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;
 }
 #screen-orders .o-vm-savebtn:hover { background: #4338CA; }
+
+/* ---- Search row & hide button ---- */
+#o-search-row-wrap { box-sizing: border-box; }
+#o-cust-search-inp::placeholder { color: #AEAEB2; }
+#o-cust-sug > div:hover { background: #F2F2F7; }
+#screen-orders .o-row-hide-td { width: 20px; padding: 0 2px; text-align: center; }
+#screen-orders .o-row-hide-btn {
+  background: none; border: none; color: #AEAEB2; font-size: 14px;
+  cursor: pointer; padding: 0; line-height: 1; opacity: 0; transition: opacity 0.15s;
+  font-family: inherit;
+}
+#screen-orders tr:hover .o-row-hide-btn { opacity: 1; }
+#screen-orders .o-row-hide-btn:hover { color: #DC2626; }

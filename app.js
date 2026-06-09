@@ -2,10 +2,10 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.24';
+const APP_VERSION = 'v2.0.25';
 
 const CHANGELOG = {
-  'v2.0.24': {
+  'v2.0.25': {
     date: 'Haziran 2026',
     items: [
       'Aktivite logu eklendi — her uygulama açılışı ve tüm silme işlemleri kayıt altına alınıyor.',
@@ -524,6 +524,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Log boot snapshot — records customer/product counts at startup
   setTimeout(dbLogSnapshot, 2000);
+
+  // Pre-load managers so orders screen filter lists are ready
+  Promise.all([CustomerManager.load(), ProductManager.load()]).catch(function(e){ console.warn('Manager preload:', e); });
 
   initNavigation();
   initClock();
