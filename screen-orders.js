@@ -1436,15 +1436,27 @@
         var val = b.dataset.val;
         var before = _S.filters[key].slice();
         _S.filters[key] = _S.filters[key].filter(function (x) { return x !== val; });
-        _dbgLog('CHIP_X_CLICK', {
-          key: key,
-          val: val,
-          valName: dvLabel(key, val),
-          filtersBefore: before,
-          filtersAfter: _S.filters[key].slice(),
-          hiddenRows: _S.hiddenRows.slice(),
-          hiddenRowsForThisCustomer: _S.hiddenRows.filter(function(r){ return r.startsWith(val); })
-        });
+        // If removing a customer, also clear their hiddenRows and search input
+        if (key === 'musteri') {
+          var beforeHidden = _S.hiddenRows.slice();
+          _S.hiddenRows = _S.hiddenRows.filter(function(r){ return !r.startsWith(val + '|'); });
+          var searchInp = document.getElementById('o-cust-search-inp');
+          if (searchInp) searchInp.value = '';
+          var sug = document.getElementById('o-cust-sug');
+          if (sug) sug.style.display = 'none';
+          _dbgLog('CHIP_X_CLICK', {
+            key: key, val: val, valName: dvLabel(key, val),
+            filtersBefore: before, filtersAfter: _S.filters[key].slice(),
+            hiddenRows: beforeHidden, hiddenRowsForThisCustomer: beforeHidden.filter(function(r){ return r.startsWith(val + '|'); }),
+            hiddenRowsAfterClear: _S.hiddenRows.slice()
+          });
+        } else {
+          _dbgLog('CHIP_X_CLICK', {
+            key: key, val: val, valName: dvLabel(key, val),
+            filtersBefore: before, filtersAfter: _S.filters[key].slice(),
+            hiddenRows: _S.hiddenRows.slice()
+          });
+        }
         renderFL(); renderData();
       };
     });
