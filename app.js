@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.29';
+const APP_VERSION = 'v2.0.30';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,7 +19,7 @@ const APP_VERSION = 'v2.0.29';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
-  'v2.0.29': {
+  'v2.0.30': {
     date: 'Haziran 2026',
     items: [
       '[Eklendi] Müşteri arama satırı — tablonun üstünde, yazarak müşteri eklenebiliyor.',

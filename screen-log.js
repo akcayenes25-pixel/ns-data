@@ -2,7 +2,7 @@
 (function() {
   'use strict';
 
-  var _showDebug = false;
+  var _showDebug = true;
 
   document.addEventListener('nsdata:appReady', function() {
     document.addEventListener('nsdata:screenActivated', function(e) {
@@ -14,12 +14,10 @@
     var screen = document.getElementById('screen-log');
     if (!screen) return;
     screen.innerHTML = '<div style="padding:32px;color:#4A5068;font-size:15px">Yukleniyor...</div>';
-
     var rows = await dbGetActivityLog();
     screen.innerHTML = _buildHTML(rows);
 
     var el = function(id) { return document.getElementById(id); };
-
     if (el('log-refresh-btn')) el('log-refresh-btn').onclick = _load;
     if (el('log-clear-btn')) el('log-clear-btn').onclick = async function() {
       if (!confirm('Tum log kayitlari silinsin mi?')) return;
@@ -28,24 +26,43 @@
         await window._supabaseClient.from('activity_log').delete().neq('id', dummy);
         showToast('Log temizlendi');
         _load();
-      } catch(e2) { showToast('Temizlenemedi'); }
+      } catch(e) { showToast('Temizlenemedi'); }
+    };
+    if (el('log-copy-all-btn')) el('log-copy-all-btn').onclick = function() {
+      var allText = rows.map(function(r) {
+        var dt = r.created_at ? new Date(r.created_at) : null;
+        var dtStr = dt ? _fmt(dt) : '?';
+        var detail = r.detail || '';
+        try { detail = JSON.stringify(JSON.parse(detail), null, 2); } catch(e) {}
+        return '[' + dtStr + '] ' + r.action + ' | ' + (r.screen || '') + '\n' + detail;
+      }).join('\n\n---\n\n');
+      navigator.clipboard.writeText(allText).then(function(){ showToast('Kopyalandi'); });
     };
 
-    if (el('log-toggle-debug')) el('log-toggle-debug').onclick = function() {
-      _showDebug = !_showDebug;
-      _load();
-    };
-
-    // Expand/collapse JSON detail
-    screen.querySelectorAll('.log-detail-toggle').forEach(function(btn) {
+    // Arrow toggles
+    screen.querySelectorAll('.log-row-arrow').forEach(function(btn) {
       btn.onclick = function() {
-        var id = btn.dataset.id;
-        var box = document.getElementById('log-detail-' + id);
-        if (box) {
-          var isHidden = box.style.display === 'none';
-          box.style.display = isHidden ? 'block' : 'none';
-          btn.textContent = isHidden ? 'Kapat' : 'Detay';
-        }
+        var idx = btn.dataset.idx;
+        var detail = document.getElementById('log-detail-' + idx);
+        if (!detail) return;
+        var open = detail.style.display !== 'none';
+        detail.style.display = open ? 'none' : 'block';
+        btn.textContent = open ? '▶' : '▼';
+      };
+    });
+
+    // Row copy buttons
+    screen.querySelectorAll('.log-row-copy').forEach(function(btn) {
+      btn.onclick = function() {
+        var idx = btn.dataset.idx;
+        var row = rows[idx];
+        if (!row) return;
+        var dt = row.created_at ? new Date(row.created_at) : null;
+        var dtStr = dt ? _fmt(dt) : '?';
+        var detail = row.detail || '';
+        try { detail = JSON.stringify(JSON.parse(detail), null, 2); } catch(e) {}
+        var text = '[' + dtStr + '] ' + row.action + ' | ' + (row.screen || '') + '\n' + detail;
+        navigator.clipboard.writeText(text).then(function(){ showToast('Satirr kopyalandi'); });
       };
     });
   }
@@ -54,98 +71,86 @@
     var filtered = _showDebug ? rows : rows.filter(function(r){ return !r.action.startsWith('DEBUG_'); });
 
     var ACTION_COLOR = {
-      'APP_BOOT':           '#4F46E5',
-      'SOFT_RESET':         '#D97706',
-      'HARD_RESET':         '#DC2626',
-      'DELETE_PRODUCT':     '#DC2626',
-      'DELETE_CUSTOMER':    '#DC2626',
-      'DELETE_ORDER':       '#D97706',
-      'DEBUG_LOADALL_START':'#6B7280',
-      'DEBUG_LOADALL_DONE': '#059669',
-      'DEBUG_FILTORDERS':   '#0284C7',
-      'DEBUG_RENDER':       '#7C3AED',
-      'DEBUG_MUSTERI_EKLE': '#D97706',
-      'DEBUG_MUSTERI_EKLENDI': '#059669',
+      'APP_BOOT':             '#4F46E5',
+      'SOFT_RESET':           '#D97706',
+      'HARD_RESET':           '#DC2626',
+      'DELETE_PRODUCT':       '#DC2626',
+      'DELETE_CUSTOMER':      '#DC2626',
+      'DEBUG_LOADALL_START':  '#9CA3AF',
+      'DEBUG_LOADALL_DONE':   '#059669',
+      'DEBUG_FILTORDERS':     '#0284C7',
+      'DEBUG_RENDER':         '#7C3AED',
+      'DEBUG_MUSTERI_EKLE':   '#D97706',
+      'DEBUG_MUSTERI_EKLENDI':'#059669',
     };
 
-    var rowsHTML = filtered.length === 0
-      ? '<tr><td colspan="6" style="padding:32px;text-align:center;color:#4A5068">Kayit yok</td></tr>'
-      : filtered.map(function(r, idx) {
-          var color = ACTION_COLOR[r.action] || '#4A5068';
-          var dt = r.created_at ? new Date(r.created_at) : null;
-          var dtStr = dt ? _fmt(dt) : '—';
-          var isDebug = r.action.startsWith('DEBUG_');
-          var detailStr = r.detail || '';
-          var isJson = detailStr.startsWith('{') || detailStr.startsWith('[');
-          var prettyDetail = '';
-          if (isJson) {
-            try {
-              var parsed = JSON.parse(detailStr);
-              prettyDetail = _renderJson(parsed);
-            } catch(e) {
-              prettyDetail = _esc(detailStr);
-            }
-          } else {
-            prettyDetail = _esc(detailStr);
-          }
+    var linesHTML = filtered.map(function(r, idx) {
+      var color = ACTION_COLOR[r.action] || '#4A5068';
+      var dt = r.created_at ? new Date(r.created_at) : null;
+      var dtStr = dt ? _fmt(dt) : '?';
+      var detail = r.detail || '';
+      var isJson = detail.startsWith('{') || detail.startsWith('[');
+      var prettyDetail = '';
+      if (isJson) {
+        try { prettyDetail = JSON.stringify(JSON.parse(detail), null, 2); } catch(e) { prettyDetail = detail; }
+      } else {
+        prettyDetail = detail;
+      }
 
-          var rowBg = isDebug ? '#FAFAFA' : '#fff';
-          return '<tr style="border-bottom:1px solid #E2E5EF;background:' + rowBg + '">' +
-            '<td style="padding:8px 12px;font-size:12px;color:#4A5068;white-space:nowrap;font-family:monospace">' + dtStr + '</td>' +
-            '<td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:' + color + ';background:' + color + '18;padding:2px 7px;border-radius:4px;white-space:nowrap">' + _esc(r.action) + '</span></td>' +
-            '<td style="padding:8px 12px;font-size:12px">' + _esc(r.table_name || '—') + '</td>' +
-            '<td style="padding:8px 12px;font-size:12px;color:#4A5068">' + _esc(r.screen || '—') + '</td>' +
-            '<td style="padding:8px 12px;font-size:12px;max-width:300px">' +
-              (isJson
-                ? '<button class="log-detail-toggle" data-id="' + idx + '" style="font-size:11px;background:#F3F4F6;border:1px solid #E2E5EF;border-radius:4px;padding:2px 8px;cursor:pointer;font-family:inherit">Detay</button>' +
-                  '<div id="log-detail-' + idx + '" style="display:none;margin-top:6px;background:#F8F9FC;border:1px solid #E2E5EF;border-radius:4px;padding:8px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow-y:auto">' + prettyDetail + '</div>'
-                : '<span style="font-size:11px;color:#4A5068;word-break:break-all">' + prettyDetail.substring(0,120) + (prettyDetail.length > 120 ? '...' : '') + '</span>'
-              ) +
-            '</td>' +
-          '</tr>';
-        }).join('');
+      // Single line summary
+      var summary = '';
+      if (isJson) {
+        try {
+          var parsed = JSON.parse(detail);
+          var parts = [];
+          if (parsed.call !== undefined) parts.push('#' + parsed.call);
+          if (parsed.ordersCount !== undefined) parts.push('orders=' + parsed.ordersCount);
+          if (parsed.matchedOrders !== undefined) parts.push('matched=' + parsed.matchedOrders);
+          if (parsed.stateOrdersTotal !== undefined) parts.push('stateTotal=' + parsed.stateOrdersTotal);
+          if (parsed.filtersMusteri !== undefined) parts.push('filtre=[' + parsed.filtersMusteri.length + ']');
+          if (parsed.result !== undefined) parts.push('result=' + parsed.result);
+          if (parsed.name !== undefined) parts.push('musteri=' + parsed.name);
+          if (parsed.customersCount !== undefined) parts.push('customers=' + parsed.customersCount);
+          if (parsed.productsCount !== undefined) parts.push('products=' + parsed.productsCount);
+          summary = parts.join(' | ');
+        } catch(e) { summary = detail.substring(0, 80); }
+      } else {
+        summary = detail.substring(0, 100);
+      }
 
-    var debugBtnLabel = _showDebug ? 'Debug Gizle' : 'Debug Goster';
-    var debugBtnColor = _showDebug ? '#DC2626' : '#4F46E5';
-
-    return '<div style="padding:20px 24px">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">' +
-        '<div>' +
-          '<div style="font-size:20px;font-weight:800;color:#0F1117">Aktivite & Debug Logu</div>' +
-          '<div style="font-size:13px;color:#4A5068;margin-top:2px">Son 200 kayit — sil, yukle, render, filtre islemleri</div>' +
+      return '<div style="border-bottom:1px solid #E2E5EF;padding:0">' +
+        '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;font-size:12px;font-family:monospace">' +
+          '<button class="log-row-arrow" data-idx="' + idx + '" style="background:none;border:none;cursor:pointer;font-size:11px;color:#6B7280;padding:0;width:14px;flex-shrink:0;font-family:inherit">▶</button>' +
+          '<span style="color:#9CA3AF;white-space:nowrap;flex-shrink:0">' + dtStr + '</span>' +
+          '<span style="font-weight:700;color:' + color + ';white-space:nowrap;flex-shrink:0;font-size:11px">' + _esc(r.action) + '</span>' +
+          '<span style="color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(summary) + '</span>' +
+          '<button class="log-row-copy" data-idx="' + idx + '" style="background:none;border:1px solid #E2E5EF;border-radius:3px;cursor:pointer;font-size:10px;color:#6B7280;padding:1px 5px;flex-shrink:0;font-family:inherit">kopyala</button>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-          '<button id="log-toggle-debug" style="height:36px;padding:0 14px;font-size:12px;font-weight:600;color:#fff;background:' + debugBtnColor + ';border:none;border-radius:6px;cursor:pointer;font-family:inherit">' + debugBtnLabel + '</button>' +
-          '<button id="log-refresh-btn" style="height:36px;padding:0 14px;font-size:12px;font-weight:600;background:#F3F4F6;border:1px solid #E2E5EF;border-radius:6px;cursor:pointer;font-family:inherit">Yenile</button>' +
-          '<button id="log-clear-btn" style="height:36px;padding:0 14px;font-size:12px;font-weight:600;color:#DC2626;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;cursor:pointer;font-family:inherit">Logu Temizle</button>' +
+        '<div id="log-detail-' + idx + '" style="display:none;padding:6px 10px 10px 30px">' +
+          '<pre style="background:#F8F9FC;border:1px solid #E2E5EF;border-radius:4px;padding:8px;font-size:11px;overflow-x:auto;white-space:pre-wrap;margin:0;color:#1F2937">' + _esc(prettyDetail) + '</pre>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div style="padding:16px 20px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+        '<div style="font-size:18px;font-weight:800;color:#0F1117">Debug Log</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+          '<button id="log-copy-all-btn" style="height:32px;padding:0 12px;font-size:12px;font-weight:600;background:#4F46E5;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit">Tumunu Kopyala</button>' +
+          '<button id="log-refresh-btn" style="height:32px;padding:0 12px;font-size:12px;font-weight:600;background:#F3F4F6;border:1px solid #E2E5EF;border-radius:6px;cursor:pointer;font-family:inherit">Yenile</button>' +
+          '<button id="log-clear-btn" style="height:32px;padding:0 12px;font-size:12px;font-weight:600;color:#DC2626;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;cursor:pointer;font-family:inherit">Temizle</button>' +
         '</div>' +
       '</div>' +
-      '<div style="font-size:12px;color:#4A5068;margin-bottom:12px">Toplam: ' + rows.length + ' kayit, gosterilen: ' + filtered.length + '</div>' +
-      '<div style="background:#fff;border:1.5px solid #E2E5EF;border-radius:8px;overflow:hidden">' +
-        '<div style="overflow-x:auto">' +
-          '<table style="width:100%;border-collapse:collapse">' +
-            '<thead><tr style="background:#F8F9FC">' +
-              '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068;white-space:nowrap">ZAMAN</th>' +
-              '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">ISLEM</th>' +
-              '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">TABLO</th>' +
-              '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">EKRAN</th>' +
-              '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">DETAY</th>' +
-            '</tr></thead>' +
-            '<tbody>' + rowsHTML + '</tbody>' +
-          '</table>' +
-        '</div>' +
+      '<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px">' + filtered.length + ' kayit</div>' +
+      '<div style="background:#fff;border:1px solid #E2E5EF;border-radius:8px;overflow:hidden">' +
+        linesHTML +
       '</div>' +
     '</div>';
   }
 
-  function _renderJson(obj) {
-    return JSON.stringify(obj, null, 2);
-  }
-
   function _fmt(d) {
     var pad = function(n) { return String(n).padStart(2,'0'); };
-    return d.getDate() + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() +
-           ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    return d.getDate() + '.' + pad(d.getMonth()+1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   }
 
   function _esc(str) {
