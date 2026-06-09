@@ -41,6 +41,22 @@
   var _saveTimer = null;
 
   /* ============================================================ INIT */
+  /* ============================================================ DEBUG LOGGER */
+  var _dbgCallCount = { filtOrders: 0, render: 0, loadAll: 0, injectSearch: 0 };
+
+  function _dbgLog(action, detail) {
+    try {
+      if (!window._supabaseClient) return;
+      var payload = typeof detail === 'object' ? JSON.stringify(detail) : String(detail);
+      window._supabaseClient.from('activity_log').insert({
+        action: 'DEBUG_' + action,
+        table_name: 'orders_screen',
+        screen: 'orders',
+        detail: payload.substring(0, 4000)
+      }).then(function(){}).catch(function(){});
+    } catch(e) {}
+  }
+
   document.addEventListener('nsdata:appReady', function () { _init(); });
 
   async function _init() {
@@ -50,6 +66,9 @@
   }
 
   async function _loadAll() {
+    _dbgCallCount.loadAll++;
+    var callN = _dbgCallCount.loadAll;
+    _dbgLog('LOADALL_START', { call: callN, filtersAtStart: JSON.parse(JSON.stringify(_S.filters)) });
     var r = await Promise.all([dbGetOrders(), dbGetProducts(), dbGetCustomers()]);
     _state.orders    = _adaptOrders(r[0]);
     _state.products  = _adaptProducts(r[1]);
@@ -58,6 +77,14 @@
     _state.customerMap = {};
     _state.products.forEach(function (p) { _state.productMap[p.id] = p; });
     _state.customers.forEach(function (c) { _state.customerMap[c.id] = c; });
+    _dbgLog('LOADALL_DONE', {
+      call: callN,
+      ordersCount: _state.orders.length,
+      productsCount: _state.products.length,
+      customersCount: _state.customers.length,
+      orderCustomerIds: _state.orders.map(function(o){ return o.musteri; }),
+      filtersAfter: JSON.parse(JSON.stringify(_S.filters))
+    });
   }
 
   /* ============================================================ ADAPTERS */
@@ -148,8 +175,13 @@
 
   /* ============================================================ FILTER */
   function filtOrders() {
-    if (!_S.filters.musteri.length) return [];
-    return _state.orders.filter(function (o) {
+    _dbgCallCount.filtOrders++;
+    var callN = _dbgCallCount.filtOrders;
+    if (!_S.filters.musteri.length) {
+      _dbgLog('FILTORDERS', { call: callN, result: 'EMPTY_FILTER', ordersInState: _state.orders.length });
+      return [];
+    }
+    var result = _state.orders.filter(function (o) {
       var f = _S.filters;
       if (f.ulke.length    && !f.ulke.includes(o.ulke))     return false;
       if (f.musteri.length && !f.musteri.includes(o.musteri)) return false;
@@ -163,6 +195,27 @@
       }
       return true;
     });
+    _dbgLog('FILTORDERS', {
+      call: callN,
+      filtersMusteri: _S.filters.musteri,
+      filtersUlke: _S.filters.ulke,
+      filtersUrun: _S.filters.urun,
+      stateOrdersTotal: _state.orders.length,
+      stateOrderCustomerIds: _state.orders.map(function(o){ return o.musteri; }),
+      matchedOrders: result.length,
+      hiddenRows: _S.hiddenRows,
+      orderDetails: _state.orders.map(function(o){
+        return {
+          id: o.id,
+          musteri: o.musteri,
+          musteriInFilter: _S.filters.musteri.includes(o.musteri),
+          urun: o.urun,
+          ulke: o.ulke,
+          passed: result.indexOf(o) !== -1
+        };
+      })
+    });
+    return result;
   }
 
   /* ============================================================ PLACEMENT */
@@ -835,12 +888,15 @@
       if (!item) return;
       if (item.dataset.selected === 'true') {
         showToast(item.dataset.name + ' zaten secili');
+        _dbgLog('MUSTERI_EKLE', { result: 'ZATEN_SECILI', name: item.dataset.name, id: item.dataset.id, filtersMusteri: _S.filters.musteri.slice() });
         return;
       }
       var id = item.dataset.id;
+      _dbgLog('MUSTERI_EKLE', { result: 'EKLENIYOR', name: item.dataset.name, id: id, oncekiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length });
       if (!_S.filters.musteri.includes(id)) {
         _S.filters.musteri.unshift(id);
       }
+      _dbgLog('MUSTERI_EKLENDI', { sonrakiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length });
       sug.style.display = 'none';
       inp.value = '';
       render();
@@ -1537,6 +1593,19 @@
 
   /* ============================================================ MAIN RENDER */
   function render() {
+    _dbgCallCount.render++;
+    _dbgLog('RENDER', {
+      call: _dbgCallCount.render,
+      filtersMusteri: _S.filters.musteri.slice(),
+      filtersUlke: _S.filters.ulke.slice(),
+      filtersUrun: _S.filters.urun.slice(),
+      stateOrdersCount: _state.orders.length,
+      stateCustomersCount: _state.customers.length,
+      stateProductsCount: _state.products.length,
+      form: _S.form,
+      rows: _S.rows.slice(),
+      cols: _S.cols.slice()
+    });
     renderPV();
     renderOpts();
     renderFL();
