@@ -44,7 +44,6 @@
       _buildTargetSection() +
       _buildProductSection() +
       _buildCustomerSection() +
-      _buildCustomerCountrySection() +
       _buildProfileSection() +
       _buildMonthCloseSection() +
       _buildResetSection();
@@ -193,13 +192,61 @@
      CUSTOMER SECTION
      ============================================================ */
   function _buildCustomerSection() {
-    var tableHTML = CustomerManager.buildSettingsHTML(_state.customers);
+    // Mevcut orders'tan unique customer+country kombinasyonları
+    var seen = {}, combos = [];
+    (_state.orders || []).forEach(function(o) {
+      var key = o.customer_id + '|' + (o.destination_country || '');
+      if (!seen[key]) { seen[key]=true; combos.push({customer_id:o.customer_id,country:o.destination_country||''}); }
+    });
+    var custMap = {};
+    (_state.customers||[]).forEach(function(c){ custMap[c.id]=c; });
+
+    var rows = (_state.customers||[]).map(function(c) {
+      var custCombos = combos.filter(function(co){ return co.customer_id === c.id; });
+      var ulkeHTML = custCombos.length
+        ? custCombos.map(function(co) {
+            var hasData = (_state.orders||[]).some(function(o){
+              return o.customer_id===co.customer_id && o.destination_country===co.country && ((o.shipped_qty||0)>0||(o.planned_qty||0)>0);
+            });
+            return '<span style="display:inline-flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;color:#0F1117;margin-right:4px">' +
+              _esc(co.country) +
+              (hasData ? '' : ' <button class="cc-del-btn" data-del-cust="'+c.id+'" data-del-country="'+_esc(co.country)+'" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:12px;padding:0;line-height:1">×</button>') +
+            '</span>';
+          }).join('') + '<button class="cc-add-inline-btn" data-cust-id="'+c.id+'" data-cust-name="'+_esc(c.name)+'" style="background:none;border:1px dashed #9CA3AF;border-radius:4px;padding:2px 8px;font-size:11px;color:#6B7280;cursor:pointer">+ Ülke</button>'
+        : '<button class="cc-add-inline-btn" data-cust-id="'+c.id+'" data-cust-name="'+_esc(c.name)+'" style="background:none;border:1px dashed #9CA3AF;border-radius:4px;padding:2px 8px;font-size:11px;color:#6B7280;cursor:pointer">+ Ülke Ekle</button>';
+
+      return '<tr style="border-bottom:1px solid var(--color-border);' + (c.active === false ? 'opacity:0.5' : '') + '">' +
+        '<td style="font-weight:600;padding:10px 16px;font-size:15px">' + _esc(c.name) + '</td>' +
+        '<td style="padding:10px 16px">' +
+          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px">' +
+            '<input type="checkbox" class="customer-active-cb" data-customer-id="' + c.id + '" ' +
+              (c.active !== false ? 'checked' : '') + ' style="width:18px;height:18px" />' +
+            '<span style="font-size:14px">' + (c.active !== false ? 'Aktif' : 'Pasif') + '</span>' +
+          '</label>' +
+        '</td>' +
+        '<td style="padding:10px 16px">' + ulkeHTML + '</td>' +
+        '<td style="padding:8px 12px;text-align:right">' +
+          '<button class="customer-delete-btn" data-customer-id="' + c.id + '" style="color:#DC2626;font-size:13px;font-weight:600;padding:4px 10px;border:1.5px solid #DC2626;border-radius:4px;cursor:pointer;background:transparent">Sil</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
     return '<div class="settings-section">' +
       '<div class="settings-section-header">' +
         '<span class="settings-section-title">👥 Müşteriler</span>' +
         '<button class="btn btn-primary" id="settings-add-customer-btn">+ Müşteri Ekle</button>' +
       '</div>' +
-      '<div class="settings-section-body no-pad" id="settings-customer-table">' + tableHTML + '</div>' +
+      '<div class="settings-section-body no-pad" id="settings-customer-table">' +
+        '<table style="width:100%;border-collapse:collapse">' +
+          '<thead><tr style="background:#F1F3F9">' +
+            '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">MÜŞTERİ</th>' +
+            '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">DURUM</th>' +
+            '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">ÜLKELER</th>' +
+            '<th style="padding:10px 16px"></th>' +
+          '</tr></thead>' +
+          '<tbody>' + (rows || '<tr><td colspan="4" style="padding:16px;text-align:center;color:#4A5068;font-size:14px">Henüz müşteri yok</td></tr>') + '</tbody>' +
+        '</table>' +
+      '</div>' +
       '<div class="settings-section-body" id="settings-add-customer-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
           '<input type="text" id="settings-new-customer-name" placeholder="Müşteri adı" style="flex:1;min-width:200px;min-height:44px;font-size:15px" />' +
@@ -207,69 +254,19 @@
           '<button class="btn btn-secondary" id="settings-cancel-customer-btn">İptal</button>' +
         '</div>' +
       '</div>' +
-    '</div>';
-  }
-
-  /* ============================================================
-     CUSTOMER+COUNTRY SECTION
-     ============================================================ */
-  function _buildCustomerCountrySection() {
-    // Mevcut orders'tan unique customer+country kombinasyonları
-    var seen = {}, combos = [];
-    (_state.orders || []).forEach(function(o) {
-      var key = o.customer_id + '|' + (o.destination_country || '');
-      if (!seen[key]) { seen[key]=true; combos.push({customer_id:o.customer_id,country:o.destination_country||''}); }
-    });
-    combos.sort(function(a,b){ return a.customer_id.localeCompare(b.customer_id)||a.country.localeCompare(b.country); });
-
-    var custMap = {};
-    (_state.customers||[]).forEach(function(c){ custMap[c.id]=c; });
-
-    var rows = combos.map(function(combo) {
-      var custName = custMap[combo.customer_id] ? custMap[combo.customer_id].name : combo.customer_id;
-      var hasData = (_state.orders||[]).some(function(o){
-        return o.customer_id===combo.customer_id && o.destination_country===combo.country && ((o.shipped_qty||0)>0||(o.planned_qty||0)>0);
-      });
-      return '<tr style="border-bottom:1px solid var(--color-border)">' +
-        '<td style="padding:10px 16px;font-size:14px;font-weight:600">' + _esc(custName) + '</td>' +
-        '<td style="padding:10px 16px;font-size:14px">' + _esc(combo.country||'—') + '</td>' +
-        '<td style="padding:10px 16px;text-align:right">' +
-          (hasData ? '<span style="font-size:12px;color:var(--color-text-secondary)">Veri var</span>' :
-            '<button class="btn btn-secondary" style="font-size:12px;height:30px;padding:0 10px" data-del-cust="'+combo.customer_id+'" data-del-country="'+_esc(combo.country)+'">Sil</button>') +
-        '</td>' +
-      '</tr>';
-    }).join('');
-
-    var custOpts = '<option value="">Müşteri seç...</option>' +
-      (_state.customers||[]).filter(function(c){return c.active!==false;}).map(function(c){
-        return '<option value="'+c.id+'">'+ _esc(c.name) +'</option>';
-      }).join('');
-
-    return '<div class="settings-section">' +
-      '<div class="settings-section-header">' +
-        '<span class="settings-section-title">🌍 Müşteri — Ülke Tanımları</span>' +
-        '<button class="btn btn-primary" id="settings-add-cc-btn">+ Ekle</button>' +
-      '</div>' +
-      '<div class="settings-section-body no-pad">' +
-        '<table style="width:100%;border-collapse:collapse">' +
-          '<thead><tr style="background:var(--color-surface-2)">' +
-            '<th style="padding:8px 16px;text-align:left;font-size:12px;color:var(--color-text-secondary)">Müşteri</th>' +
-            '<th style="padding:8px 16px;text-align:left;font-size:12px;color:var(--color-text-secondary)">Ülke</th>' +
-            '<th style="padding:8px 16px"></th>' +
-          '</tr></thead>' +
-          '<tbody>' + (rows || '<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--color-text-secondary);font-size:13px">Henüz tanım yok</td></tr>') + '</tbody>' +
-        '</table>' +
-      '</div>' +
-      '<div class="settings-section-body" id="settings-add-cc-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">' +
-          '<select id="settings-cc-cust" style="height:44px;min-width:180px;font-size:14px">' + custOpts + '</select>' +
-          '<input type="text" id="settings-cc-country" placeholder="Ülke (örn. FAS)" style="height:44px;width:140px;font-size:14px;padding:0 10px;border:1.5px solid var(--color-border);border-radius:var(--radius-sm)" />' +
-          '<button class="btn btn-primary" id="settings-cc-save">Kaydet</button>' +
-          '<button class="btn btn-secondary" id="settings-cc-cancel">İptal</button>' +
+      // Inline ülke ekleme formu
+      '<div class="settings-section-body" id="settings-add-cc-inline-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">' +
+          '<span id="settings-cc-inline-cust-name" style="font-weight:600;font-size:14px;min-width:100px"></span>' +
+          '<input type="hidden" id="settings-cc-inline-cust-id" />' +
+          '<input type="text" id="settings-cc-inline-country" placeholder="Ülke (örn. FAS)" style="height:44px;width:140px;font-size:14px;padding:0 10px;border:1.5px solid var(--color-border);border-radius:4px" />' +
+          '<button class="btn btn-primary" id="settings-cc-inline-save">Ekle</button>' +
+          '<button class="btn btn-secondary" id="settings-cc-inline-cancel">İptal</button>' +
         '</div>' +
       '</div>' +
     '</div>';
   }
+
 
   function _esc(str) { if(!str)return''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -508,34 +505,41 @@
       if (ok) { showToast('Müşteri eklendi'); _state.customers = CustomerManager.getAll(); _render(); }
     });
 
-    // Customer+Country section
-    var addCCBtn  = document.getElementById('settings-add-cc-btn');
-    var addCCForm = document.getElementById('settings-add-cc-form');
-    if (addCCBtn) addCCBtn.addEventListener('click', function() {
-      addCCForm.style.display = addCCForm.style.display === 'none' ? 'block' : 'none';
+    // Inline ülke ekleme butonu
+    document.querySelectorAll('.cc-add-inline-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var form = document.getElementById('settings-add-cc-inline-form');
+        var nameEl = document.getElementById('settings-cc-inline-cust-name');
+        var idEl = document.getElementById('settings-cc-inline-cust-id');
+        var countryEl = document.getElementById('settings-cc-inline-country');
+        if (nameEl) nameEl.textContent = btn.getAttribute('data-cust-name') + ' — Ülke:';
+        if (idEl) idEl.value = btn.getAttribute('data-cust-id');
+        if (countryEl) { countryEl.value = ''; }
+        if (form) { form.style.display = 'block'; if (countryEl) countryEl.focus(); }
+      });
     });
-    var cancelCC = document.getElementById('settings-cc-cancel');
-    if (cancelCC) cancelCC.addEventListener('click', function() { addCCForm.style.display = 'none'; });
-    var saveCC = document.getElementById('settings-cc-save');
-    if (saveCC) saveCC.addEventListener('click', async function() {
-      var custId  = (document.getElementById('settings-cc-cust')    || {}).value || '';
-      var country = ((document.getElementById('settings-cc-country') || {}).value || '').trim().toUpperCase();
-      if (!custId || !country) { showToast('Müşteri ve ülke seçilmeli'); return; }
-      // Check if combo already exists
+    var cancelCCInline = document.getElementById('settings-cc-inline-cancel');
+    if (cancelCCInline) cancelCCInline.addEventListener('click', function() {
+      document.getElementById('settings-add-cc-inline-form').style.display = 'none';
+    });
+    var saveCCInline = document.getElementById('settings-cc-inline-save');
+    if (saveCCInline) saveCCInline.addEventListener('click', async function() {
+      var custId  = (document.getElementById('settings-cc-inline-cust-id') || {}).value || '';
+      var country = ((document.getElementById('settings-cc-inline-country') || {}).value || '').trim().toUpperCase();
+      if (!custId || !country) { showToast('Ülke boş olamaz'); return; }
       var exists = (_state.orders || []).some(function(o){ return o.customer_id===custId && (o.destination_country||'')=== country; });
       if (exists) { showToast('Bu kombinasyon zaten var'); return; }
-      // Create one placeholder order for each product (qty=0)
       var prods = _state.products || [];
       var ok = false;
       for (var i=0;i<prods.length;i++) {
         var r = await dbUpsertOrder({ customer_id: custId, product_id: prods[i].id, shipped_qty: 0, planned_qty: 0, destination_country: country, note: '' });
         if (r) ok = true;
       }
-      if (ok) { showToast('Tanım eklendi'); await _loadAll(); _render(); emitDataChange('orders', {}); }
+      if (ok) { showToast('Ülke eklendi'); document.getElementById('settings-add-cc-inline-form').style.display = 'none'; await _loadAll(); _render(); emitDataChange('orders', {}); }
       else showToast('Eklenemedi');
     });
-    // Delete combo
-    document.querySelectorAll('[data-del-cust]').forEach(function(btn) {
+    // Ülke sil butonu
+    document.querySelectorAll('.cc-del-btn').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         var custId  = btn.getAttribute('data-del-cust');
         var country = btn.getAttribute('data-del-country');
@@ -547,7 +551,7 @@
         for (var i=0;i<toDelete.length;i++) {
           if (await dbDeleteOrder(toDelete[i].id)) done++;
         }
-        if (done>0) { showToast('Silindi'); await _loadAll(); _render(); emitDataChange('orders', {}); }
+        if (done>0) { showToast('Ülke silindi'); await _loadAll(); _render(); emitDataChange('orders', {}); }
         else showToast('Silinemedi — veri var');
       });
     });
