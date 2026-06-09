@@ -875,7 +875,6 @@
         }
       };
     });
-    });
     document.querySelectorAll('#screen-orders .o-ci').forEach(function (inp) {
       _fmtInp(inp);
       inp.addEventListener('focus', function () {
