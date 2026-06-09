@@ -139,6 +139,16 @@
       'DEBUG_FILTER_CLEARED':       '#EF4444',
       'DEBUG_SESSION_HIDDEN_ROWS_RESTORED': '#F59E0B',
       'DEBUG_BUILD_COL_LEAVES':     '#8B5CF6',
+      'DEBUG_RENDERDATA_START':      '#0284C7',
+      'DEBUG_RENDERDATA_EARLY_RETURN': '#DC2626',
+      'DEBUG_BUILDROWS_BASEVAL':     '#7C3AED',
+      'DEBUG_OPT_CLICK':             '#D97706',
+      'DEBUG_FILTER_CHECKBOX':       '#0284C7',
+      'DEBUG_FILTER_RESET':          '#DC2626',
+      'DEBUG_FILTER_SELECT_ALL':     '#059669',
+      'DEBUG_POOL_ALL_CLICK':        '#6366F1',
+      'DEBUG_CLEAR_DATA_START':      '#DC2626',
+      'DEBUG_CLEAR_DATA_DONE':       '#059669',
     };
 
     var debugBtnLabel = _showDebug ? 'Debug Gizle' : 'Debug Goster';

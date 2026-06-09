@@ -437,6 +437,18 @@
       baseVals = rawVals;
     }
     var sortedVals = sortVals(baseVals, dim, orders);
+    _dbgLog('BUILDROWS_BASEVAL', {
+      dim: dim,
+      level: level,
+      rawValsCount: rawVals.length,
+      baseValsCount: baseVals.length,
+      sortedValsCount: sortedVals.length,
+      showEmpty: _S.showEmpty,
+      ordersPassedIn: orders.length,
+      stateOrdersTotal: _state.orders.length,
+      filtersMusteri: _S.filters.musteri.slice(),
+      rowContext: rowContext.map(function(r){ return r.dim + ':' + r.val; })
+    });
     var html2 = '';
     sortedVals.forEach(function (val) {
       var groupOrders = orders.filter(function (o) { return dv(o, dim) === val; });
@@ -796,6 +808,19 @@
     var ht  = document.getElementById('o-ht');
     if (!dtb) return;
 
+    _dbgLog('RENDERDATA_START', {
+      ordersLength: orders.length,
+      stateOrdersLength: _state.orders.length,
+      showEmpty: _S.showEmpty,
+      filtersMusteri: _S.filters.musteri.slice(),
+      filtersUlke: _S.filters.ulke.slice(),
+      filtersUrun: _S.filters.urun.slice(),
+      rows: _S.rows.slice(),
+      cols: _S.cols.slice(),
+      hiddenRows: _S.hiddenRows.slice(),
+      tarafValidation: tv
+    });
+
     if (tv === 'both_pool' || tv === 'cross_axis') {
       if (ht) ht.innerHTML = '';
       var msg = tv === 'both_pool'
@@ -828,6 +853,12 @@
       var emptyMsg = !_S.filters.musteri.length
         ? 'Müşteri seçiniz'
         : 'Sipariş bulunamadı';
+      _dbgLog('RENDERDATA_EARLY_RETURN', {
+        reason: emptyMsg,
+        ordersLength: orders.length,
+        showEmpty: _S.showEmpty,
+        filtersMusteri: _S.filters.musteri.slice()
+      });
       dtb.innerHTML = '<tr><td colspan="' + schema.length + '" class="o-empty">' + emptyMsg + '</td></tr>';
       _injectSearchRow(schema);
       syncScroll(); return;
@@ -1346,20 +1377,20 @@
   function bindOpts() {
     ['compact', 'outline', 'tabular'].forEach(function (f) {
       var el = document.getElementById('o-opt-' + f);
-      if (el) el.onclick = function () { _S.form = f; render(); };
+      if (el) el.onclick = function () { _S.form = f; _dbgLog('OPT_CLICK', { opt: 'form', value: f }); render(); };
     });
     var repeat = document.getElementById('o-opt-repeat');
-    if (repeat) repeat.onclick = function () { if (_S.form !== 'compact') { _S.repeat = !_S.repeat; render(); } };
+    if (repeat) repeat.onclick = function () { if (_S.form !== 'compact') { _S.repeat = !_S.repeat; _dbgLog('OPT_CLICK', { opt: 'repeat', value: _S.repeat }); render(); } };
     var st = document.getElementById('o-opt-st');
-    if (st) st.onclick = function () { _S.stShow = !_S.stShow; render(); };
+    if (st) st.onclick = function () { _S.stShow = !_S.stShow; _dbgLog('OPT_CLICK', { opt: 'stShow', value: _S.stShow }); render(); };
     var stTop = document.getElementById('o-opt-st-top');
-    if (stTop) stTop.onclick = function () { if (_S.form !== 'tabular') { _S.stTop = !_S.stTop; render(); } };
+    if (stTop) stTop.onclick = function () { if (_S.form !== 'tabular') { _S.stTop = !_S.stTop; _dbgLog('OPT_CLICK', { opt: 'stTop', value: _S.stTop }); render(); } };
     var gt = document.getElementById('o-opt-gt');
-    if (gt) gt.onclick = function () { _S.gtShow = !_S.gtShow; render(); };
+    if (gt) gt.onclick = function () { _S.gtShow = !_S.gtShow; _dbgLog('OPT_CLICK', { opt: 'gtShow', value: _S.gtShow }); render(); };
     var blank = document.getElementById('o-opt-blank');
-    if (blank) blank.onclick = function () { _S.blankRow = !_S.blankRow; render(); };
+    if (blank) blank.onclick = function () { _S.blankRow = !_S.blankRow; _dbgLog('OPT_CLICK', { opt: 'blankRow', value: _S.blankRow }); render(); };
     var empty = document.getElementById('o-opt-empty');
-    if (empty) empty.onclick = function () { _S.showEmpty = !_S.showEmpty; render(); };
+    if (empty) empty.onclick = function () { _S.showEmpty = !_S.showEmpty; _dbgLog('OPT_CLICK', { opt: 'showEmpty', value: _S.showEmpty, filtersMusteri: _S.filters.musteri.slice(), stateOrders: _state.orders.length }); render(); };
 
     var viewsBtn = document.getElementById('o-views-btn');
     var viewsMenu = document.getElementById('o-views-menu');
@@ -1428,15 +1459,29 @@
       p.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
         cb.addEventListener('change', function () {
           var k = cb.dataset.key, v = cb.dataset.val;
+          var before = _S.filters[k].slice();
           if (cb.checked) { if (!_S.filters[k].includes(v)) _S.filters[k].push(v); }
           else _S.filters[k] = _S.filters[k].filter(function (x) { return x !== v; });
+          _dbgLog('FILTER_CHECKBOX', {
+            key: k, val: v, valName: dvLabel(k, v),
+            checked: cb.checked,
+            filterBefore: before,
+            filterAfter: _S.filters[k].slice(),
+            stateOrdersCount: _state.orders.length
+          });
           renderFL(); renderData();
         });
       });
       var drBtn = p.querySelector('.o-dr');
-      if (drBtn) drBtn.addEventListener('click', function () { _S.filters[key] = []; renderFL(); renderData(); });
+      if (drBtn) drBtn.addEventListener('click', function () {
+        _dbgLog('FILTER_RESET', { key: key, before: _S.filters[key].slice() });
+        _S.filters[key] = []; renderFL(); renderData();
+      });
       var daBtn = p.querySelector('.o-da');
-      if (daBtn) daBtn.addEventListener('click', function () { _S.filters[key] = vals.slice(); renderFL(); renderData(); });
+      if (daBtn) daBtn.addEventListener('click', function () {
+        _dbgLog('FILTER_SELECT_ALL', { key: key, count: vals.length });
+        _S.filters[key] = vals.slice(); renderFL(); renderData();
+      });
       var ds = p.querySelector('.o-dds');
       if (ds) ds.addEventListener('input', function () {
         var q = ds.value.toLowerCase();
@@ -1750,6 +1795,7 @@
     // Havuza At
     var poolAllBtn = document.getElementById('o-btn-pool-all');
     if (poolAllBtn) poolAllBtn.onclick = function() {
+      _dbgLog('POOL_ALL_CLICK', { rowsBefore: _S.rows.slice(), colsBefore: _S.cols.slice() });
       _S.rows = [];
       _S.cols = [];
       render();
@@ -1763,11 +1809,20 @@
         var orders = _state.orders.slice();
         var done = 0;
         if (!orders.length) { showToast('Silinecek veri yok'); return; }
+        _dbgLog('CLEAR_DATA_START', {
+          orderCount: orders.length,
+          filtersMusteri: _S.filters.musteri.slice(),
+          rows: _S.rows.slice(),
+          cols: _S.cols.slice()
+        });
         orders.forEach(function(o) {
           dbDeleteOrder(o.id).then(function() {
             done++;
             if (done === orders.length) {
-              _loadAll().then(function() { render(); showToast('Tüm veriler silindi'); });
+              _dbgLog('CLEAR_DATA_DONE', { deletedCount: done, filtersMusteri: _S.filters.musteri.slice() });
+              _state.orders = [];
+              renderData();
+              showToast('Tüm veriler silindi');
             }
           });
         });
