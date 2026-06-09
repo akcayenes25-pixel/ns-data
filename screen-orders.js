@@ -949,18 +949,33 @@
         var rkey = b.dataset.rkey;
         if (!rkey) return;
         var musteriId = rkey.split('|')[0];
-        // Add to hiddenRows
+
+        // Add this row to hiddenRows
         if (_S.hiddenRows.indexOf(rkey) === -1) {
           _S.hiddenRows.push(rkey);
         }
-        // Remove customer from filter and clear their hiddenRows
-        _S.filters.musteri = _S.filters.musteri.filter(function(x){ return x !== musteriId; });
-        _S.hiddenRows = _S.hiddenRows.filter(function(r){ return !r.startsWith(musteriId + '|'); });
+
+        // Count remaining visible rows for this customer after hiding this one
+        var remainingRows = document.querySelectorAll('#screen-orders .o-row-hide-btn');
+        var otherVisibleRows = Array.from(remainingRows).filter(function(btn) {
+          var otherRkey = btn.dataset.rkey;
+          return otherRkey && otherRkey !== rkey && otherRkey.startsWith(musteriId + '|') && _S.hiddenRows.indexOf(otherRkey) === -1;
+        });
+
+        if (otherVisibleRows.length === 0) {
+          // Last row — remove customer from filter entirely
+          _S.filters.musteri = _S.filters.musteri.filter(function(x){ return x !== musteriId; });
+          _S.hiddenRows = _S.hiddenRows.filter(function(r){ return !r.startsWith(musteriId + '|'); });
+        }
+
         _dbgLog('ROW_X_CLICK', {
           rowKey: rkey, musteriId: musteriId,
+          otherVisible: otherVisibleRows.length,
+          customerRemoved: otherVisibleRows.length === 0,
           filtersMusteri: _S.filters.musteri.slice(),
           hiddenRows: _S.hiddenRows.slice()
         });
+
         var tr = b.closest('tr');
         if (tr) {
           tr.style.transition = 'opacity 0.2s';
