@@ -60,7 +60,13 @@
   document.addEventListener('nsdata:appReady', function () { _init(); });
 
   async function _init() {
-    try { var hr = sessionStorage.getItem('nsdata_hidden_rows'); if (hr) _S.hiddenRows = JSON.parse(hr); } catch(e) {}
+    try {
+      var hr = sessionStorage.getItem('nsdata_hidden_rows');
+      if (hr) {
+        _S.hiddenRows = JSON.parse(hr);
+        _dbgLog('SESSION_HIDDEN_ROWS_RESTORED', { hiddenRows: _S.hiddenRows.slice(), count: _S.hiddenRows.length });
+      }
+    } catch(e) {}
     await _loadAll();
     _bindGlobalEvents();
   }
@@ -307,7 +313,9 @@
       combos2.forEach(function (combo) { vals.forEach(function (v) { next.push(combo.concat([{ dim: dim, val: v }])); }); });
       combos2 = next;
     });
-    return combos2.map(function (combo, i) { return { keys: combo, label: combo.map(function (k) { return dvLabel(k.dim, k.val); }).join(' / '), bi: i % 4 }; });
+    var result2 = combos2.map(function (combo, i) { return { keys: combo, label: combo.map(function (k) { return dvLabel(k.dim, k.val); }).join(' / '), bi: i % 4 }; });
+    _dbgLog('BUILD_COL_LEAVES', { cols: _S.cols.slice(), leafCount: result2.length, leafLabels: result2.map(function(l){ return l.label; }) });
+    return result2;
   }
 
   function effectiveColDimCount() {
@@ -939,14 +947,24 @@
         e.stopPropagation();
         var rkey = b.dataset.rkey;
         if (rkey && _S.hiddenRows.indexOf(rkey) === -1) {
+          var before = _S.hiddenRows.slice();
           _S.hiddenRows.push(rkey);
           try { sessionStorage.setItem('nsdata_hidden_rows', JSON.stringify(_S.hiddenRows)); } catch(e2){}
+          _dbgLog('ROW_X_CLICK', {
+            rowKey: rkey,
+            hiddenRowsBefore: before,
+            hiddenRowsAfter: _S.hiddenRows.slice(),
+            filtersMusteri: _S.filters.musteri.slice(),
+            sessionStorageWritten: true
+          });
           var tr = b.closest('tr');
           if (tr) {
             tr.style.transition = 'opacity 0.2s';
             tr.style.opacity = '0';
             setTimeout(function(){ renderData(); }, 200);
           }
+        } else {
+          _dbgLog('ROW_X_CLICK_SKIP', { rowKey: rkey, reason: rkey ? 'already_hidden' : 'no_rkey', hiddenRows: _S.hiddenRows.slice() });
         }
       };
     });
@@ -1423,7 +1441,19 @@
     w.innerHTML = h;
     w.querySelectorAll('.o-ach-x').forEach(function (b) {
       b.onclick = function () {
-        _S.filters[b.dataset.key] = _S.filters[b.dataset.key].filter(function (x) { return x !== b.dataset.val; });
+        var key = b.dataset.key;
+        var val = b.dataset.val;
+        var before = _S.filters[key].slice();
+        _S.filters[key] = _S.filters[key].filter(function (x) { return x !== val; });
+        _dbgLog('CHIP_X_CLICK', {
+          key: key,
+          val: val,
+          valName: dvLabel(key, val),
+          filtersBefore: before,
+          filtersAfter: _S.filters[key].slice(),
+          hiddenRows: _S.hiddenRows.slice(),
+          hiddenRowsForThisCustomer: _S.hiddenRows.filter(function(r){ return r.startsWith(val); })
+        });
         renderFL(); renderData();
       };
     });
@@ -1567,6 +1597,7 @@
   /* ============================================================ GLOBAL EVENTS */
   function _bindGlobalEvents() {
     document.addEventListener('nsdata:dataChanged', function (e) {
+      _dbgLog('DATA_CHANGED', { table: e.detail.table, filtersMusteri: _S.filters.musteri.slice(), hiddenRows: _S.hiddenRows.slice(), stateOrdersCount: _state.orders.length });
       if (['orders', 'products', 'customers'].includes(e.detail.table)) {
         var activeInput = document.activeElement && document.activeElement.classList.contains('o-ci');
         if (activeInput) {
@@ -1576,8 +1607,16 @@
         }
       }
     });
-    document.addEventListener('nsdata:screenActivated', function (e) { if (e.detail.screen === 'orders') render(); });
-    document.addEventListener('nsdata:filterCleared', function () { _S.filters = { ulke: [], musteri: [], urun: [] }; _S.search = ''; render(); });
+    document.addEventListener('nsdata:screenActivated', function (e) {
+      if (e.detail.screen === 'orders') {
+        _dbgLog('SCREEN_ACTIVATED', { screen: 'orders', filtersMusteri: _S.filters.musteri.slice(), hiddenRows: _S.hiddenRows.slice() });
+        render();
+      }
+    });
+    document.addEventListener('nsdata:filterCleared', function () {
+      _dbgLog('FILTER_CLEARED', { filtersBefore: JSON.parse(JSON.stringify(_S.filters)), hiddenRowsBefore: _S.hiddenRows.slice() });
+      _S.filters = { ulke: [], musteri: [], urun: [] }; _S.search = ''; render();
+    });
     document.addEventListener('click', function (e) {
       if (_sel && !e.target.closest('#screen-orders .o-pv')) {
         _sel = null; clearShine();
