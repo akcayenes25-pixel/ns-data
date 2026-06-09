@@ -2,9 +2,31 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.26';
+const APP_VERSION = 'v2.0.27';
 
+/* =============================================================
+   CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
+   -------------------------------------------------------------
+   Versiyon numarası:
+     patch  (x.x.+1) = hata düzeltme veya görsel iyileştirme
+     minor  (x.+1.0) = yeni özellik veya ekran
+     major  (+1.0.0) = mimari değişiklik veya veri modeli değişikliği
+   Her versiyon için:
+     - Maksimum 3 madde
+     - Türkçe, kullanıcı dilinde, teknik kelime yok
+     - Etiket: [Eklendi] yeni özellik | [Düzeltildi] hata | [İyileştirildi] iyileştirme
+     - date: deploy anındaki gerçek ay/yıl, Türkçe (örn. "Haziran 2026")
+     - Dinamik tarih kullanılmaz, elle yazılır
+   ============================================================= */
 const CHANGELOG = {
+  'v2.0.27': {
+    date: 'Haziran 2026',
+    items: [
+      '[Eklendi] Müşteri arama satırı — tablonun üstünde, yazarak müşteri eklenebiliyor.',
+      '[Düzeltildi] Sütun hizalama sorunu giderildi.',
+      '[İyileştirildi] Tüm ürün satırları müşteri seçilince geliyor, sipariş olmasa bile.',
+    ]
+  },
   'v2.0.26': {
     date: 'Haziran 2026',
     items: [

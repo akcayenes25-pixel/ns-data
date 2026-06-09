@@ -368,12 +368,19 @@
     }
 
     var rawVals = dimVals(dim, orders);
-    var baseVals = _S.showEmpty ? dimVals(dim, _state.orders) : rawVals;
+    var baseVals;
+    if (dim === 'urun') {
+      baseVals = _state.products.filter(function(p){ return p.active !== false; }).map(function(p){ return p.id; });
+    } else if (_S.showEmpty) {
+      baseVals = dimVals(dim, _state.orders);
+    } else {
+      baseVals = rawVals;
+    }
     var sortedVals = sortVals(baseVals, dim, orders);
     var html2 = '';
     sortedVals.forEach(function (val) {
       var groupOrders = orders.filter(function (o) { return dv(o, dim) === val; });
-      if (!_S.showEmpty && !groupOrders.length) return;
+      if (dim !== 'urun' && !_S.showEmpty && !groupOrders.length) return;
       var groupKey = rowContext.map(function (c) { return c.val; }).join('|') + '|' + val;
       var label = dvLabel(dim, val);
       var newContext = rowContext.concat([{ dim: dim, val: val }]);
@@ -531,8 +538,13 @@
     var musteriCtx = rowContext.find(function(r){ return r.dim === 'musteri'; });
     var urunCtx = rowContext.find(function(r){ return r.dim === 'urun'; });
     var rowKey = (musteriCtx ? musteriCtx.val : '') + '|' + (urunCtx ? urunCtx.val : '');
-    var xBtn = '<td class="o-row-hide-td"><button class="o-row-hide-btn" data-rkey="' + _esc(rowKey) + '">×</button></td>';
-    return '<tr class="' + rowCls + '">' + xBtn + cells + '</tr>';
+    var xBtn = '<button class="o-row-hide-btn" data-rkey="' + _esc(rowKey) + '">×</button>';
+    var firstCellIdx = cells.indexOf('<td');
+    if (firstCellIdx !== -1) {
+      var insertAt = cells.indexOf('>', firstCellIdx) + 1;
+      cells = cells.slice(0, insertAt) + xBtn + cells.slice(insertAt);
+    }
+    return '<tr class="' + rowCls + '">' + cells + '</tr>';
   }
 
   /* ============================================================ AGG ROWS */
@@ -777,19 +789,20 @@
 
     var existing = document.getElementById('o-search-row-wrap');
     var savedVal = existing ? existing.querySelector('input').value : '';
-
     if (existing) existing.remove();
 
-    var colCount = schema ? schema.length : 3;
+    var dt = document.getElementById('o-dt');
+    var tableWidth = dt ? dt.offsetWidth : ts.offsetWidth;
+
     var wrap = document.createElement('div');
     wrap.id = 'o-search-row-wrap';
-    wrap.style.cssText = 'border-bottom:2px solid #4F46E5;background:#fff;display:flex;align-items:center;padding:0 4px;height:28px;position:sticky;top:0;z-index:10';
+    wrap.style.cssText = 'border-bottom:2px solid #4F46E5;background:#fff;display:flex;align-items:center;padding:0 8px;height:28px;width:' + tableWidth + 'px;min-width:100%;box-sizing:border-box';
 
     var inp = document.createElement('input');
     inp.id = 'o-cust-search-inp';
-    inp.placeholder = 'Müşteri ara ve ekle...';
+    inp.placeholder = 'Musteri ara ve ekle...';
     inp.value = savedVal;
-    inp.style.cssText = 'flex:1;border:none;outline:none;font-size:12px;background:transparent;height:100%;font-family:inherit';
+    inp.style.cssText = 'flex:1;border:none;outline:none;font-size:12px;background:transparent;height:100%;font-family:inherit;min-width:0';
 
     var sug = document.createElement('div');
     sug.id = 'o-cust-sug';
