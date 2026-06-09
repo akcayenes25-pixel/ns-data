@@ -952,7 +952,9 @@
       if (!_S.filters.musteri.includes(id)) {
         _S.filters.musteri.unshift(id);
       }
-      _dbgLog('MUSTERI_EKLENDI', { sonrakiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length });
+      // Siparis yoksa otomatik siparissiz goster ac
+      if (!_state.orders.length) _S.showEmpty = true;
+      _dbgLog('MUSTERI_EKLENDI', { sonrakiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length, showEmptyAuto: !_state.orders.length });
       sug.style.display = 'none';
       inp.value = '';
       render();
