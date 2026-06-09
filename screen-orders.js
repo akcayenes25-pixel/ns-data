@@ -1696,8 +1696,15 @@
         '<div class="o-pv-sec" data-zone="cols"><span class="o-pv-lbl">Sütunlar</span><div class="o-pv-zone" id="o-z-cols"></div></div>' +
         '<div class="o-pv-sec"><span class="o-pv-lbl">Değerler</span><div class="o-pv-zone" id="o-z-vals" style="border-style:solid;cursor:default;min-width:auto"></div></div>' +
         '<div style="margin-left:auto;display:flex;gap:6px;padding:0 8px">' +
-          '<label class="o-nav-btn o-nav-btn-pri" style="cursor:pointer">ERP\'den Yükle<input type="file" id="o-import-input" accept=".xlsx,.xls" style="display:none"/></label>' +
           '<button class="o-nav-btn o-nav-btn-sec" id="o-addrow-toggle">+ Satır</button>' +
+          '<label class="o-nav-btn o-nav-btn-pri" style="cursor:pointer">ERP\'den Yükle<input type="file" id="o-import-input" accept=".xlsx,.xls" style="display:none"/></label>' +
+          '<div class="o-dl-wrap" id="o-dl-wrap">' +
+            '<button class="o-nav-btn o-nav-btn-sec" id="o-dl-btn">&#x2B07; İndir</button>' +
+            '<div class="o-dl-menu" id="o-dl-menu" style="display:none">' +
+              '<button class="o-dl-item" id="o-dl-flat">Düz Veri</button>' +
+              '<button class="o-dl-item" id="o-dl-pivot">Tablo Görünümü</button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
       // Opts bar
@@ -1738,9 +1745,34 @@
     var addToggle = document.getElementById('o-addrow-toggle');
     if (addToggle) addToggle.addEventListener('click', function () { _state.addRowOpen = !_state.addRowOpen; renderAddRow(); });
 
+    // Dropdown toggle
+    var dlBtn = document.getElementById('o-dl-btn');
+    var dlMenu = document.getElementById('o-dl-menu');
+    if (dlBtn && dlMenu) {
+      dlBtn.onclick = function(e) {
+        e.stopPropagation();
+        dlMenu.style.display = dlMenu.style.display === 'none' ? 'block' : 'none';
+      };
+      document.addEventListener('click', function() { if (dlMenu) dlMenu.style.display = 'none'; });
+      var dlFlat = document.getElementById('o-dl-flat');
+      var dlPivot = document.getElementById('o-dl-pivot');
+      if (dlFlat) dlFlat.onclick = function() {
+        dlMenu.style.display = 'none';
+        exportOrdersFlat(_nsdata_getFilteredOrders(), _state.products, _state.customers);
+      };
+      if (dlPivot) dlPivot.onclick = function() {
+        dlMenu.style.display = 'none';
+        exportOrdersPivot();
+      };
+    }
+
     bindOpts();
     bindFLEvents();
     _loadViews();
+
+    // Window bridge — read-only, export fonksiyonlari icin
+    window._nsdata_getFilteredOrders = function() { return filtOrders(); };
+    window._nsdata_getState = function() { return _state; };
   })();
 
 })();

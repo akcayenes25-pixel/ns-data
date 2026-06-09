@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.0.36';
+const APP_VERSION = 'v2.1.0';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,14 @@ const APP_VERSION = 'v2.0.36';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v2.1.0': {
+    date: 'Haziran 2026',
+    items: [
+      '[Eklendi] Siparişler ekranına Excel indirme butonu eklendi.',
+      '[Eklendi] Düz veri ve tablo görünümü olarak iki format destekleniyor.',
+      '[İyileştirildi] Tablo görünümü export renk ve birleşik hücrelerle geliyor.',
+    ]
+  },
   'v2.0.36': {
     date: 'Haziran 2026',
     items: [

@@ -437,3 +437,19 @@
 }
 #screen-orders tr:hover .o-row-hide-btn { opacity: 1; }
 #screen-orders .o-row-hide-btn:hover { color: #DC2626; }
+
+/* DOWNLOAD DROPDOWN */
+#screen-orders .o-dl-wrap { position: relative; }
+#screen-orders .o-dl-menu {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  background: #1C1C1E; border: 1px solid rgba(255,255,255,.15);
+  border-radius: 8px; overflow: hidden; z-index: 999;
+  min-width: 150px; box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+#screen-orders .o-dl-item {
+  display: block; width: 100%; padding: 10px 16px;
+  background: none; border: none; color: #fff;
+  font-size: 13px; font-weight: 500; text-align: left;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+#screen-orders .o-dl-item:hover { background: rgba(255,255,255,.1); }
