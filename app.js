@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.3.0';
+const APP_VERSION = 'v2.3.2';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,14 @@ const APP_VERSION = 'v2.3.0';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v2.3.2': {
+    date: 'Haziran 2026',
+    items: [
+      '[Düzeltildi] Hücredeyken tablo yenilenmiyor, focus kaybolmuyor.',
+      '[Düzeltildi] Müşteri filtresi sayfayı yenileyince sıfırlanıyor.',
+      '[Düzeltildi] F5 sonrasi Siparisler ekrani direkt aciliyor.',
+    ]
+  },
   'v2.3.0': {
     date: 'Haziran 2026',
     items: [

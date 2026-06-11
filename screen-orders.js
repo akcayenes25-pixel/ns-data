@@ -935,18 +935,6 @@
     sug.style.cssText = 'position:fixed;background:#fff;border:1px solid #E2E5EF;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.13);z-index:9999;display:none;font-size:12px;min-width:180px;max-width:240px';
     document.body.appendChild(sug);
 
-    // F5 restore: filter yükle
-    (function() {
-      try {
-        var saved = JSON.parse(sessionStorage.getItem('nsdata_mfilter') || '[]');
-        if (saved.length) {
-          saved.forEach(function(id) {
-            if (!_S.filters.musteri.includes(id)) _S.filters.musteri.push(id);
-          });
-        }
-      } catch(e) {}
-    })();
-
     inp.oninput = function() {
       var q = inp.value.toLowerCase().trim();
       if (!q) { sug.style.display = 'none'; return; }
@@ -980,7 +968,6 @@
       _dbgLog('MUSTERI_EKLENDI', { sonrakiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length, showEmptyAuto: !_state.orders.length });
       sug.style.display = 'none';
       inp.value = '';
-      try { sessionStorage.setItem('nsdata_mfilter', JSON.stringify(_S.filters.musteri)); } catch(e) {}
       render();
     };
 
@@ -1070,6 +1057,15 @@
       inp.addEventListener('blur', function () {
         var v = parseFloat(inp.value);
         if (!isNaN(v) && v > 0) { inp.dataset.raw = v; _fmtInp(inp); }
+        // Bekleyen reload varsa şimdi yükle
+        if (inp._nsPendingReload) {
+          inp._nsPendingReload = false;
+          setTimeout(function() {
+            if (!document.activeElement || !document.activeElement.classList.contains('o-ci')) {
+              _loadAll().then(function() { if (_screenActive()) renderData(); });
+            }
+          }, 100);
+        }
       });
       inp.onkeydown = function(e) {
         if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key)) return;
@@ -1191,7 +1187,8 @@
         _saveTimer = setTimeout(function () {
           dbUpsertOrder(payload).then(function (ok) {
             if (!ok) { showToast('Kaydedilemedi'); _loadAll().then(function () { renderData(); }); }
-            else { emitDataChange('orders', {}); }
+            // Başarılı kayıtta emitDataChange ÇAĞIRMA — Supabase realtime zaten tetikler
+            // ama input odaktayken render yapılmaz
           });
         }, 300);
       });
@@ -1598,7 +1595,6 @@
             hiddenRows: _S.hiddenRows.slice()
           });
         }
-        try { sessionStorage.setItem('nsdata_mfilter', JSON.stringify(_S.filters.musteri)); } catch(e) {}
         renderFL(); renderData();
       };
     });
@@ -1746,7 +1742,9 @@
       if (['orders', 'products', 'customers'].includes(e.detail.table)) {
         var activeInput = document.activeElement && document.activeElement.classList.contains('o-ci');
         if (activeInput) {
-          setTimeout(function () { _loadAll().then(function () { if (_screenActive()) renderData(); }); }, 2000);
+          // Input odaktayken render etme — blur olunca yükle
+          activeInput._nsPendingReload = true;
+          document.activeElement._nsPendingReload = true;
         } else {
           _loadAll().then(function () { if (_screenActive()) renderData(); });
         }
@@ -1755,16 +1753,11 @@
     document.addEventListener('nsdata:screenActivated', function (e) {
       if (e.detail.screen === 'orders') {
         _dbgLog('SCREEN_ACTIVATED', { screen: 'orders', filtersMusteri: _S.filters.musteri.slice(), hiddenRows: _S.hiddenRows.slice() });
-        // F5 sonrasi sessionStorage'dan filter geri yukle
-        try {
-          var saved = JSON.parse(sessionStorage.getItem('nsdata_mfilter') || '[]');
-          if (saved.length && !_S.filters.musteri.length) {
-            saved.forEach(function(id) {
-              if (!_S.filters.musteri.includes(id)) _S.filters.musteri.push(id);
-            });
-          }
-        } catch(e) {}
-        render();
+        if (!_state.products.length || !_state.customers.length) {
+          _loadAll().then(function() { render(); });
+        } else {
+          render();
+        }
       }
     });
     document.addEventListener('nsdata:filterCleared', function () {
