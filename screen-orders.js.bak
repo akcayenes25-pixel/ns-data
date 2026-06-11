@@ -435,22 +435,12 @@
     } else if (dim === 'musteri' && _S.showEmpty && _S.filters.musteri.length) {
       baseVals = _S.filters.musteri.slice();
     } else if (dim === 'ulke' && _S.showEmpty) {
-      // customer_countries tablosundan secili musterilerin ulkelerini al
+      // Orders bos olabilir — once orders'dan al, bos kalirsa filtre var mi bak, yoksa bu dim'i atla
       var ulkeSeen = {};
       var ulkeBase = [];
-      var selectedMusteri = _S.filters.musteri;
-      (_state.customerCountries || []).forEach(function(cc) {
-        if (selectedMusteri.includes(cc.customer_id) && cc.country && !ulkeSeen[cc.country]) {
-          ulkeSeen[cc.country] = 1;
-          ulkeBase.push(cc.country);
-        }
-      });
-      // Yoksa orders'dan al
-      if (!ulkeBase.length) {
-        _state.orders.forEach(function(o){ if (o.ulke && !ulkeSeen[o.ulke]) { ulkeSeen[o.ulke] = 1; ulkeBase.push(o.ulke); } });
-      }
+      _state.orders.forEach(function(o){ if (o.ulke && !ulkeSeen[o.ulke]) { ulkeSeen[o.ulke] = 1; ulkeBase.push(o.ulke); } });
       if (!ulkeBase.length && _S.filters.ulke.length) ulkeBase = _S.filters.ulke.slice();
-      // Hala bos ise bu dim'i atla
+      // Hala bos ise bu dim'i atla — musteri satırları ulke olmadan gelsin
       baseVals = ulkeBase;
     } else if (_S.showEmpty) {
       baseVals = dimVals(dim, _state.orders);
@@ -935,18 +925,6 @@
     sug.style.cssText = 'position:fixed;background:#fff;border:1px solid #E2E5EF;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.13);z-index:9999;display:none;font-size:12px;min-width:180px;max-width:240px';
     document.body.appendChild(sug);
 
-    // F5 restore: filter yükle
-    (function() {
-      try {
-        var saved = JSON.parse(sessionStorage.getItem('nsdata_mfilter') || '[]');
-        if (saved.length) {
-          saved.forEach(function(id) {
-            if (!_S.filters.musteri.includes(id)) _S.filters.musteri.push(id);
-          });
-        }
-      } catch(e) {}
-    })();
-
     inp.oninput = function() {
       var q = inp.value.toLowerCase().trim();
       if (!q) { sug.style.display = 'none'; return; }
@@ -976,11 +954,10 @@
         _S.filters.musteri.unshift(id);
       }
       // Siparis yoksa otomatik siparissiz goster ac
-      if (!_state.orders.some(function(o){ return o.musteri === id; })) _S.showEmpty = true;
+      if (!_state.orders.length) _S.showEmpty = true;
       _dbgLog('MUSTERI_EKLENDI', { sonrakiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length, showEmptyAuto: !_state.orders.length });
       sug.style.display = 'none';
       inp.value = '';
-      try { sessionStorage.setItem('nsdata_mfilter', JSON.stringify(_S.filters.musteri)); } catch(e) {}
       render();
     };
 
@@ -1065,45 +1042,24 @@
         var raw = inp.dataset.raw !== undefined ? inp.dataset.raw : inp.value;
         var v = parseFloat(raw);
         if (!isNaN(v) && v > 0) inp.value = v;
-        setTimeout(function(){ inp.select(); }, 0);
       });
       inp.addEventListener('blur', function () {
         var v = parseFloat(inp.value);
         if (!isNaN(v) && v > 0) { inp.dataset.raw = v; _fmtInp(inp); }
       });
-      inp.onkeydown = function(e) {
-        if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key)) return;
-        e.preventDefault();
-        var all = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
-        var idx = all.indexOf(inp);
-        var colCount = 6;
-        if (e.key === 'ArrowDown' || e.key === 'Enter') {
-          var targetOid = all[idx + colCount] ? all[idx + colCount].dataset.oid : null;
-          var targetSource = all[idx + colCount] ? all[idx + colCount].dataset.source : null;
-          var targetField2 = all[idx + colCount] ? all[idx + colCount].dataset.field : null;
-          if (e.key === 'Enter') inp.blur();
-          setTimeout(function() {
-            var newAll = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
-            var target = null;
-            if (targetOid) {
-              target = newAll.find(function(el) {
-                return el.dataset.oid === targetOid && el.dataset.source === targetSource && el.dataset.field === targetField2;
-              });
-            }
-            if (!target) target = newAll[idx + colCount];
-            if (target) { target.focus(); setTimeout(function(){ target.select(); }, 0); }
-          }, e.key === 'Enter' ? 250 : 0);
-        } else if (e.key === 'ArrowUp') {
-          var target2 = all[idx - colCount];
-          if (target2) { target2.focus(); setTimeout(function(){ target2.select(); }, 0); }
-        } else if (e.key === 'ArrowRight') {
-          var target3 = all[idx + 1];
-          if (target3) { target3.focus(); setTimeout(function(){ target3.select(); }, 0); }
-        } else if (e.key === 'ArrowLeft') {
-          var target4 = all[idx - 1];
-          if (target4) { target4.focus(); setTimeout(function(){ target4.select(); }, 0); }
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inp.blur();
+          // Move to next input below
+          var all = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
+          var idx = all.indexOf(inp);
+          if (idx >= 0 && idx < all.length - 1) {
+            all[idx + 1].focus();
+            all[idx + 1].select();
+          }
         }
-      };
+      });
 
       inp.addEventListener('change', function () {
         var field  = inp.dataset.field;
@@ -1598,7 +1554,6 @@
             hiddenRows: _S.hiddenRows.slice()
           });
         }
-        try { sessionStorage.setItem('nsdata_mfilter', JSON.stringify(_S.filters.musteri)); } catch(e) {}
         renderFL(); renderData();
       };
     });
@@ -1755,15 +1710,6 @@
     document.addEventListener('nsdata:screenActivated', function (e) {
       if (e.detail.screen === 'orders') {
         _dbgLog('SCREEN_ACTIVATED', { screen: 'orders', filtersMusteri: _S.filters.musteri.slice(), hiddenRows: _S.hiddenRows.slice() });
-        // F5 sonrasi sessionStorage'dan filter geri yukle
-        try {
-          var saved = JSON.parse(sessionStorage.getItem('nsdata_mfilter') || '[]');
-          if (saved.length && !_S.filters.musteri.length) {
-            saved.forEach(function(id) {
-              if (!_S.filters.musteri.includes(id)) _S.filters.musteri.push(id);
-            });
-          }
-        } catch(e) {}
         render();
       }
     });
@@ -1849,7 +1795,7 @@
       '</div>' +
       // Filter bar
       '<div class="o-fl">' +
-        '<div class="o-srch"><span class="o-srch-ic">🔍</span><input type="search" id="o-srch" placeholder=""/></div>' +
+        '<div class="o-srch"><span class="o-srch-ic">🔍</span><input type="search" id="o-srch" placeholder="Ara..."/></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-ulke">Ülke <span class="o-fb-b" id="o-fbb-ulke" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-ulke"></div></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-musteri">Müşteri <span class="o-fb-b" id="o-fbb-musteri" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-musteri"></div></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-urun">Ürün <span class="o-fb-b" id="o-fbb-urun" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-urun"></div></div>' +
