@@ -1128,6 +1128,8 @@
       inp.onkeydown = function(e) {
         if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key)) return;
         e.preventDefault();
+        // Degeri kaydet (change beklemeden)
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
         var all = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
         var idx = all.indexOf(inp);
         var colCount = 6;
@@ -1136,7 +1138,20 @@
         else if (e.key === 'ArrowUp') target = all[idx - colCount];
         else if (e.key === 'ArrowRight') target = all[idx + 1];
         else if (e.key === 'ArrowLeft') target = all[idx - 1];
-        if (target) { target.focus(); setTimeout(function(){ target.select(); }, 0); }
+        if (target) {
+          // render sonrasi focus kaybolmasin — hedef hucreyi kaydet
+          var targetOid = target.dataset.oid;
+          var targetSource = target.dataset.source;
+          var targetField = target.dataset.field;
+          target.focus();
+          setTimeout(function(){ 
+            // render olmussa yeniden bul
+            var t = document.querySelector('#screen-orders .o-ci[data-oid="'+targetOid+'"][data-source="'+targetSource+'"][data-field="'+targetField+'"]');
+            if (t) { t.focus(); t.select(); }
+          }, 450);
+        } else if (e.key === 'Enter') {
+          inp.blur();
+        }
       };
 
       inp.addEventListener('change', function () {
