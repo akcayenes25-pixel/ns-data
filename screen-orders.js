@@ -433,7 +433,17 @@
     if (dim === 'urun') {
       baseVals = _state.products.filter(function(p){ return p.active !== false; }).map(function(p){ return p.id; });
     } else if (dim === 'musteri' && _S.showEmpty && _S.filters.musteri.length) {
-      baseVals = _S.filters.musteri.slice();
+      // Ülke context'i varsa sadece o ülkede tanımlı müşterileri göster
+      var ulkeCtx = rowContext.find(function(r){ return r.dim === 'ulke'; });
+      if (ulkeCtx && _state.customerCountries && _state.customerCountries.length) {
+        var musteriInUlke = _state.customerCountries
+          .filter(function(cc){ return cc.country === ulkeCtx.val; })
+          .map(function(cc){ return cc.customer_id; });
+        baseVals = _S.filters.musteri.filter(function(id){ return musteriInUlke.includes(id); });
+        if (!baseVals.length) baseVals = _S.filters.musteri.slice(); // fallback
+      } else {
+        baseVals = _S.filters.musteri.slice();
+      }
     } else if (dim === 'ulke' && _S.showEmpty) {
       // customer_countries tablosundan secili musterilerin ulkelerini al
       var ulkeSeen = {};
