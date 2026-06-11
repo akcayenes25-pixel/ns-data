@@ -16,12 +16,13 @@
   document.addEventListener('nsdata:appReady', function() { _bindGlobalEvents(); });
 
   async function _loadAll() {
-    var results = await Promise.all([dbGetCustomers(), dbGetProducts(), dbGetTargets(), dbGetProfiles(), dbGetOrders()]);
+    var results = await Promise.all([dbGetCustomers(), dbGetProducts(), dbGetTargets(), dbGetProfiles(), dbGetOrders(), dbGetCustomerCountries()]);
     _state.customers = results[0];
     _state.products  = results[1];
     _state.targets   = results[2];
     _state.profiles  = results[3];
     _state.orders    = results[4] || [];
+    _state.customerCountries = results[5] || [];
     await TargetManager.load();
 
     if (!_state.selectedCustomerId && _state.customers.length) {
@@ -192,41 +193,37 @@
      CUSTOMER SECTION
      ============================================================ */
   function _buildCustomerSection() {
-    // Mevcut orders'tan unique customer+country kombinasyonları
-    var seen = {}, combos = [];
-    (_state.orders || []).forEach(function(o) {
-      var key = o.customer_id + '|' + (o.destination_country || '');
-      if (!seen[key]) { seen[key]=true; combos.push({customer_id:o.customer_id,country:o.destination_country||''}); }
-    });
+    // customer_countries tablosundan oku
+    var combos = _state.customerCountries || [];
     var custMap = {};
     (_state.customers||[]).forEach(function(c){ custMap[c.id]=c; });
 
-    var rows = (_state.customers||[]).map(function(c) {
+    // İsim sırasına göre sırala
+    var sortedCustomers = (_state.customers||[]).slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+
+    var rows = sortedCustomers.map(function(c) {
       var custCombos = combos.filter(function(co){ return co.customer_id === c.id; });
       var ulkeHTML = custCombos.length
         ? custCombos.map(function(co) {
-            var hasData = (_state.orders||[]).some(function(o){
-              return o.customer_id===co.customer_id && o.destination_country===co.country && ((o.shipped_qty||0)>0||(o.planned_qty||0)>0);
-            });
             return '<span style="display:inline-flex;align-items:center;gap:4px;background:#F1F5F9;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;color:#0F1117;margin-right:4px">' +
               _esc(co.country) +
-              (hasData ? '' : ' <button class="cc-del-btn" data-del-cust="'+c.id+'" data-del-country="'+_esc(co.country)+'" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:12px;padding:0;line-height:1">×</button>') +
+              ' <button class="cc-del-btn" data-del-cust="'+c.id+'" data-del-country="'+_esc(co.country)+'" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:12px;padding:0;line-height:1">×</button>' +
             '</span>';
           }).join('') + '<button class="cc-add-inline-btn" data-cust-id="'+c.id+'" data-cust-name="'+_esc(c.name)+'" style="background:none;border:1px dashed #9CA3AF;border-radius:4px;padding:2px 8px;font-size:11px;color:#6B7280;cursor:pointer">+ Ülke</button>'
         : '<button class="cc-add-inline-btn" data-cust-id="'+c.id+'" data-cust-name="'+_esc(c.name)+'" style="background:none;border:1px dashed #9CA3AF;border-radius:4px;padding:2px 8px;font-size:11px;color:#6B7280;cursor:pointer">+ Ülke Ekle</button>';
 
-      return '<tr style="border-bottom:1px solid var(--color-border);' + (c.active === false ? 'opacity:0.5' : '') + '">' +
-        '<td style="font-weight:600;padding:10px 16px;font-size:15px">' + _esc(c.name) + '</td>' +
-        '<td style="padding:10px 16px">' +
-          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px">' +
+      return '<tr class="settings-cust-row" data-cust-name="' + _esc(c.name.toLowerCase()) + '" style="border-bottom:1px solid var(--color-border);' + (c.active === false ? 'opacity:0.5' : '') + '">' +
+        '<td style="font-weight:600;padding:6px 12px;font-size:13px">' + _esc(c.name) + '</td>' +
+        '<td style="padding:6px 12px">' +
+          '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;min-height:32px">' +
             '<input type="checkbox" class="customer-active-cb" data-customer-id="' + c.id + '" ' +
               (c.active !== false ? 'checked' : '') + ' style="width:18px;height:18px" />' +
             '<span style="font-size:14px">' + (c.active !== false ? 'Aktif' : 'Pasif') + '</span>' +
           '</label>' +
         '</td>' +
-        '<td style="padding:10px 16px">' + ulkeHTML + '</td>' +
-        '<td style="padding:8px 12px;text-align:right">' +
-          '<button class="customer-delete-btn" data-customer-id="' + c.id + '" style="color:#DC2626;font-size:13px;font-weight:600;padding:4px 10px;border:1.5px solid #DC2626;border-radius:4px;cursor:pointer;background:transparent">Sil</button>' +
+        '<td style="padding:6px 12px">' + ulkeHTML + '</td>' +
+        '<td style="padding:4px 8px;text-align:right">' +
+          '<button class="customer-delete-btn" data-customer-id="' + c.id + '" style="color:#DC2626;font-size:12px;font-weight:600;padding:3px 8px;border:1px solid #DC2626;border-radius:4px;cursor:pointer;background:transparent">Sil</button>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -237,15 +234,20 @@
         '<button class="btn btn-primary" id="settings-add-customer-btn">+ Müşteri Ekle</button>' +
       '</div>' +
       '<div class="settings-section-body no-pad" id="settings-customer-table">' +
-        '<table style="width:100%;border-collapse:collapse">' +
-          '<thead><tr style="background:#F1F3F9">' +
-            '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">MÜŞTERİ</th>' +
-            '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">DURUM</th>' +
-            '<th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:700;color:#4A5068">ÜLKELER</th>' +
-            '<th style="padding:10px 16px"></th>' +
-          '</tr></thead>' +
-          '<tbody>' + (rows || '<tr><td colspan="4" style="padding:16px;text-align:center;color:#4A5068;font-size:14px">Henüz müşteri yok</td></tr>') + '</tbody>' +
-        '</table>' +
+        '<div style="padding:8px 12px;border-bottom:1px solid var(--color-border)">' +
+          '<input type="text" id="settings-customer-search" placeholder="Müşteri ara..." style="width:100%;height:36px;font-size:13px;padding:0 10px;border:1px solid var(--color-border);border-radius:4px;box-sizing:border-box" />' +
+        '</div>' +
+        '<div style="max-height:220px;overflow-y:auto">' +
+          '<table style="width:100%;border-collapse:collapse" id="settings-customer-tbl">' +
+            '<thead><tr style="background:#F1F3F9;position:sticky;top:0;z-index:1">' +
+              '<th style="padding:6px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">MÜŞTERİ</th>' +
+              '<th style="padding:6px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">DURUM</th>' +
+              '<th style="padding:6px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">ÜLKELER</th>' +
+              '<th style="padding:6px 12px"></th>' +
+            '</tr></thead>' +
+            '<tbody id="settings-customer-tbody">' + (rows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:#4A5068;font-size:13px">Henüz müşteri yok</td></tr>') + '</tbody>' +
+          '</table>' +
+        '</div>' +
       '</div>' +
       '<div class="settings-section-body" id="settings-add-customer-form" style="display:none;border-top:1.5px solid var(--color-border)">' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
@@ -505,6 +507,18 @@
       if (ok) { showToast('Müşteri eklendi'); _state.customers = CustomerManager.getAll(); _render(); }
     });
 
+    // Müşteri arama
+    var custSearch = document.getElementById('settings-customer-search');
+    if (custSearch) {
+      custSearch.addEventListener('input', function() {
+        var q = custSearch.value.toLowerCase().trim();
+        document.querySelectorAll('#settings-customer-tbody .settings-cust-row').forEach(function(row) {
+          var name = row.getAttribute('data-cust-name') || '';
+          row.style.display = name.startsWith(q) ? '' : 'none';
+        });
+      });
+    }
+
     // Inline ülke ekleme butonu
     document.querySelectorAll('.cc-add-inline-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -527,32 +541,20 @@
       var custId  = (document.getElementById('settings-cc-inline-cust-id') || {}).value || '';
       var country = ((document.getElementById('settings-cc-inline-country') || {}).value || '').trim().toUpperCase();
       if (!custId || !country) { showToast('Ülke boş olamaz'); return; }
-      var exists = (_state.orders || []).some(function(o){ return o.customer_id===custId && (o.destination_country||'')=== country; });
-      if (exists) { showToast('Bu kombinasyon zaten var'); return; }
-      var prods = _state.products || [];
-      var ok = false;
-      for (var i=0;i<prods.length;i++) {
-        var r = await dbUpsertOrder({ customer_id: custId, product_id: prods[i].id, shipped_qty: 0, planned_qty: 0, destination_country: country, note: '' });
-        if (r) ok = true;
-      }
-      if (ok) { showToast('Ülke eklendi'); document.getElementById('settings-add-cc-inline-form').style.display = 'none'; await _loadAll(); _render(); emitDataChange('orders', {}); }
-      else showToast('Eklenemedi');
+      var exists = (_state.customerCountries || []).some(function(cc){ return cc.customer_id===custId && cc.country===country.toUpperCase().trim(); });
+      if (exists) { showToast('Bu ülke zaten tanımlı'); return; }
+      var ok = await dbAddCustomerCountry(custId, country);
+      if (ok) { showToast('Ülke eklendi'); document.getElementById('settings-add-cc-inline-form').style.display = 'none'; await _loadAll(); _render(); emitDataChange('customer_countries', {}); }
+      else showToast('Bu ülke zaten var veya eklenemedi');
     });
     // Ülke sil butonu
     document.querySelectorAll('.cc-del-btn').forEach(function(btn) {
       btn.addEventListener('click', async function() {
         var custId  = btn.getAttribute('data-del-cust');
         var country = btn.getAttribute('data-del-country');
-        var toDelete = (_state.orders||[]).filter(function(o){
-          return o.customer_id===custId && (o.destination_country||'')=== country &&
-                 (o.shipped_qty||0)===0 && (o.planned_qty||0)===0;
-        });
-        var done = 0;
-        for (var i=0;i<toDelete.length;i++) {
-          if (await dbDeleteOrder(toDelete[i].id)) done++;
-        }
-        if (done>0) { showToast('Ülke silindi'); await _loadAll(); _render(); emitDataChange('orders', {}); }
-        else showToast('Silinemedi — veri var');
+        var ok = await dbDeleteCustomerCountry(custId, country);
+        if (ok) { showToast('Ülke silindi'); await _loadAll(); _render(); emitDataChange('customer_countries', {}); }
+        else showToast('Silinemedi');
       });
     });
 

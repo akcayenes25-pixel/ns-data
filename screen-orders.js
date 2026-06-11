@@ -68,10 +68,11 @@
     _dbgCallCount.loadAll++;
     var callN = _dbgCallCount.loadAll;
     _dbgLog('LOADALL_START', { call: callN, filtersAtStart: JSON.parse(JSON.stringify(_S.filters)) });
-    var r = await Promise.all([dbGetOrders(), dbGetProducts(), dbGetCustomers()]);
+    var r = await Promise.all([dbGetOrders(), dbGetProducts(), dbGetCustomers(), dbGetCustomerCountries()]);
     _state.orders    = _adaptOrders(r[0]);
     _state.products  = _adaptProducts(r[1]);
     _state.customers = r[2];
+    _state.customerCountries = r[3];
     _state.productMap  = {};
     _state.customerMap = {};
     _state.products.forEach(function (p) { _state.productMap[p.id] = p; });

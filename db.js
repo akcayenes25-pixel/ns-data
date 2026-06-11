@@ -327,3 +327,30 @@ async function dbDeleteCustomer(customerId) {
     return true;
   } catch (err) { console.error('dbDeleteCustomer:', err); return false; }
 }
+/* CUSTOMER COUNTRIES */
+async function dbGetCustomerCountries() {
+  try {
+    var res = await _client.from('customer_countries').select('*').order('country');
+    if (res.error) throw res.error;
+    return res.data || [];
+  } catch (err) { console.error('dbGetCustomerCountries:', err); return []; }
+}
+
+async function dbAddCustomerCountry(customerId, country) {
+  if (!customerId || !country) return false;
+  try {
+    var res = await _client.from('customer_countries').insert({ customer_id: customerId, country: country.toUpperCase().trim() });
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbAddCustomerCountry:', err); return false; }
+}
+
+async function dbDeleteCustomerCountry(customerId, country) {
+  if (!customerId || !country) return false;
+  try {
+    var res = await _client.from('customer_countries').delete().eq('customer_id', customerId).eq('country', country);
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbDeleteCustomerCountry:', err); return false; }
+}
+
