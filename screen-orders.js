@@ -1883,7 +1883,7 @@
     var _overlay = document.createElement('input');
     _overlay.id = 'ns-cell-editor';
     _overlay.type = 'text';
-    _overlay.style.cssText = 'position:fixed;z-index:9999;border:2px solid #4F46E5;outline:none;padding:4px 6px;font-size:15px;font-family:Inter,sans-serif;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;min-width:60px;text-align:right;tabindex:-1';
+    _overlay.style.cssText = 'position:fixed;z-index:9999;border:2px solid #4F46E5;outline:none;padding:0 4px;font-size:13px;font-family:Inter,sans-serif;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;min-width:0;text-align:right;box-sizing:border-box;tabindex:-1';
     document.body.appendChild(_overlay);
 
     var _activeSpan = null;
@@ -1898,7 +1898,7 @@
       var rect = span.getBoundingClientRect();
       _overlay.style.left = rect.left + 'px';
       _overlay.style.top = rect.top + 'px';
-      _overlay.style.width = Math.max(rect.width, 70) + 'px';
+      _overlay.style.width = rect.width + 'px';
       _overlay.style.height = rect.height + 'px';
       _overlay.style.display = 'block';
 
@@ -2068,7 +2068,7 @@
             var rect = newSpan.getBoundingClientRect();
             _overlay.style.left = rect.left + 'px';
             _overlay.style.top = rect.top + 'px';
-            _overlay.style.width = Math.max(rect.width, 70) + 'px';
+            _overlay.style.width = rect.width + 'px';
             _overlay.style.height = rect.height + 'px';
             _overlay.focus();
           } else {
