@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.4.2';
+const APP_VERSION = 'v2.5.0';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,13 +19,14 @@ const APP_VERSION = 'v2.4.2';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
-  'v2.4.2': {
+  'v2.5.0': {
     date: 'Haziran 2026',
     items: [
       '[Duzeltildi] Hucre degisince genel toplam aninda guncelleniyor.',
       '[Duzeltildi] F5 sonrasi tablo direkt aciliyor, sekmeye tiklamaya gerek yok.',
       '[Eklendi] Pivot ayarlari F5 sonrasi korunuyor (sessionStorage).',
       '[Iyilestirildi] Enter ve ok tuslariyla hizli gezinme, aninda kayit.',
+      '[Iyilestirildi] Hucre navigasyonu overlay sistemiyle tamamen yenilendi, Excel hizi.',
     ]
   },
   'v2.3.3': {

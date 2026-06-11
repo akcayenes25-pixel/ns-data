@@ -686,13 +686,17 @@
         }
 
         if (c.valK === 'cnt') {
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="container" value="' + (rawQty ? (prod2.ratio ? Math.round(rawQty / prod2.ratio * 10000) / 10000 : rawQty) : '') + '" placeholder="-"/></td>';
+          var cntRaw = rawQty ? (prod2.ratio ? Math.round(rawQty / prod2.ratio * 10000) / 10000 : rawQty) : 0;
+          var cntFmt = cntRaw ? Number(cntRaw).toLocaleString('de-DE', {maximumFractionDigits:3}) : '-';
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="container" data-raw="' + (cntRaw || '') + '">' + cntFmt + '</span></td>';
         } else if (c.valK === 'qty') {
-          var adetVal = rawQty;
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="adet" value="' + (adetVal || '') + '" placeholder="-"/></td>';
+          var adetRaw = rawQty || 0;
+          var adetFmt = adetRaw ? Number(adetRaw).toLocaleString('de-DE', {maximumFractionDigits:1}) : '-';
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="adet" data-raw="' + (adetRaw || '') + '">' + adetFmt + '</span></td>';
         } else if (c.valK === 'eur') {
-          var euroVal2 = Math.round(rawQty * prod2.price);
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><input class="o-ci" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="euro" value="' + (euroVal2 || '') + '" placeholder="-"/></td>';
+          var euroRaw = Math.round(rawQty * prod2.price);
+          var euroFmt = euroRaw ? Math.round(euroRaw).toLocaleString('de-DE') + ' €' : '-';
+          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="euro" data-raw="' + (euroRaw || '') + '">' + euroFmt + '</span></td>';
         }
       } else {
         cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(val, c.valK) + '</span></td>';
@@ -1040,20 +1044,25 @@
   }
 
   /* ============================================================ TABLE EVENTS */
+  function _fmtVal2(source, v) {
+    if (isNaN(v) || v <= 0) return '-';
+    if (source === 'euro') return Math.round(v).toLocaleString('de-DE') + ' €';
+    if (source === 'adet') return Number(v).toLocaleString('de-DE', {maximumFractionDigits:1});
+    if (source === 'container') return Number(v).toLocaleString('de-DE', {maximumFractionDigits:3});
+    return String(v);
+  }
+
   function _fmtInp(inp) {
     var source = inp.dataset.source || 'qty';
     var raw = inp.dataset.raw !== undefined ? inp.dataset.raw : inp.value;
     var v = parseFloat(raw);
     if (isNaN(v) || v <= 0) return;
     inp.dataset.raw = v;
-    if (source === 'euro') {
-      inp.value = Math.round(v).toLocaleString('de-DE') + ' €';
-    } else if (source === 'adet') {
-      inp.value = Number(v).toLocaleString('de-DE', { maximumFractionDigits: 1 });
-    } else if (source === 'container') {
-      inp.value = Number(v).toLocaleString('de-DE', { maximumFractionDigits: 3 });
+    var formatted = _fmtVal2(source, v);
+    if (inp.tagName === 'SPAN') {
+      inp.textContent = formatted;
     } else {
-      inp.value = v;
+      inp.value = formatted;
     }
   }
 
@@ -1104,173 +1113,15 @@
         }
       };
     });
-    document.querySelectorAll('#screen-orders .o-ci').forEach(function (inp) {
-      _fmtInp(inp);
-      inp.addEventListener('focus', function () {
-        var raw = inp.dataset.raw !== undefined ? inp.dataset.raw : inp.value;
-        var v = parseFloat(raw);
-        if (!isNaN(v) && v > 0) inp.value = v;
-        setTimeout(function(){ inp.select(); }, 0);
-      });
-      inp.addEventListener('blur', function () {
-        var v = parseFloat(inp.value);
-        if (!isNaN(v) && v > 0) { inp.dataset.raw = v; _fmtInp(inp); }
-        // Bekleyen reload varsa şimdi yükle
-        if (inp._nsPendingReload) {
-          inp._nsPendingReload = false;
-          setTimeout(function() {
-            if (!document.activeElement || !document.activeElement.classList.contains('o-ci')) {
-              _loadAll().then(function() { if (_screenActive()) renderData(); });
-            }
-          }, 100);
-        }
-      });
-      inp.onkeydown = function(e) {
-        if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key)) return;
-        e.preventDefault();
-        // Degeri kaydet (change beklemeden)
-        inp.dispatchEvent(new Event('change', { bubbles: true }));
-        var all = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
-        var idx = all.indexOf(inp);
-        var colCount = 6;
-        var target = null;
-        if (e.key === 'ArrowDown' || e.key === 'Enter') target = all[idx + colCount];
-        else if (e.key === 'ArrowUp') target = all[idx - colCount];
-        else if (e.key === 'ArrowRight') target = all[idx + 1];
-        else if (e.key === 'ArrowLeft') target = all[idx - 1];
-        if (target) {
-          // render sonrasi focus kaybolmasin — hedef hucreyi kaydet
-          var targetOid = target.dataset.oid;
-          var targetSource = target.dataset.source;
-          var targetField = target.dataset.field;
-          target.focus();
-          setTimeout(function(){ 
-            // render olmussa yeniden bul
-            var t = document.querySelector('#screen-orders .o-ci[data-oid="'+targetOid+'"][data-source="'+targetSource+'"][data-field="'+targetField+'"]');
-            if (t) { t.focus(); t.select(); }
-          }, 450);
-        } else if (e.key === 'Enter') {
-          inp.blur();
-        }
-      };
-
-      inp.addEventListener('change', function () {
-        var field  = inp.dataset.field;
-        var source = inp.dataset.source || 'qty';
-        var rawStr = inp.value;
-        if (rawStr === '' || rawStr === null) return;
-
-        var rawVal = parseFloat(String(rawStr).replace(/[^0-9.\-]/g, ''));
-        if (isNaN(rawVal) || rawVal < 0) return;
-
-        var newQty;
-        var prod = null;
-        var oid = inp.dataset.oid;
-        if (oid) {
-          var existOrder = _state.orders.find(function (o) { return o.id === oid; });
-          if (existOrder) prod = prd(existOrder.urun);
-        } else {
-          prod = prd(inp.dataset.newUrun || '');
-        }
-        var price = prod ? (prod.price || 0) : 0;
-        var ratio = prod ? (prod.ratio || 0) : 0;
-
-        if (source === 'adet') {
-          newQty = rawVal;
-        } else if (source === 'euro') {
-          newQty = price > 0 ? rawVal / price : 0;
-        } else if (source === 'container') {
-          newQty = ratio > 0 ? rawVal * ratio : 0;
-        } else {
-          newQty = rawVal;
-        }
-        newQty = Math.round(newQty * 100) / 100;
-
-        // Update sibling inputs immediately (optimistic)
-        var rk = inp.dataset.rk;
-        if (rk) {
-          document.querySelectorAll('#screen-orders .o-ci[data-rk="' + rk + '"]').forEach(function(sibling) {
-            if (sibling === inp) return;
-            var sibSource = sibling.dataset.source || 'qty';
-            var sibRaw;
-            if (sibSource === 'adet')      sibRaw = newQty;
-            else if (sibSource === 'euro')      sibRaw = price ? Math.round(newQty * price) : 0;
-            else if (sibSource === 'container') sibRaw = ratio ? Math.round(newQty / ratio * 10000) / 10000 : 0;
-            else sibRaw = newQty;
-            sibling.dataset.raw = sibRaw || '';
-            _fmtInp(sibling);
-          });
-        }
-
-        // Update in-memory state immediately (optimistic, no re-render)
-        if (oid) {
-          var memOrder = _state.orders.find(function (o) { return o.id === oid; });
-          if (memOrder) {
-            if (field === 'cikan') memOrder.cikan = newQty;
-            else memOrder.cikacak = newQty;
-          }
-        }
-
-        var payload;
-        if (oid) {
-          var order = _state.orders.find(function (o) { return o.id === oid; });
-          if (!order) return;
-          payload = {
-            id: order._dbId,
-            customer_id: order._customerId,
-            product_id: order._productId,
-            shipped_qty: field === 'cikan' ? newQty : order.cikan,
-            planned_qty: field === 'cikacak' ? newQty : order.cikacak,
-            destination_country: order.ulke || null,
-            note: order.note || '',
-          };
-        } else if (inp.dataset.newCust && inp.dataset.newUrun) {
-          payload = {
-            customer_id: inp.dataset.newCust,
-            product_id: inp.dataset.newUrun,
-            shipped_qty: field === 'cikan' ? newQty : 0,
-            planned_qty: field === 'cikacak' ? newQty : 0,
-            destination_country: inp.dataset.newUlke || null,
-            note: '',
-          };
-        } else { return; }
-
-        // DB save — aninda kaydet, debounce yok
-        dbUpsertOrder(payload).then(function (ok) {
-          if (!ok) { showToast('Kaydedilemedi'); _loadAll().then(function () { renderData(); }); }
-        });
-        // Toplam guncelle — aktif input yoksa render et
-        var activeEl = document.activeElement;
-        var isInCell = activeEl && activeEl.classList.contains('o-ci');
-        if (!isInCell) {
-          renderData();
-        } else {
-          // Input odaktayken sadece toplam satirini guncelle
-          var activeOid = activeEl.dataset.oid;
-          var activeRk = activeEl.dataset.rk;
-          clearTimeout(window._nsRenderTimer);
-          window._nsRenderTimer = setTimeout(function() {
-            var stillActive = document.activeElement;
-            var stillInCell = stillActive && stillActive.classList.contains('o-ci');
-            if (!stillInCell) {
-              renderData();
-            } else {
-              // focus'u koru, sadece render
-              var focusOid = stillActive.dataset.oid;
-              var focusRk = stillActive.dataset.rk;
-              var focusSource = stillActive.dataset.source;
-              var focusField = stillActive.dataset.field;
-              renderData();
-              // render sonrasi focus geri getir
-              setTimeout(function() {
-                var restored = document.querySelector(
-                  '#screen-orders .o-ci[data-oid="' + focusOid + '"][data-rk="' + focusRk + '"][data-source="' + focusSource + '"][data-field="' + focusField + '"]'
-                );
-                if (restored) { restored.focus(); setTimeout(function(){ restored.select(); }, 0); }
-              }, 50);
-            }
-          }, 400);
-        }
+    // o-ce span'lara click bind — overlay sistemi
+    document.querySelectorAll('#screen-orders .o-ce').forEach(function(span) {
+      span.style.cursor = 'pointer';
+      span.style.display = 'block';
+      span.style.minWidth = '40px';
+      span.style.minHeight = '28px';
+      span.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _nsActivateCell(span);
       });
     });
     document.querySelectorAll('#screen-orders .srt').forEach(function (th) {
@@ -2025,6 +1876,208 @@
     window._nsdata_getFilteredOrders = function() { return filtOrders(); };
     window._nsdata_getState = function() { return _state; };
     window._nsdata_renderData = function() { renderData(); };
+
+    // ============================================================
+    // OVERLAY CELL EDITOR
+    // ============================================================
+    var _overlay = document.createElement('input');
+    _overlay.id = 'ns-cell-editor';
+    _overlay.type = 'text';
+    _overlay.style.cssText = 'position:fixed;z-index:9999;border:2px solid #4F46E5;outline:none;padding:4px 6px;font-size:15px;font-family:Inter,sans-serif;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;min-width:60px;text-align:right;tabindex:-1';
+    document.body.appendChild(_overlay);
+
+    var _activeSpan = null;
+    var _pendingSaves = {};
+
+    window._nsActivateCell = function(span) {
+      // Onceki hucreyi kaydet
+      if (_activeSpan && _activeSpan !== span) _nsSaveOverlay();
+      _activeSpan = span;
+
+      // Overlay'i span'in uzerine pozisyonla
+      var rect = span.getBoundingClientRect();
+      _overlay.style.left = rect.left + 'px';
+      _overlay.style.top = rect.top + 'px';
+      _overlay.style.width = Math.max(rect.width, 70) + 'px';
+      _overlay.style.height = rect.height + 'px';
+      _overlay.style.display = 'block';
+
+      // Raw degeri yukle
+      var raw = parseFloat(span.dataset.raw);
+      _overlay.value = (!isNaN(raw) && raw > 0) ? raw : '';
+      _overlay.dataset.oid = span.dataset.oid || '';
+      _overlay.dataset.field = span.dataset.field || '';
+      _overlay.dataset.source = span.dataset.source || '';
+      _overlay.dataset.rk = span.dataset.rk || '';
+      _overlay.dataset.newCust = span.dataset.newCust || '';
+      _overlay.dataset.newUrun = span.dataset.newUrun || '';
+      _overlay.dataset.newUlke = span.dataset.newUlke || '';
+      _overlay.focus();
+      setTimeout(function(){ _overlay.select(); }, 0);
+    };
+
+    function _nsGetCells() {
+      return Array.from(document.querySelectorAll('#screen-orders .o-ce'));
+    }
+
+    function _nsSaveOverlay() {
+      if (!_activeSpan) return;
+      var rawStr = _overlay.value;
+      var rawVal = parseFloat(String(rawStr).replace(/[^0-9.\-]/g, ''));
+      if (isNaN(rawVal) || rawVal < 0) return;
+
+      var source = _overlay.dataset.source;
+      var field = _overlay.dataset.field;
+      var oid = _overlay.dataset.oid;
+      var st = _nsdata_getState();
+      var o = oid ? st.orders.find(function(x){ return x.id === oid; }) : null;
+      var prod = o ? st.productMap[o.urun] : null;
+      if (!prod && _overlay.dataset.newUrun) prod = st.productMap[_overlay.dataset.newUrun];
+      var price = prod ? (prod.price || 0) : 0;
+      var ratio = prod ? (prod.ratio || 0) : 0;
+
+      var newQty = source === 'adet' ? rawVal :
+                   source === 'euro' ? (price > 0 ? rawVal / price : 0) :
+                   source === 'container' ? (ratio > 0 ? rawVal * ratio : 0) : rawVal;
+      newQty = Math.round(newQty * 100) / 100;
+
+      // Aktif span'i guncelle
+      _activeSpan.dataset.raw = newQty || '';
+      _activeSpan.textContent = _fmtVal2(source, newQty);
+
+      // Sibling span'lari guncelle (ayni rk)
+      var rk = _overlay.dataset.rk || (_activeSpan.dataset.rk);
+      if (rk) {
+        document.querySelectorAll('#screen-orders .o-ce[data-rk="' + rk + '"]').forEach(function(sib) {
+          if (sib === _activeSpan) return;
+          var ss = sib.dataset.source;
+          var sv = ss === 'adet' ? newQty :
+                   ss === 'euro' ? Math.round(newQty * price) :
+                   ss === 'container' ? (ratio ? Math.round(newQty / ratio * 10000) / 10000 : 0) : newQty;
+          sib.dataset.raw = sv || '';
+          sib.textContent = _fmtVal2(ss, sv);
+        });
+      }
+
+      // Memory guncelle
+      if (o) {
+        if (field === 'cikan') o.cikan = newQty;
+        else o.cikacak = newQty;
+      }
+
+      // Pending'e ekle
+      var payload;
+      if (oid && o) {
+        payload = {
+          id: o._dbId, customer_id: o._customerId, product_id: o._productId,
+          shipped_qty: field === 'cikan' ? newQty : (o.cikan || 0),
+          planned_qty: field === 'cikacak' ? newQty : (o.cikacak || 0),
+          destination_country: o.ulke || null, note: o.note || ''
+        };
+      } else if (_overlay.dataset.newCust && _overlay.dataset.newUrun) {
+        payload = {
+          customer_id: _overlay.dataset.newCust, product_id: _overlay.dataset.newUrun,
+          shipped_qty: field === 'cikan' ? newQty : 0,
+          planned_qty: field === 'cikacak' ? newQty : 0,
+          destination_country: _overlay.dataset.newUlke || null, note: ''
+        };
+      }
+      if (payload) {
+        var saveKey = oid || (_overlay.dataset.newCust + '_' + _overlay.dataset.newUrun);
+        _pendingSaves[saveKey] = payload;
+        // DB'ye hemen gonder ama UI'yi bekleme
+        dbUpsertOrder(payload).then(function(ok){
+          if (!ok) showToast('Kaydedilemedi');
+        });
+      }
+    }
+
+    function _nsDeactivateCell() {
+      if (_activeSpan) _nsSaveOverlay();
+      _activeSpan = null;
+      _overlay.style.display = 'none';
+      // Tablodayken render et
+      clearTimeout(window._nsRenderTimer);
+      window._nsRenderTimer = setTimeout(function() { renderData(); }, 150);
+    }
+
+    function _nsMoveCell(direction) {
+      _nsSaveOverlay();
+      var cells = _nsGetCells();
+      var idx = cells.indexOf(_activeSpan);
+      if (idx === -1) return;
+      var colCount = 6;
+      var target = null;
+      if (direction === 'down' || direction === 'enter') target = cells[idx + colCount];
+      else if (direction === 'up') target = cells[idx - colCount];
+      else if (direction === 'right') target = cells[idx + 1];
+      else if (direction === 'left') target = cells[idx - 1];
+      if (target) {
+        _activeSpan = null;
+        window._nsActivateCell(target);
+      } else if (direction === 'enter') {
+        _nsDeactivateCell();
+      }
+    }
+
+    _overlay.addEventListener('keydown', function(e) {
+      if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape','Tab'].includes(e.key)) return;
+      e.preventDefault();
+      if (e.key === 'Escape') { _nsDeactivateCell(); return; }
+      if (e.key === 'Tab') { _nsMoveCell('right'); return; }
+      if (e.key === 'Enter') { _nsMoveCell('enter'); return; }
+      if (e.key === 'ArrowDown') { _nsMoveCell('down'); return; }
+      if (e.key === 'ArrowUp') { _nsMoveCell('up'); return; }
+      if (e.key === 'ArrowRight') {
+        // Cursor sonda ise saga gec, yoksa normal hareket
+        if (_overlay.selectionStart === _overlay.value.length) { _nsMoveCell('right'); }
+      }
+      if (e.key === 'ArrowLeft') {
+        if (_overlay.selectionStart === 0) { _nsMoveCell('left'); }
+      }
+    });
+
+    _overlay.addEventListener('blur', function() {
+      setTimeout(function() {
+        // Blur baska bir o-ce'ye click ise zaten _nsActivateCell cagrilacak
+        if (document.activeElement === _overlay) return;
+        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#ns-cell-editor')) return;
+        _nsDeactivateCell();
+      }, 80);
+    });
+
+    // Tablo disina tiklaninca kapat
+    document.addEventListener('click', function(e) {
+      if (_activeSpan && !e.target.closest('#screen-orders .o-ts') && e.target !== _overlay) {
+        _nsDeactivateCell();
+      }
+    });
+
+    // renderData sonrasi overlay yeniden pozisyonla
+    var _origRender = renderData;
+    renderData = function() {
+      var savedOid = _activeSpan ? _activeSpan.dataset.oid : null;
+      var savedField = _activeSpan ? _activeSpan.dataset.field : null;
+      var savedSource = _activeSpan ? _activeSpan.dataset.source : null;
+      _origRender();
+      if (savedOid && savedField) {
+        setTimeout(function() {
+          var newSpan = document.querySelector('#screen-orders .o-ce[data-oid="'+savedOid+'"][data-field="'+savedField+'"][data-source="'+savedSource+'"]');
+          if (newSpan) {
+            _activeSpan = newSpan;
+            var rect = newSpan.getBoundingClientRect();
+            _overlay.style.left = rect.left + 'px';
+            _overlay.style.top = rect.top + 'px';
+            _overlay.style.width = Math.max(rect.width, 70) + 'px';
+            _overlay.style.height = rect.height + 'px';
+            _overlay.focus();
+          } else {
+            _overlay.style.display = 'none';
+            _activeSpan = null;
+          }
+        }, 30);
+      }
+    };
   })();
 
 })();
