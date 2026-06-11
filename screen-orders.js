@@ -1224,6 +1224,38 @@
         dbUpsertOrder(payload).then(function (ok) {
           if (!ok) { showToast('Kaydedilemedi'); _loadAll().then(function () { renderData(); }); }
         });
+        // Toplam guncelle — aktif input yoksa render et
+        var activeEl = document.activeElement;
+        var isInCell = activeEl && activeEl.classList.contains('o-ci');
+        if (!isInCell) {
+          renderData();
+        } else {
+          // Input odaktayken sadece toplam satirini guncelle
+          var activeOid = activeEl.dataset.oid;
+          var activeRk = activeEl.dataset.rk;
+          clearTimeout(window._nsRenderTimer);
+          window._nsRenderTimer = setTimeout(function() {
+            var stillActive = document.activeElement;
+            var stillInCell = stillActive && stillActive.classList.contains('o-ci');
+            if (!stillInCell) {
+              renderData();
+            } else {
+              // focus'u koru, sadece render
+              var focusOid = stillActive.dataset.oid;
+              var focusRk = stillActive.dataset.rk;
+              var focusSource = stillActive.dataset.source;
+              var focusField = stillActive.dataset.field;
+              renderData();
+              // render sonrasi focus geri getir
+              setTimeout(function() {
+                var restored = document.querySelector(
+                  '#screen-orders .o-ci[data-oid="' + focusOid + '"][data-rk="' + focusRk + '"][data-source="' + focusSource + '"][data-field="' + focusField + '"]'
+                );
+                if (restored) { restored.focus(); setTimeout(function(){ restored.select(); }, 0); }
+              }, 50);
+            }
+          }, 400);
+        }
       });
     });
     document.querySelectorAll('#screen-orders .srt').forEach(function (th) {
@@ -1977,6 +2009,7 @@
     // Window bridge — read-only, export fonksiyonlari icin
     window._nsdata_getFilteredOrders = function() { return filtOrders(); };
     window._nsdata_getState = function() { return _state; };
+    window._nsdata_renderData = function() { renderData(); };
   })();
 
 })();
