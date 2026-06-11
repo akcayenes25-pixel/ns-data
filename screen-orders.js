@@ -62,6 +62,14 @@
   async function _init() {
     await _loadAll();
     _bindGlobalEvents();
+    // sessionStorage'dan pivot state geri yukle
+    _restorePivotState();
+    // URL'den ekran restore et — data ve event listener'lar hazir olduktan sonra
+    var urlParams = new URLSearchParams(window.location.search);
+    var screen = urlParams.get('screen');
+    if (screen === 'orders') {
+      render();
+    }
   }
 
   async function _loadAll() {
@@ -85,6 +93,46 @@
       orderCustomerIds: _state.orders.map(function(o){ return o.musteri; }),
       filtersAfter: JSON.parse(JSON.stringify(_S.filters))
     });
+  }
+
+  /* ============================================================ PIVOT STATE PERSISTENCE */
+  var _PIVOT_KEY = 'nsdata_pivot_state';
+
+  function _savePivotState() {
+    try {
+      sessionStorage.setItem(_PIVOT_KEY, JSON.stringify({
+        rows: _S.rows,
+        cols: _S.cols,
+        vals: _S.vals,
+        form: _S.form,
+        stShow: _S.stShow,
+        stTop: _S.stTop,
+        gtShow: _S.gtShow,
+        showEmpty: _S.showEmpty,
+        filters: _S.filters
+      }));
+    } catch(e) {}
+  }
+
+  function _restorePivotState() {
+    try {
+      var saved = sessionStorage.getItem(_PIVOT_KEY);
+      if (!saved) return;
+      var state = JSON.parse(saved);
+      if (state.rows) _S.rows = state.rows;
+      if (state.cols) _S.cols = state.cols;
+      if (state.vals) _S.vals = state.vals;
+      if (state.form) _S.form = state.form;
+      if (state.stShow !== undefined) _S.stShow = state.stShow;
+      if (state.stTop !== undefined) _S.stTop = state.stTop;
+      if (state.gtShow !== undefined) _S.gtShow = state.gtShow;
+      if (state.showEmpty !== undefined) _S.showEmpty = state.showEmpty;
+      // filters: sadece gecerli customer ID'leri restore et
+      if (state.filters && state.filters.musteri) {
+        var validIds = _state.customers.map(function(c){ return c.id; });
+        _S.filters.musteri = state.filters.musteri.filter(function(id){ return validIds.includes(id); });
+      }
+    } catch(e) {}
   }
 
   /* ============================================================ ADAPTERS */
@@ -1083,32 +1131,12 @@
         var all = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
         var idx = all.indexOf(inp);
         var colCount = 6;
-        if (e.key === 'ArrowDown' || e.key === 'Enter') {
-          var targetOid = all[idx + colCount] ? all[idx + colCount].dataset.oid : null;
-          var targetSource = all[idx + colCount] ? all[idx + colCount].dataset.source : null;
-          var targetField2 = all[idx + colCount] ? all[idx + colCount].dataset.field : null;
-          if (e.key === 'Enter') inp.blur();
-          setTimeout(function() {
-            var newAll = Array.from(document.querySelectorAll('#screen-orders .o-ci'));
-            var target = null;
-            if (targetOid) {
-              target = newAll.find(function(el) {
-                return el.dataset.oid === targetOid && el.dataset.source === targetSource && el.dataset.field === targetField2;
-              });
-            }
-            if (!target) target = newAll[idx + colCount];
-            if (target) { target.focus(); setTimeout(function(){ target.select(); }, 0); }
-          }, e.key === 'Enter' ? 250 : 0);
-        } else if (e.key === 'ArrowUp') {
-          var target2 = all[idx - colCount];
-          if (target2) { target2.focus(); setTimeout(function(){ target2.select(); }, 0); }
-        } else if (e.key === 'ArrowRight') {
-          var target3 = all[idx + 1];
-          if (target3) { target3.focus(); setTimeout(function(){ target3.select(); }, 0); }
-        } else if (e.key === 'ArrowLeft') {
-          var target4 = all[idx - 1];
-          if (target4) { target4.focus(); setTimeout(function(){ target4.select(); }, 0); }
-        }
+        var target = null;
+        if (e.key === 'ArrowDown' || e.key === 'Enter') target = all[idx + colCount];
+        else if (e.key === 'ArrowUp') target = all[idx - colCount];
+        else if (e.key === 'ArrowRight') target = all[idx + 1];
+        else if (e.key === 'ArrowLeft') target = all[idx - 1];
+        if (target) { target.focus(); setTimeout(function(){ target.select(); }, 0); }
       };
 
       inp.addEventListener('change', function () {
@@ -1192,15 +1220,10 @@
           };
         } else { return; }
 
-        // DB save — no re-render on success
-        if (_saveTimer) clearTimeout(_saveTimer);
-        _saveTimer = setTimeout(function () {
-          dbUpsertOrder(payload).then(function (ok) {
-            if (!ok) { showToast('Kaydedilemedi'); _loadAll().then(function () { renderData(); }); }
-            // Başarılı kayıtta emitDataChange ÇAĞIRMA — Supabase realtime zaten tetikler
-            // ama input odaktayken render yapılmaz
-          });
-        }, 300);
+        // DB save — aninda kaydet, debounce yok
+        dbUpsertOrder(payload).then(function (ok) {
+          if (!ok) { showToast('Kaydedilemedi'); _loadAll().then(function () { renderData(); }); }
+        });
       });
     });
     document.querySelectorAll('#screen-orders .srt').forEach(function (th) {
@@ -1789,6 +1812,7 @@
 
   /* ============================================================ MAIN RENDER */
   function render() {
+    _savePivotState();
     _dbgCallCount.render++;
     _dbgLog('RENDER', {
       call: _dbgCallCount.render,

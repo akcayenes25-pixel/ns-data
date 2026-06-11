@@ -495,8 +495,11 @@
     var addCustForm = document.getElementById('settings-add-customer-form');
     if (addCustBtn) addCustBtn.addEventListener('click', function() {
       addCustForm.style.display = 'block';
-      addCustForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(function() { document.getElementById('settings-new-customer-name').focus(); }, 300);
+      var nameInp = document.getElementById('settings-new-customer-name');
+      if (nameInp) {
+        nameInp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(function() { nameInp.focus(); }, 300);
+      }
     });
     var cancelCust = document.getElementById('settings-cancel-customer-btn');
     if (cancelCust) cancelCust.addEventListener('click', function() { addCustForm.style.display = 'none'; });

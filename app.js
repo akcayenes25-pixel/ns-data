@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.3.3';
+const APP_VERSION = 'v2.4.0';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,14 @@ const APP_VERSION = 'v2.3.3';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v2.4.0': {
+    date: 'Haziran 2026',
+    items: [
+      '[Duzeltildi] F5 sonrasi tablo direkt aciliyor, sekmeye tiklamaya gerek yok.',
+      '[Eklendi] Pivot ayarlari F5 sonrasi korunuyor (sessionStorage).',
+      '[Iyilestirildi] Enter ve ok tuslariyla hizli gezinme, aninda kayit.',
+    ]
+  },
   'v2.3.3': {
     date: 'Haziran 2026',
     items: [
@@ -250,18 +258,12 @@ function initNavigation() {
     _activateScreen(screen);
   });
 
-  // Restore from URL on load
-  var urlParams = new URLSearchParams(window.location.search);
-  var screen = urlParams.get('screen');
-  if (screen && SCREENS.includes(screen)) {
-    _activateScreen(screen);
-  }
-
+  // URL restore appReady sonrasına taşındı — screen-orders _init() içinde yapılıyor
   // Profile link: ?profile=TOKEN → navigate to dashboard, store token for display
+  var urlParams = new URLSearchParams(window.location.search);
   var profileToken = urlParams.get('profile');
   if (profileToken) {
     _activateScreen('dashboard');
-    // Store for use by screens
     window._nsProfileToken = profileToken;
   }
 }
