@@ -1000,11 +1000,32 @@
     inp.oninput = function() {
       var q = inp.value.toLowerCase().trim();
       if (!q) { sug.style.display = 'none'; return; }
-      var matches = _state.customers.filter(function(c){ return c.name.toLowerCase().startsWith(q); }).slice(0, 5);
+
+      // Musteri adi araması
+      var nameMatches = _state.customers.filter(function(c){ return c.name.toLowerCase().startsWith(q); });
+
+      // Ulke araması — customerCountries tablosundan
+      var countryIds = (_state.customerCountries || [])
+        .filter(function(cc){ return cc.country.toLowerCase().startsWith(q); })
+        .map(function(cc){ return cc.customer_id; });
+      var countryMatches = _state.customers.filter(function(c){ return countryIds.includes(c.id); });
+
+      // Deduplicate
+      var seen = {};
+      var matches = [];
+      nameMatches.concat(countryMatches).forEach(function(c) {
+        if (!seen[c.id]) { seen[c.id] = true; matches.push(c); }
+      });
+      matches = matches.slice(0, 8);
+
       if (!matches.length) { sug.style.display = 'none'; return; }
       sug.innerHTML = matches.map(function(c){
         var alreadySelected = _S.filters.musteri.includes(c.id);
-        return '<div style="padding:4px 10px;cursor:pointer;' + (alreadySelected ? 'color:#999' : '') + '" data-id="' + c.id + '" data-name="' + _esc(c.name) + '" data-selected="' + alreadySelected + '">' + _esc(c.name) + (alreadySelected ? ' \u2713' : '') + '</div>';
+        var matchedCountries = (_state.customerCountries || [])
+          .filter(function(cc){ return cc.customer_id === c.id && cc.country.toLowerCase().startsWith(q); })
+          .map(function(cc){ return cc.country; });
+        var countryTag = matchedCountries.length ? ' <span style="font-size:10px;color:#4F46E5">(' + matchedCountries.join(', ') + ')</span>' : '';
+        return '<div style="padding:4px 10px;cursor:pointer;' + (alreadySelected ? 'color:#999' : '') + '" data-id="' + c.id + '" data-name="' + _esc(c.name) + '" data-selected="' + alreadySelected + '">' + _esc(c.name) + countryTag + (alreadySelected ? ' \u2713' : '') + '</div>';
       }).join('');
       var rect = inp.getBoundingClientRect();
       sug.style.top = rect.bottom + 2 + 'px';
