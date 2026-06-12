@@ -1884,6 +1884,10 @@
     _overlay.id = 'ns-cell-editor';
     _overlay.type = 'text';
     _overlay.style.cssText = 'position:fixed;z-index:9999;border:2px solid #4F46E5;outline:none;padding:0 4px;font-size:13px;font-family:Inter,sans-serif;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;min-width:0;width:auto;text-align:center;box-sizing:border-box;tabindex:-1';
+    _overlay.setAttribute('autocomplete', 'off');
+    _overlay.setAttribute('autocorrect', 'off');
+    _overlay.setAttribute('autocapitalize', 'off');
+    _overlay.setAttribute('spellcheck', 'false');
     document.body.appendChild(_overlay);
 
     var _activeSpan = null;
@@ -2002,7 +2006,6 @@
     }
 
     function _nsMoveCell(direction) {
-      _nsSaveOverlay();
       var cells = _nsGetCells();
       var idx = cells.indexOf(_activeSpan);
       if (idx === -1) return;
@@ -2012,15 +2015,24 @@
       else if (direction === 'up') target = cells[idx - colCount];
       else if (direction === 'right') target = cells[idx + 1];
       else if (direction === 'left') target = cells[idx - 1];
+      // Save target raw BEFORE _nsSaveOverlay modifies siblings
+      var savedTargetRaw = target ? target.dataset.raw : null;
+      _nsSaveOverlay();
       if (target) {
         _activeSpan = null;
         window._nsActivateCell(target);
+        // Restore original raw value overwritten by sibling update
+        if (savedTargetRaw !== null) {
+          var raw = parseFloat(savedTargetRaw);
+          _overlay.value = (!isNaN(raw) && raw > 0) ? raw : '';
+        }
       } else if (direction === 'enter') {
         _nsDeactivateCell();
       }
     }
 
     _overlay.addEventListener('keydown', function(e) {
+      if (e.key === 'Delete') { e.preventDefault(); _overlay.value = ''; return; }
       if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape','Tab'].includes(e.key)) return;
       if (e.key === 'Escape') { e.preventDefault(); _nsDeactivateCell(); return; }
       if (e.key === 'Tab') { e.preventDefault(); _nsMoveCell('right'); return; }
