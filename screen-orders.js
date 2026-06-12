@@ -1915,6 +1915,7 @@
       _overlay.dataset.newCust = span.dataset.newCust || '';
       _overlay.dataset.newUrun = span.dataset.newUrun || '';
       _overlay.dataset.newUlke = span.dataset.newUlke || '';
+      _overlay.dataset.fresh = 'true';
       _overlay.focus();
       setTimeout(function(){ _overlay.setSelectionRange(_overlay.value.length, _overlay.value.length); }, 0);
     };
@@ -2028,7 +2029,13 @@
 
     _overlay.addEventListener('keydown', function(e) {
       if (e.key === 'Delete') { e.preventDefault(); _overlay.value = ''; return; }
-      if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape','Tab'].includes(e.key)) return;
+      if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape','Tab'].includes(e.key)) {
+        if (_overlay.dataset.fresh === 'true') {
+          if (e.key === 'Backspace') { _overlay.dataset.fresh = 'false'; return; }
+          if (e.key >= '0' && e.key <= '9') { _overlay.value = ''; _overlay.dataset.fresh = 'false'; }
+        }
+        return;
+      }
       if (e.key === 'Escape') { e.preventDefault(); _nsDeactivateCell(); return; }
       if (e.key === 'Tab') { e.preventDefault(); _nsMoveCell('right'); return; }
       if (e.key === 'Enter') { e.preventDefault(); _nsMoveCell('enter'); return; }
