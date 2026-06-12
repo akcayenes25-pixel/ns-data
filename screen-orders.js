@@ -1001,32 +1001,35 @@
       var q = inp.value.toLowerCase().trim();
       if (!q) { sug.style.display = 'none'; return; }
 
-      // Musteri adi araması
-      var nameMatches = _state.customers.filter(function(c){ return c.name.toLowerCase().startsWith(q); });
-
-      // Ulke araması — customerCountries tablosundan
-      var countryIds = (_state.customerCountries || [])
-        .filter(function(cc){ return cc.country.toLowerCase().startsWith(q); })
-        .map(function(cc){ return cc.customer_id; });
-      var countryMatches = _state.customers.filter(function(c){ return countryIds.includes(c.id); });
-
-      // Deduplicate
-      var seen = {};
-      var matches = [];
-      nameMatches.concat(countryMatches).forEach(function(c) {
-        if (!seen[c.id]) { seen[c.id] = true; matches.push(c); }
+      // Esleşen ulkeler — distinct, sorted
+      var matchedCountries = [];
+      var seenCountry = {};
+      (_state.customerCountries || []).forEach(function(cc) {
+        if (cc.country.toLowerCase().startsWith(q) && !seenCountry[cc.country]) {
+          seenCountry[cc.country] = true;
+          var custCount = (_state.customerCountries || []).filter(function(x){ return x.country === cc.country; }).length;
+          matchedCountries.push({ country: cc.country, count: custCount });
+        }
       });
-      matches = matches.slice(0, 8);
 
-      if (!matches.length) { sug.style.display = 'none'; return; }
-      sug.innerHTML = matches.map(function(c){
+      // Musteri adi araması
+      var nameMatches = _state.customers.filter(function(c){ return c.name.toLowerCase().startsWith(q); }).slice(0, 5);
+
+      if (!matchedCountries.length && !nameMatches.length) { sug.style.display = 'none'; return; }
+
+      var html = '';
+      // Ulke satırları — en üstte
+      matchedCountries.forEach(function(uc) {
+        html += '<div style="padding:4px 10px;cursor:pointer;background:#F0F0FF;font-weight:600" data-country="' + uc.country + '">' +
+          '\uD83C\uDDEB\uD83C\uDDF7 ' + uc.country + ' <span style="font-size:10px;font-weight:400;color:#4F46E5">— ' + uc.count + ' cari</span></div>';
+      });
+      // Musteri satırları
+      nameMatches.forEach(function(c) {
         var alreadySelected = _S.filters.musteri.includes(c.id);
-        var matchedCountries = (_state.customerCountries || [])
-          .filter(function(cc){ return cc.customer_id === c.id && cc.country.toLowerCase().startsWith(q); })
-          .map(function(cc){ return cc.country; });
-        var countryTag = matchedCountries.length ? ' <span style="font-size:10px;color:#4F46E5">(' + matchedCountries.join(', ') + ')</span>' : '';
-        return '<div style="padding:4px 10px;cursor:pointer;' + (alreadySelected ? 'color:#999' : '') + '" data-id="' + c.id + '" data-name="' + _esc(c.name) + '" data-selected="' + alreadySelected + '">' + _esc(c.name) + countryTag + (alreadySelected ? ' \u2713' : '') + '</div>';
-      }).join('');
+        html += '<div style="padding:4px 10px;cursor:pointer;' + (alreadySelected ? 'color:#999' : '') + '" data-id="' + c.id + '" data-name="' + _esc(c.name) + '" data-selected="' + alreadySelected + '">' + _esc(c.name) + (alreadySelected ? ' \u2713' : '') + '</div>';
+      });
+
+      sug.innerHTML = html;
       var rect = inp.getBoundingClientRect();
       sug.style.top = rect.bottom + 2 + 'px';
       sug.style.left = rect.left + 'px';
@@ -1034,8 +1037,32 @@
     };
 
     sug.onclick = function(e) {
-      var item = e.target.closest('[data-id]');
+      var item = e.target.closest('[data-country],[data-id]');
       if (!item) return;
+
+      // Ulke secimi — o ulkedeki tum musterileri ekle
+      if (item.dataset.country) {
+        var ulke = item.dataset.country;
+        var ids = (_state.customerCountries || [])
+          .filter(function(cc){ return cc.country === ulke; })
+          .map(function(cc){ return cc.customer_id; })
+          .filter(function(id){ return _state.customerMap[id]; }); // orphan guard
+        var added = 0;
+        ids.forEach(function(id) {
+          if (!_S.filters.musteri.includes(id)) {
+            _S.filters.musteri.unshift(id);
+            added++;
+          }
+          if (!_state.orders.some(function(o){ return o.musteri === id; })) _S.showEmpty = true;
+        });
+        if (added === 0) showToast(ulke + ' musterileri zaten secili');
+        sug.style.display = 'none';
+        inp.value = '';
+        render();
+        return;
+      }
+
+      // Musteri secimi — mevcut logic
       if (item.dataset.selected === 'true') {
         showToast(item.dataset.name + ' zaten secili');
         _dbgLog('MUSTERI_EKLE', { result: 'ZATEN_SECILI', name: item.dataset.name, id: item.dataset.id, filtersMusteri: _S.filters.musteri.slice() });
@@ -1046,7 +1073,6 @@
       if (!_S.filters.musteri.includes(id)) {
         _S.filters.musteri.unshift(id);
       }
-      // Siparis yoksa otomatik siparissiz goster ac
       if (!_state.orders.some(function(o){ return o.musteri === id; })) _S.showEmpty = true;
       _dbgLog('MUSTERI_EKLENDI', { sonrakiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length, showEmptyAuto: !_state.orders.length });
       sug.style.display = 'none';
