@@ -477,10 +477,25 @@
   box-sizing: border-box !important;
   padding: 0 4px !important;
   font-size: 13px !important;
-  text-align: right !important;
-  line-height: normal !important;
+  font-family: Inter, sans-serif !important;
+  font-variant-numeric: tabular-nums !important;
+  text-align: center !important;
+  line-height: 16.9px !important;
 }
 #ns-cell-editor:focus {
   box-shadow: none !important;
   outline: none !important;
 }
+#ns-cell-editor::selection {
+  background: rgba(79,70,229,0.2);
+  color: #000;
+}
+
+/* TABLE CELL ALIGNMENT */
+#screen-orders .o-ce,
+#screen-orders .o-cv { text-align: center !important; }
+#screen-orders .o-dt td { text-align: center !important; }
+#screen-orders .o-ht th { text-align: center !important; }
+#screen-orders .o-dt td.th-n,
+#screen-orders .o-ht th.th-n { text-align: center !important; }
+#screen-orders .nc { justify-content: center !important; }
