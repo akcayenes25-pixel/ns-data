@@ -1883,7 +1883,7 @@
     var _overlay = document.createElement('input');
     _overlay.id = 'ns-cell-editor';
     _overlay.type = 'text';
-    _overlay.style.cssText = 'position:fixed;z-index:9999;border:2px solid #4F46E5;outline:none;padding:0 4px;font-size:13px;font-family:Inter,sans-serif;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;min-width:0;text-align:right;box-sizing:border-box;tabindex:-1';
+    _overlay.style.cssText = 'position:fixed;z-index:9999;border:2px solid #4F46E5;outline:none;padding:0 4px;font-size:13px;font-family:Inter,sans-serif;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;min-width:0;width:auto;text-align:right;box-sizing:border-box;tabindex:-1';
     document.body.appendChild(_overlay);
 
     var _activeSpan = null;
