@@ -1945,9 +1945,12 @@
                    source === 'container' ? (ratio > 0 ? rawVal * ratio : 0) : rawVal;
       newQty = Math.round(newQty * 100) / 100;
 
-      // Aktif span'i guncelle
-      _activeSpan.dataset.raw = newQty || '';
-      _activeSpan.textContent = _fmtVal2(source, newQty);
+      // Aktif span'i guncelle (source birimine cevir — dataset.raw her zaman source biriminde)
+      var activeVal = source === 'adet' ? newQty :
+                      source === 'euro' ? Math.round(newQty * price) :
+                      source === 'container' ? (ratio ? Math.round(newQty / ratio * 10000) / 10000 : 0) : newQty;
+      _activeSpan.dataset.raw = activeVal || '';
+      _activeSpan.textContent = _fmtVal2(source, activeVal);
 
       // Sibling span'lari guncelle (ayni rk)
       var rk = _overlay.dataset.rk || (_activeSpan.dataset.rk);
@@ -2015,17 +2018,10 @@
       else if (direction === 'up') target = cells[idx - colCount];
       else if (direction === 'right') target = cells[idx + 1];
       else if (direction === 'left') target = cells[idx - 1];
-      // Save target raw BEFORE _nsSaveOverlay modifies siblings
-      var savedTargetRaw = target ? target.dataset.raw : null;
       _nsSaveOverlay();
       if (target) {
         _activeSpan = null;
         window._nsActivateCell(target);
-        // Restore original raw value overwritten by sibling update
-        if (savedTargetRaw !== null) {
-          var raw = parseFloat(savedTargetRaw);
-          _overlay.value = (!isNaN(raw) && raw > 0) ? raw : '';
-        }
       } else if (direction === 'enter') {
         _nsDeactivateCell();
       }
