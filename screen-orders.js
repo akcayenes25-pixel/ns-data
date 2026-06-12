@@ -1774,7 +1774,6 @@
       '</div>' +
       // Filter bar
       '<div class="o-fl">' +
-        '<div class="o-srch"><span class="o-srch-ic">🔍</span><input type="search" id="o-srch" placeholder=""/></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-ulke">Ülke <span class="o-fb-b" id="o-fbb-ulke" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-ulke"></div></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-musteri">Müşteri <span class="o-fb-b" id="o-fbb-musteri" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-musteri"></div></div>' +
         '<div class="o-dda"><button class="o-fb" id="o-fb-urun">Ürün <span class="o-fb-b" id="o-fbb-urun" style="display:none">0</span> ▾</button><div class="o-ddp" id="o-ddp-urun"></div></div>' +

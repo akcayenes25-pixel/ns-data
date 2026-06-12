@@ -800,3 +800,8 @@ body {
 .limit-warning-icon {
   -webkit-font-smoothing: antialiased;
 }
+
+/* Overlay cell editor — global width override */
+#ns-cell-editor {
+  width: revert !important;
+}
