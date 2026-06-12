@@ -1898,8 +1898,8 @@
       var rect = span.getBoundingClientRect();
       _overlay.style.left = rect.left + 'px';
       _overlay.style.top = rect.top + 'px';
-      _overlay.style.width = rect.width + 'px';
-      _overlay.style.height = rect.height + 'px';
+      _overlay.style.setProperty('width', rect.width + 'px', 'important');
+      _overlay.style.setProperty('height', rect.height + 'px', 'important');
       _overlay.style.display = 'block';
 
       // Raw degeri yukle
@@ -2022,18 +2022,18 @@
 
     _overlay.addEventListener('keydown', function(e) {
       if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape','Tab'].includes(e.key)) return;
-      e.preventDefault();
-      if (e.key === 'Escape') { _nsDeactivateCell(); return; }
-      if (e.key === 'Tab') { _nsMoveCell('right'); return; }
-      if (e.key === 'Enter') { _nsMoveCell('enter'); return; }
-      if (e.key === 'ArrowDown') { _nsMoveCell('down'); return; }
-      if (e.key === 'ArrowUp') { _nsMoveCell('up'); return; }
+      if (e.key === 'Escape') { e.preventDefault(); _nsDeactivateCell(); return; }
+      if (e.key === 'Tab') { e.preventDefault(); _nsMoveCell('right'); return; }
+      if (e.key === 'Enter') { e.preventDefault(); _nsMoveCell('enter'); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); _nsMoveCell('down'); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); _nsMoveCell('up'); return; }
       if (e.key === 'ArrowRight') {
-        // Cursor sonda ise saga gec, yoksa normal hareket
-        if (_overlay.selectionStart === _overlay.value.length) { _nsMoveCell('right'); }
+        if (_overlay.selectionStart === _overlay.value.length) { e.preventDefault(); _nsMoveCell('right'); }
+        return;
       }
       if (e.key === 'ArrowLeft') {
-        if (_overlay.selectionStart === 0) { _nsMoveCell('left'); }
+        if (_overlay.selectionStart === 0) { e.preventDefault(); _nsMoveCell('left'); }
+        return;
       }
     });
 
@@ -2068,8 +2068,8 @@
             var rect = newSpan.getBoundingClientRect();
             _overlay.style.left = rect.left + 'px';
             _overlay.style.top = rect.top + 'px';
-            _overlay.style.width = rect.width + 'px';
-            _overlay.style.height = rect.height + 'px';
+            _overlay.style.setProperty('width', rect.width + 'px', 'important');
+            _overlay.style.setProperty('height', rect.height + 'px', 'important');
             _overlay.focus();
           } else {
             _overlay.style.display = 'none';
