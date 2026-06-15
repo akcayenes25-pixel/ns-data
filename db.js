@@ -354,3 +354,29 @@ async function dbDeleteCustomerCountry(customerId, country) {
   } catch (err) { console.error('dbDeleteCustomerCountry:', err); return false; }
 }
 
+
+/* BULK IMPORT — Musteri + Ulke toplu ekleme */
+async function dbBulkAddCustomers(names) {
+  // names: array of strings (unique, validated)
+  // Returns: array of {name, id} for successfully inserted
+  if (!names || !names.length) return [];
+  try {
+    var rows = names.map(function(n) { return { name: n, active: true }; });
+    var res = await _client.from('customers').insert(rows).select('id, name');
+    if (res.error) throw res.error;
+    return res.data || [];
+  } catch (err) { console.error('dbBulkAddCustomers:', err); return []; }
+}
+
+async function dbBulkAddCustomerCountries(pairs) {
+  // pairs: array of {customer_id, country}
+  if (!pairs || !pairs.length) return false;
+  try {
+    var rows = pairs.map(function(p) {
+      return { customer_id: p.customer_id, country: p.country.toUpperCase().trim() };
+    });
+    var res = await _client.from('customer_countries').insert(rows);
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbBulkAddCustomerCountries:', err); return false; }
+}

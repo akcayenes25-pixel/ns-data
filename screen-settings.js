@@ -232,6 +232,7 @@
       '<div class="settings-section-header">' +
         '<span class="settings-section-title">👥 Müşteriler</span>' +
         '<button class="btn btn-primary" id="settings-add-customer-btn">+ Müşteri Ekle</button>' +
+        '<button class="btn btn-secondary" id="settings-import-customers-btn" style="margin-left:8px">📥 Excel\'den Yükle</button>' +
       '</div>' +
       '<div class="settings-section-body no-pad" id="settings-customer-table">' +
         '<div style="padding:8px 12px;border-bottom:1px solid var(--color-border)">' +
@@ -490,6 +491,10 @@
       if (ok) { showToast('Ürün eklendi'); _state.products = ProductManager.getAll(); _render(); }
     });
 
+    // Excel import button
+    var importCustBtn = document.getElementById('settings-import-customers-btn');
+    if (importCustBtn) importCustBtn.addEventListener('click', function() { _openImportModal(); });
+
     // Add customer
     var addCustBtn  = document.getElementById('settings-add-customer-btn');
     var addCustForm = document.getElementById('settings-add-customer-form');
@@ -645,4 +650,231 @@
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  /* ============================================================
+     EXCEL MUSTERI IMPORT
+     ============================================================ */
+
+  function _openImportModal() {
+    var existing = document.getElementById('cust-import-modal');
+    if (existing) existing.remove();
+    var modal = document.createElement('div');
+    modal.id = 'cust-import-modal';
+    modal.innerHTML = '<div id="cust-import-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:12px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2)"><div style="padding:20px 24px;border-bottom:1px solid #E2E5EF;display:flex;align-items:center;justify-content:space-between"><span style="font-size:17px;font-weight:700">Excelden Musteri Yukle</span><button id="cust-import-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#4A5068">x</button></div><div id="cust-import-body" style="padding:20px 24px"><div id="cust-import-step1"><p style="font-size:13px;color:#4A5068;margin:0 0 12px">Excel dosyanizda musteri adi ve ulke sutunlari olmalidir. Baslik otomatik tespit edilir.</p><div style="border:2px dashed #CBD5E1;border-radius:8px;padding:24px;text-align:center;cursor:pointer" id="cust-import-dropzone"><div style="font-size:32px;margin-bottom:8px">📂</div><div style="font-size:14px;font-weight:600;color:#0F1117">Dosya secin veya surukleyin</div><div style="font-size:12px;color:#4A5068;margin-top:4px">.xlsx veya .xls, max 5MB</div><input type="file" id="cust-import-file" accept=".xlsx,.xls" style="display:none"></div></div><div id="cust-import-step2" style="display:none"><div id="cust-import-sheet-wrap" style="margin-bottom:16px;display:none"><label style="font-size:13px;font-weight:600;color:#0F1117;display:block;margin-bottom:6px">Sheet secin:</label><select id="cust-import-sheet-sel" style="width:100%;height:40px;font-size:14px;padding:0 10px;border:1.5px solid #E2E5EF;border-radius:6px;box-sizing:border-box"></select></div><div id="cust-import-preview-wrap"></div><div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end"><button id="cust-import-back" class="btn btn-secondary">Geri</button><button id="cust-import-confirm" class="btn btn-primary" style="display:none">Onayla ve Yukle</button></div></div><div id="cust-import-step3" style="display:none;text-align:center;padding:20px"><div style="font-size:32px;margin-bottom:12px">⏳</div><div id="cust-import-progress" style="font-size:14px;font-weight:600">Yukleniyor...</div></div><div id="cust-import-step4" style="display:none"><div id="cust-import-result"></div><div style="text-align:right;margin-top:16px"><button id="cust-import-done" class="btn btn-primary">Tamam</button></div></div></div></div></div>';
+    document.body.appendChild(modal);
+    _bindImportModal();
+  }
+
+  function _bindImportModal() {
+    var workbook = null;
+    var preview = null;
+
+    document.getElementById('cust-import-close').onclick = _closeImportModal;
+    document.getElementById('cust-import-overlay').onclick = function(e) {
+      if (e.target === document.getElementById('cust-import-overlay')) _closeImportModal();
+    };
+
+    var dropzone = document.getElementById('cust-import-dropzone');
+    var fileInput = document.getElementById('cust-import-file');
+    dropzone.onclick = function() { fileInput.click(); };
+    dropzone.ondragover = function(e) { e.preventDefault(); dropzone.style.borderColor = '#4F46E5'; };
+    dropzone.ondragleave = function() { dropzone.style.borderColor = '#CBD5E1'; };
+    dropzone.ondrop = function(e) {
+      e.preventDefault();
+      dropzone.style.borderColor = '#CBD5E1';
+      var file = e.dataTransfer.files[0];
+      if (file) _handleFile(file);
+    };
+    fileInput.onchange = function() { if (fileInput.files[0]) _handleFile(fileInput.files[0]); };
+    document.getElementById('cust-import-back').onclick = function() {
+      document.getElementById('cust-import-step2').style.display = 'none';
+      document.getElementById('cust-import-step1').style.display = '';
+      workbook = null; preview = null;
+    };
+    document.getElementById('cust-import-sheet-sel').onchange = function() {
+      if (workbook) _parseSheet(workbook, this.value);
+    };
+    document.getElementById('cust-import-confirm').onclick = function() {
+      if (preview) _doImport(preview);
+    };
+    document.getElementById('cust-import-done').onclick = _closeImportModal;
+
+    function _handleFile(file) {
+      if (file.size > 5 * 1024 * 1024) { showToast('Dosya 5MB dan buyuk olamaz'); return; }
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          var sheets = workbook.SheetNames;
+          document.getElementById('cust-import-step1').style.display = 'none';
+          document.getElementById('cust-import-step2').style.display = '';
+          var sheetWrap = document.getElementById('cust-import-sheet-wrap');
+          var sheetSel = document.getElementById('cust-import-sheet-sel');
+          if (sheets.length > 1) {
+            sheetWrap.style.display = '';
+            sheetSel.innerHTML = sheets.map(function(s) { return '<option value="' + s + '">' + s + '</option>'; }).join('');
+          } else { sheetWrap.style.display = 'none'; }
+          _parseSheet(workbook, sheets[0]);
+        } catch(err) { showToast('Dosya okunamadi. Gecerli bir Excel dosyasi secin.'); }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function _parseSheet(wb, sheetName) {
+      var sheet = wb.Sheets[sheetName];
+      var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+      var custCol = -1, countryCol = -1, dataStart = 0;
+      var CUST_KW = ['musteri', 'customer', 'client', 'nom', 'name', 'isim', 'ad'];
+      var CTR_KW = ['ulke', 'country', 'pays', 'pais', 'land', 'paese'];
+      for (var ri = 0; ri < Math.min(rows.length, 5); ri++) {
+        var row = rows[ri];
+        if (!row) continue;
+        for (var ci = 0; ci < row.length; ci++) {
+          var cell = String(row[ci] || '').toLowerCase().trim();
+          if (custCol === -1 && CUST_KW.some(function(k){ return cell.includes(k); })) custCol = ci;
+          if (countryCol === -1 && CTR_KW.some(function(k){ return cell.includes(k); })) countryCol = ci;
+        }
+        if (custCol !== -1 && countryCol !== -1) { dataStart = ri + 1; break; }
+      }
+      if (custCol === -1) custCol = 0;
+      if (countryCol === -1) countryCol = 1;
+
+      var VALID_CHARS = /^[A-Za-z\u00c7\u00e7\u011e\u011f\u0130\u0131\u00d6\u00f6\u015e\u015f\u00dc\u00fc\s\-\.\'&]+$/;
+      var existingNames = {};
+      (_state.customers || []).forEach(function(c) { existingNames[_importNormName(c.name)] = c; });
+      var existingCC = {};
+      (_state.customerCountries || []).forEach(function(cc) { existingCC[cc.customer_id + '|' + cc.country] = true; });
+
+      var toAdd = [], toSkip = [], warnings = [];
+      var seenInFile = {};
+
+      for (var r = dataStart; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row) continue;
+        var rawName = String(row[custCol] || '').trim();
+        var rawCountry = String(row[countryCol] || '').trim();
+        if (!rawName || rawName === 'null') { toSkip.push({ row: r+1, name: rawName, reason: 'Bos musteri adi' }); continue; }
+        if (!rawCountry || rawCountry === 'null') { toSkip.push({ row: r+1, name: rawName, reason: 'Bos ulke' }); continue; }
+        if (rawName.length < 3) { toSkip.push({ row: r+1, name: rawName, reason: 'Ad cok kisa (min 3 karakter)' }); continue; }
+        if (!VALID_CHARS.test(rawName)) { toSkip.push({ row: r+1, name: rawName, reason: 'Gecersiz karakter' }); continue; }
+        var normCountry = (typeof CountryNormalizer !== 'undefined') ? CountryNormalizer.normalize(rawCountry) : null;
+        if (!normCountry) { toSkip.push({ row: r+1, name: rawName, reason: 'Bilinmeyen ulke: ' + rawCountry }); warnings.push({ row: r+1, name: rawName, country: rawCountry }); continue; }
+        var normName = _importNormName(rawName);
+        if (seenInFile[normName + '|' + normCountry]) { toSkip.push({ row: r+1, name: rawName, reason: 'Dosyada tekrar' }); continue; }
+        seenInFile[normName + '|' + normCountry] = true;
+        var existingCust = existingNames[normName];
+        if (existingCust) {
+          var ccKey = existingCust.id + '|' + normCountry;
+          if (existingCC[ccKey]) { toSkip.push({ row: r+1, name: rawName, reason: 'Zaten mevcut (' + normCountry + ')' }); continue; }
+          toAdd.push({ name: existingCust.name, country: normCountry, existingId: existingCust.id, isNewCustomer: false });
+          continue;
+        }
+        var similar = _findSimilar(normName, Object.keys(existingNames));
+        if (similar) {
+          toSkip.push({ row: r+1, name: rawName, reason: 'Benzer musteri var: ' + existingNames[similar].name });
+          warnings.push({ row: r+1, name: rawName, similar: existingNames[similar].name });
+          continue;
+        }
+        toAdd.push({ name: rawName.toUpperCase(), country: normCountry, isNewCustomer: true });
+      }
+
+      preview = { toAdd: toAdd, toSkip: toSkip, warnings: warnings };
+      _renderPreview(preview);
+    }
+
+    function _renderPreview(p) {
+      var wrap = document.getElementById('cust-import-preview-wrap');
+      var confirmBtn = document.getElementById('cust-import-confirm');
+      var newCusts = p.toAdd.filter(function(x){ return x.isNewCustomer; });
+      var newCC = p.toAdd.filter(function(x){ return !x.isNewCustomer; });
+      var html = '<div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:12px 16px;margin-bottom:12px">';
+      html += '<div style="font-weight:700;font-size:14px;color:#16A34A;margin-bottom:6px">Eklenecekler (' + p.toAdd.length + ')</div>';
+      if (newCusts.length) html += '<div style="font-size:12px;color:#166534;margin-bottom:4px"><b>' + newCusts.length + ' yeni musteri:</b> ' + newCusts.map(function(x){ return x.name + ' (' + x.country + ')'; }).join(', ') + '</div>';
+      if (newCC.length) html += '<div style="font-size:12px;color:#166534"><b>' + newCC.length + ' mevcut musteriye yeni ulke:</b> ' + newCC.map(function(x){ return x.name + ' - ' + x.country; }).join(', ') + '</div>';
+      if (!p.toAdd.length) html += '<div style="font-size:12px;color:#166534">Eklenecek yeni kayit yok</div>';
+      html += '</div>';
+      if (p.toSkip.length) {
+        html += '<div style="background:#FEF9C3;border:1px solid #FDE047;border-radius:8px;padding:12px 16px;margin-bottom:12px">';
+        html += '<div style="font-weight:700;font-size:14px;color:#854D0E;margin-bottom:6px">Atlanacaklar (' + p.toSkip.length + ')</div>';
+        html += '<div style="max-height:120px;overflow-y:auto;font-size:12px;color:#713F12">' + p.toSkip.map(function(x){ return 'Satir ' + x.row + ': ' + (x.name||'') + ' — ' + x.reason; }).join('<br>') + '</div></div>';
+      }
+      if (p.warnings.length) {
+        html += '<div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:12px 16px;margin-bottom:12px">';
+        html += '<div style="font-weight:700;font-size:14px;color:#DC2626;margin-bottom:6px">Uyarilar (' + p.warnings.length + ')</div>';
+        html += '<div style="font-size:12px;color:#991B1B">' + p.warnings.map(function(x){ return x.similar ? ('Benzer: ' + x.name + ' vs ' + x.similar) : ('Bilinmeyen ulke: ' + x.country + ' (' + x.name + ')'); }).join('<br>') + '</div></div>';
+      }
+      if (p.toAdd.length > 200) {
+        p.toAdd = p.toAdd.slice(0, 200);
+        html += '<div style="background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#DC2626">Max 200 kayit: ilk 200 alinacak.</div>';
+      }
+      wrap.innerHTML = html;
+      confirmBtn.style.display = p.toAdd.length ? '' : 'none';
+    }
+
+    async function _doImport(p) {
+      document.getElementById('cust-import-step2').style.display = 'none';
+      document.getElementById('cust-import-step3').style.display = '';
+      var prog = document.getElementById('cust-import-progress');
+      prog.textContent = 'Musteriler ekleniyor...';
+      var newCusts = p.toAdd.filter(function(x){ return x.isNewCustomer; });
+      var insertedCustomers = newCusts.length ? await dbBulkAddCustomers(newCusts.map(function(x){ return x.name; })) : [];
+      var nameToId = {};
+      insertedCustomers.forEach(function(c){ nameToId[_importNormName(c.name)] = c.id; });
+      p.toAdd.filter(function(x){ return !x.isNewCustomer; }).forEach(function(x){ nameToId[_importNormName(x.name)] = x.existingId; });
+      prog.textContent = 'Ulkeler ekleniyor...';
+      var ccPairs = p.toAdd.map(function(x) {
+        var id = x.existingId || nameToId[_importNormName(x.name)];
+        return id ? { customer_id: id, country: x.country } : null;
+      }).filter(Boolean);
+      if (ccPairs.length) await dbBulkAddCustomerCountries(ccPairs);
+      await dbLog('BULK_CUSTOMER_IMPORT', 'customers,customer_countries', 'settings', 'added=' + insertedCustomers.length + ' countries=' + ccPairs.length);
+      prog.textContent = 'Tamamlandi, veriler yukleniyor...';
+      await _loadAll(); _render(); emitDataChange('customers', {});
+      document.getElementById('cust-import-step3').style.display = 'none';
+      document.getElementById('cust-import-step4').style.display = '';
+      document.getElementById('cust-import-result').innerHTML =
+        '<div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:16px">' +
+        '<div style="font-size:16px;font-weight:700;color:#16A34A;margin-bottom:8px">Yukleme Tamamlandi</div>' +
+        '<div style="font-size:13px;color:#166534">' +
+        '<div>Yeni musteri: <b>' + insertedCustomers.length + '</b></div>' +
+        '<div>Ulke ataması: <b>' + ccPairs.length + '</b></div>' +
+        '<div>Atlanan: <b>' + p.toSkip.length + '</b></div>' +
+        '</div></div>';
+    }
+  }
+
+  function _closeImportModal() {
+    var modal = document.getElementById('cust-import-modal');
+    if (modal) modal.remove();
+  }
+
+  function _importNormName(str) {
+    if (!str) return '';
+    return String(str).toLowerCase()
+      .replace(/\u011f/g,'g').replace(/\u015f/g,'s').replace(/\u0131/g,'i')
+      .replace(/\u00f6/g,'o').replace(/\u00fc/g,'u').replace(/\u00e7/g,'c')
+      .replace(/\u011e/g,'g').replace(/\u015e/g,'s').replace(/\u0130/g,'i')
+      .replace(/\u00d6/g,'o').replace(/\u00dc/g,'u').replace(/\u00c7/g,'c')
+      .replace(/\s+/g,' ').trim();
+  }
+
+  function _findSimilar(normName, existingNormNames) {
+    function _lev(a, b) {
+      var m = a.length, n = b.length, dp = [], i, j;
+      for (i = 0; i <= m; i++) { dp[i] = [i]; }
+      for (j = 0; j <= n; j++) { dp[0][j] = j; }
+      for (i = 1; i <= m; i++) {
+        for (j = 1; j <= n; j++) {
+          dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        }
+      }
+      return dp[m][n];
+    }
+    var threshold = Math.max(2, Math.floor(normName.length * 0.2));
+    for (var i = 0; i < existingNormNames.length; i++) {
+      if (existingNormNames[i] !== normName && _lev(normName, existingNormNames[i]) <= threshold) return existingNormNames[i];
+    }
+    return null;
+  }
+
 })();
