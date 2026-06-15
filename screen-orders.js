@@ -2059,7 +2059,7 @@
       var cells = _nsGetCells();
       var idx = cells.indexOf(_activeSpan);
       if (idx === -1) return;
-      var colCount = 6;
+      var colCount = _activeSpan.closest('tr') ? _activeSpan.closest('tr').querySelectorAll('.o-ce').length : 6;
       var target = null;
       if (direction === 'down' || direction === 'enter') target = cells[idx + colCount];
       else if (direction === 'up') target = cells[idx - colCount];
