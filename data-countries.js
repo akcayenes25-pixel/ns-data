@@ -57,16 +57,18 @@ var CountryNormalizer = (function() {
     // NİJERYA
     'nijerya': 'NİJERYA', 'nigeria': 'NİJERYA', 'نيجيريا': 'NİJERYA', 'ng': 'NİJERYA',
 
-    // KOTE DİVUAR / Ivory Coast
+    // KOTE DİVUAR / Ivory Coast / Fildişi Kıyısı
     'kote divuar': 'KOTE DİVUAR', "cote d'ivoire": 'KOTE DİVUAR',
     'ivory coast': 'KOTE DİVUAR', 'ci': 'KOTE DİVUAR',
+    'fildisi kiyisi': 'KOTE DİVUAR', 'fildişi kıyısı': 'KOTE DİVUAR',
+    'cote divoire': 'KOTE DİVUAR', 'côte d\'ivoire': 'KOTE DİVUAR',
 
     // GANA
     'gana': 'GANA', 'ghana': 'GANA', 'gh': 'GANA',
 
-    // KAMERİN
-    'kamerin': 'KAMERİN', 'cameroun': 'KAMERİN', 'cameroon': 'KAMERİN',
-    'cm': 'KAMERİN',
+    // KAMERUN
+    'kamerun': 'KAMERUN', 'kamerin': 'KAMERUN', 'cameroun': 'KAMERUN', 'cameroon': 'KAMERUN',
+    'cm': 'KAMERUN',
 
     // GABİYA
     'gambiya': 'GAMBİYA', 'gambia': 'GAMBİYA', 'gm': 'GAMBİYA',
@@ -319,11 +321,15 @@ var CountryNormalizer = (function() {
     if (!str) return '';
     return String(str)
       .toLowerCase()
-      .replace(/\u00e9/g, 'e').replace(/\u00e8/g, 'e').replace(/\u00ea/g, 'e')
-      .replace(/\u00e0/g, 'a').replace(/\u00e2/g, 'a')
-      .replace(/\u00f4/g, 'o').replace(/\u00f3/g, 'o')
-      .replace(/\u00fa/g, 'u').replace(/\u00fc/g, 'u')
-      .replace(/\u00f1/g, 'n')
+      .replace(/\u00e9/g, 'e').replace(/\u00e8/g, 'e').replace(/\u00ea/g, 'e').replace(/\u00eb/g, 'e')
+      .replace(/\u00e0/g, 'a').replace(/\u00e2/g, 'a').replace(/\u00e4/g, 'a')
+      .replace(/\u00f4/g, 'o').replace(/\u00f3/g, 'o').replace(/\u00f6/g, 'o')
+      .replace(/\u00fa/g, 'u').replace(/\u00fc/g, 'u').replace(/\u00f9/g, 'u').replace(/\u00fb/g, 'u')
+      .replace(/\u00ee/g, 'i').replace(/\u00ef/g, 'i')
+      .replace(/\u00f1/g, 'n').replace(/\u00e7/g, 'c')
+      .replace(/\u015f/g, 's').replace(/\u011f/g, 'g').replace(/\u0131/g, 'i')
+      .replace(/\u0130/g, 'i')
+      .replace(/\s+/g, ' ')
       .trim();
   }
 

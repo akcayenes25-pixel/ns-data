@@ -724,8 +724,8 @@
       var sheet = wb.Sheets[sheetName];
       var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
-      var VALID_CHARS = /^[A-Za-z0-9\u00c7\u00e7\u011e\u011f\u0130\u0131\u00d6\u00f6\u015e\u015f\u00dc\u00fc\s\-\.\'&]+$/;
-      var HAS_LETTER = /[A-Za-z\u00c7\u00e7\u011e\u011f\u0130\u0131\u00d6\u00f6\u015e\u015f\u00dc\u00fc]/;
+      var VALID_CHARS = /^[A-Za-z0-9\u00c0-\u017f\u011e\u011f\u0130\u0131\u015e\u015f\s\-\.\'&()\/,]+$/;
+      var HAS_LETTER = /[A-Za-z\u00c0-\u017f\u011e\u011f\u0130\u0131\u015e\u015f]/;
 
       function _kwNorm(s) { return _importNormName(s); }
       var CUST_KW = ['musteri', 'customer', 'client', 'nom', 'name', 'isim', 'ad', 'cari', 'firma'];
