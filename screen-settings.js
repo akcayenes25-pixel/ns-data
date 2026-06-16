@@ -723,45 +723,113 @@
     function _parseSheet(wb, sheetName) {
       var sheet = wb.Sheets[sheetName];
       var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
-      var custCol = -1, countryCol = -1, dataStart = 0;
-      var CUST_KW = ['musteri', 'customer', 'client', 'nom', 'name', 'isim', 'ad'];
-      var CTR_KW = ['ulke', 'country', 'pays', 'pais', 'land', 'paese'];
-      for (var ri = 0; ri < Math.min(rows.length, 5); ri++) {
-        var row = rows[ri];
-        if (!row) continue;
-        for (var ci = 0; ci < row.length; ci++) {
-          var cell = String(row[ci] || '').toLowerCase().trim();
-          if (custCol === -1 && CUST_KW.some(function(k){ return cell.includes(k); })) custCol = ci;
-          if (countryCol === -1 && CTR_KW.some(function(k){ return cell.includes(k); })) countryCol = ci;
-        }
-        if (custCol !== -1 && countryCol !== -1) { dataStart = ri + 1; break; }
-      }
-      if (custCol === -1) custCol = 0;
-      if (countryCol === -1) countryCol = 1;
 
-      var VALID_CHARS = /^[A-Za-z\u00c7\u00e7\u011e\u011f\u0130\u0131\u00d6\u00f6\u015e\u015f\u00dc\u00fc\s\-\.\'&]+$/;
+      var VALID_CHARS = /^[A-Za-z0-9\u00c7\u00e7\u011e\u011f\u0130\u0131\u00d6\u00f6\u015e\u015f\u00dc\u00fc\s\-\.\'&]+$/;
+      var HAS_LETTER = /[A-Za-z\u00c7\u00e7\u011e\u011f\u0130\u0131\u00d6\u00f6\u015e\u015f\u00dc\u00fc]/;
+
+      function _kwNorm(s) { return _importNormName(s); }
+      var CUST_KW = ['musteri', 'customer', 'client', 'nom', 'name', 'isim', 'ad', 'cari', 'firma'];
+      var CTR_KW = ['ulke', 'country', 'pays', 'pais', 'land', 'paese', 'nazione'];
+
+      // === ICERIK-BAZLI SUTUN TESPITI ===
+      // Her sutun icin: kac deger ulke olarak taniniyor, kac deger gecerli isim
+      var maxCols = 0;
+      rows.forEach(function(r){ if (r && r.length > maxCols) maxCols = r.length; });
+
+      var colStats = [];
+      for (var c = 0; c < maxCols; c++) {
+        var countryHits = 0, nameHits = 0, total = 0;
+        var sampleStart = 0;
+        // Ilk 15 dolu satiri ornekle (baslik dahil olabilir, sorun degil)
+        var sampled = 0;
+        for (var r = 0; r < rows.length && sampled < 15; r++) {
+          var row = rows[r];
+          if (!row) continue;
+          var val = String(row[c] == null ? '' : row[c]).trim();
+          if (!val) continue;
+          sampled++; total++;
+          if (typeof CountryNormalizer !== 'undefined' && CountryNormalizer.normalize(val)) countryHits++;
+          if (val.length >= 3 && HAS_LETTER.test(val) && VALID_CHARS.test(val)) nameHits++;
+        }
+        colStats.push({ col: c, countryHits: countryHits, nameHits: nameHits, total: total });
+      }
+
+      // Ulke sutunu = en cok countryHits olan sutun
+      var countryCol = -1, bestCountry = 0;
+      colStats.forEach(function(st) {
+        if (st.countryHits > bestCountry) { bestCountry = st.countryHits; countryCol = st.col; }
+      });
+
+      // Musteri sutunu = ulke sutunu disinda en cok nameHits olan (ve countryHits dusuk)
+      var custCol = -1, bestName = -1;
+      colStats.forEach(function(st) {
+        if (st.col === countryCol) return;
+        if (st.nameHits > bestName) { bestName = st.nameHits; custCol = st.col; }
+      });
+
+      // Keyword ile dogrulama / fallback (icerik belirsizse basliga bak)
+      if (countryCol === -1 || custCol === -1 || bestCountry === 0) {
+        for (var ri = 0; ri < Math.min(rows.length, 5); ri++) {
+          var hrow = rows[ri];
+          if (!hrow) continue;
+          for (var ci = 0; ci < hrow.length; ci++) {
+            var hcell = _kwNorm(String(hrow[ci] || ''));
+            if (custCol === -1 && CUST_KW.some(function(k){ return hcell.indexOf(k) !== -1; })) custCol = ci;
+            if (countryCol === -1 && CTR_KW.some(function(k){ return hcell.indexOf(k) !== -1; })) countryCol = ci;
+          }
+          if (custCol !== -1 && countryCol !== -1) break;
+        }
+      }
+
+      // Hala bulunamadiysa hata
+      if (countryCol === -1 || custCol === -1 || countryCol === custCol) {
+        document.getElementById('cust-import-preview-wrap').innerHTML =
+          '<div style="background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;padding:16px;font-size:13px;color:#DC2626">' +
+          'Musteri ve ulke sutunlari ayirt edilemedi. Excel dosyasinda en az iki sutun olmali: biri musteri adi, biri ulke.</div>';
+        document.getElementById('cust-import-confirm').style.display = 'none';
+        preview = null;
+        return;
+      }
+
+      // === VERI BASLANGICI: baslik satirini atla ===
+      // Bir satir, ulke sutununda taninan bir ulke iceriyorsa veri satiridir
+      var dataStart = 0;
+      for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row) continue;
+        var cval = String(row[countryCol] == null ? '' : row[countryCol]).trim();
+        if (cval && typeof CountryNormalizer !== 'undefined' && CountryNormalizer.normalize(cval)) { dataStart = r; break; }
+      }
+
       var existingNames = {};
       (_state.customers || []).forEach(function(c) { existingNames[_importNormName(c.name)] = c; });
       var existingCC = {};
       (_state.customerCountries || []).forEach(function(cc) { existingCC[cc.customer_id + '|' + cc.country] = true; });
 
       var toAdd = [], toSkip = [], warnings = [];
-      var seenInFile = {};
+      var seenCombo = {};           // normName|country → dosya ici duplicate
+      var fileCustomers = {};       // normName → ilk goruldugu toAdd referansi (coklu ulke icin)
 
       for (var r = dataStart; r < rows.length; r++) {
         var row = rows[r];
         if (!row) continue;
-        var rawName = String(row[custCol] || '').trim();
-        var rawCountry = String(row[countryCol] || '').trim();
-        if (!rawName || rawName === 'null') { toSkip.push({ row: r+1, name: rawName, reason: 'Bos musteri adi' }); continue; }
-        if (!rawCountry || rawCountry === 'null') { toSkip.push({ row: r+1, name: rawName, reason: 'Bos ulke' }); continue; }
-        if (rawName.length < 3) { toSkip.push({ row: r+1, name: rawName, reason: 'Ad cok kisa (min 3 karakter)' }); continue; }
+        var rawName = String(row[custCol] == null ? '' : row[custCol]).replace(/\s+/g,' ').trim();
+        var rawCountry = String(row[countryCol] == null ? '' : row[countryCol]).replace(/\s+/g,' ').trim();
+
+        if (!rawName) { toSkip.push({ row: r+1, name: rawName, reason: 'Bos musteri adi' }); continue; }
+        if (!rawCountry) { toSkip.push({ row: r+1, name: rawName, reason: 'Bos ulke' }); continue; }
+        if (rawName.length < 3) { toSkip.push({ row: r+1, name: rawName, reason: 'Ad cok kisa (min 3)' }); continue; }
+        if (!HAS_LETTER.test(rawName)) { toSkip.push({ row: r+1, name: rawName, reason: 'Ad en az bir harf icermeli' }); continue; }
         if (!VALID_CHARS.test(rawName)) { toSkip.push({ row: r+1, name: rawName, reason: 'Gecersiz karakter' }); continue; }
+
         var normCountry = (typeof CountryNormalizer !== 'undefined') ? CountryNormalizer.normalize(rawCountry) : null;
         if (!normCountry) { toSkip.push({ row: r+1, name: rawName, reason: 'Bilinmeyen ulke: ' + rawCountry }); warnings.push({ row: r+1, name: rawName, country: rawCountry }); continue; }
+
         var normName = _importNormName(rawName);
-        if (seenInFile[normName + '|' + normCountry]) { toSkip.push({ row: r+1, name: rawName, reason: 'Dosyada tekrar' }); continue; }
-        seenInFile[normName + '|' + normCountry] = true;
+        var comboKey = normName + '|' + normCountry;
+        if (seenCombo[comboKey]) { toSkip.push({ row: r+1, name: rawName, reason: 'Dosyada tekrar' }); continue; }
+        seenCombo[comboKey] = true;
+
         var existingCust = existingNames[normName];
         if (existingCust) {
           var ccKey = existingCust.id + '|' + normCountry;
@@ -769,13 +837,24 @@
           toAdd.push({ name: existingCust.name, country: normCountry, existingId: existingCust.id, isNewCustomer: false });
           continue;
         }
+
+        // Dosya icinde ayni musteri daha once gorulduyse: yeni musteri DEGIL, ayni musteriye ulke ekle
+        if (fileCustomers[normName]) {
+          toAdd.push({ name: fileCustomers[normName].name, country: normCountry, isNewCustomer: false, fileRef: normName });
+          continue;
+        }
+
+        // Benzerlik kontrolu (sadece ilk gorulen icin)
         var similar = _findSimilar(normName, Object.keys(existingNames));
         if (similar) {
           toSkip.push({ row: r+1, name: rawName, reason: 'Benzer musteri var: ' + existingNames[similar].name });
           warnings.push({ row: r+1, name: rawName, similar: existingNames[similar].name });
           continue;
         }
-        toAdd.push({ name: rawName.toUpperCase(), country: normCountry, isNewCustomer: true });
+
+        var entry = { name: rawName.toUpperCase(), country: normCountry, isNewCustomer: true, fileRef: normName };
+        fileCustomers[normName] = entry;
+        toAdd.push(entry);
       }
 
       preview = { toAdd: toAdd, toSkip: toSkip, warnings: warnings };
