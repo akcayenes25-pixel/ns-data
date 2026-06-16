@@ -10,7 +10,8 @@
     selectedCustomerId: null,
     selectedCountry: null,
     selectedYear: new Date().getFullYear(),
-    confirmMode: null
+    confirmMode: null,
+    cstFilter: { nameQ: '', countries: [], customers: [], status: 'all', sort: { col: null, dir: 'asc' } }
   };
 
   document.addEventListener('nsdata:appReady', function() { _bindGlobalEvents(); });
@@ -212,7 +213,14 @@
           }).join('') + '<button class="cc-add-inline-btn" data-cust-id="'+c.id+'" data-cust-name="'+_esc(c.name)+'" style="background:none;border:1px dashed #9CA3AF;border-radius:4px;padding:2px 8px;font-size:11px;color:#6B7280;cursor:pointer">+ Ülke</button>'
         : '<button class="cc-add-inline-btn" data-cust-id="'+c.id+'" data-cust-name="'+_esc(c.name)+'" style="background:none;border:1px dashed #9CA3AF;border-radius:4px;padding:2px 8px;font-size:11px;color:#6B7280;cursor:pointer">+ Ülke Ekle</button>';
 
-      return '<tr class="settings-cust-row" data-cust-name="' + _esc(c.name.toLowerCase()) + '" style="border-bottom:1px solid var(--color-border);' + (c.active === false ? 'opacity:0.5' : '') + '">' +
+      var custStatus = (c.active !== false) ? 'active' : 'inactive';
+      var custCC = custCombos.map(function(co){ return co.country; }).join(' ');
+      return '<tr class="settings-cust-row"' +
+        ' data-cust-name="' + _esc(c.name.toLowerCase()) + '"' +
+        ' data-cust-status="' + custStatus + '"' +
+        ' data-cust-id="' + _esc(c.id) + '"' +
+        ' data-cust-countries="' + _esc(custCC) + '"' +
+        ' style="border-bottom:1px solid var(--color-border);' + (c.active === false ? 'opacity:0.5' : '') + '">' +
         '<td style="font-weight:600;padding:6px 12px;font-size:13px">' + _esc(c.name) + '</td>' +
         '<td style="padding:6px 12px">' +
           '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;min-height:32px">' +
@@ -231,19 +239,35 @@
     return '<div class="settings-section">' +
       '<div class="settings-section-header">' +
         '<span class="settings-section-title">👥 Müşteriler</span>' +
-        '<button class="btn btn-primary" id="settings-add-customer-btn">+ Müşteri Ekle</button>' +
-        '<button class="btn btn-secondary" id="settings-import-customers-btn" style="margin-left:8px">📥 Excel\'den Yükle</button>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<button class="btn btn-primary" id="settings-add-customer-btn">+ Müşteri Ekle</button>' +
+          '<button class="btn btn-secondary" id="settings-import-customers-btn">📥 Excel\'den Yükle</button>' +
+        '</div>' +
       '</div>' +
       '<div class="settings-section-body no-pad" id="settings-customer-table">' +
-        '<div style="padding:8px 12px;border-bottom:1px solid var(--color-border)">' +
-          '<input type="text" id="settings-customer-search" placeholder="Müşteri ara..." style="width:100%;height:36px;font-size:13px;padding:0 10px;border:1px solid var(--color-border);border-radius:4px;box-sizing:border-box" />' +
+        '<div class="cst-filter-bar">' +
+          '<div class="cst-search-wrap">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="cst-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+            '<input type="text" id="settings-customer-search" class="cst-search-input" placeholder="Müşteri adı..." />' +
+          '</div>' +
+          '<button id="cst-filter-btn" class="cst-filter-btn">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0"><polygon points=\"22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3\"/></svg>' +
+            'Filtrele' +
+            '<span id="cst-filter-badge" class="cst-filter-badge" style="display:none">0</span>' +
+          '</button>' +
+          '<div class="cst-seg">' +
+            '<button class="cst-seg-btn cst-seg-active" data-s="all">Tümü</button>' +
+            '<button class="cst-seg-btn" data-s="active">Aktif</button>' +
+            '<button class="cst-seg-btn" data-s="inactive">Pasif</button>' +
+          '</div>' +
         '</div>' +
-        '<div style="max-height:220px;overflow-y:auto">' +
+        '<div class="cst-meta" id="cst-meta"></div>' +
+        '<div style="max-height:440px;overflow-y:auto">' +
           '<table style="width:100%;border-collapse:collapse" id="settings-customer-tbl">' +
             '<thead><tr style="background:#F1F3F9;position:sticky;top:0;z-index:1">' +
-              '<th style="padding:6px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">MÜŞTERİ</th>' +
-              '<th style="padding:6px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">DURUM</th>' +
-              '<th style="padding:6px 12px;text-align:left;font-size:11px;font-weight:700;color:#4A5068">ÜLKELER</th>' +
+              '<th class="cst-th" data-sc="name">MÜŞTERİ<span class="cst-arr">↕</span></th>' +
+              '<th class="cst-th" data-sc="status">DURUM<span class="cst-arr">↕</span></th>' +
+              '<th class="cst-th" data-sc="country">ÜLKELER<span class="cst-arr">↕</span></th>' +
               '<th style="padding:6px 12px"></th>' +
             '</tr></thead>' +
             '<tbody id="settings-customer-tbody">' + (rows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:#4A5068;font-size:13px">Henüz müşteri yok</td></tr>') + '</tbody>' +
@@ -516,17 +540,8 @@
       if (ok) { showToast('Müşteri eklendi'); _state.customers = CustomerManager.getAll(); _render(); }
     });
 
-    // Müşteri arama
-    var custSearch = document.getElementById('settings-customer-search');
-    if (custSearch) {
-      custSearch.addEventListener('input', function() {
-        var q = custSearch.value.toLowerCase().trim();
-        document.querySelectorAll('#settings-customer-tbody .settings-cust-row').forEach(function(row) {
-          var name = row.getAttribute('data-cust-name') || '';
-          row.style.display = name.startsWith(q) ? '' : 'none';
-        });
-      });
-    }
+    // Customer filter / sort / drawer
+    _bindCustomerFilterEvents();
 
     // Inline ülke ekleme butonu
     document.querySelectorAll('.cc-add-inline-btn').forEach(function(btn) {
@@ -634,9 +649,222 @@
     TargetManager.bindGridEvents(grid);
   }
 
+
+  /* ============================================================
+     CUSTOMER FILTER / SORT / DRAWER
+     ============================================================ */
+  function _setupCustomerDrawer() {
+    var combos = _state.customerCountries || [];
+    var allCountries = [];
+    combos.forEach(function(co){ if(co.country && allCountries.indexOf(co.country)===-1) allCountries.push(co.country); });
+    allCountries.sort();
+    var allCustomers = (_state.customers||[]).slice().sort(function(a,b){ return a.name.localeCompare(b.name,'tr'); });
+    var f = _state.cstFilter;
+
+    ['cst-overlay','cst-drawer'].forEach(function(id){ var e=document.getElementById(id); if(e) e.remove(); });
+
+    function ckItem(val, label, sel) {
+      return '<div class="cst-ck-item" data-val="' + _esc(val) + '">' +
+        '<input type="checkbox" ' + (sel?'checked':'') + ' />' +
+        '<label>' + _esc(label) + '</label>' +
+      '</div>';
+    }
+
+    var cItems = allCountries.map(function(c){ return ckItem(c, c, f.countries.indexOf(c)!==-1); }).join('') ||
+      '<div class="cst-ck-empty">Ülke tanımlı değil</div>';
+    var mItems = allCustomers.map(function(c){ return ckItem(c.id, c.name, f.customers.indexOf(c.id)!==-1); }).join('') ||
+      '<div class="cst-ck-empty">Müşteri yok</div>';
+
+    var ov = document.createElement('div');
+    ov.id = 'cst-overlay'; ov.className = 'cst-overlay';
+    document.body.appendChild(ov);
+
+    var dr = document.createElement('div');
+    dr.id = 'cst-drawer'; dr.className = 'cst-drawer';
+    dr.innerHTML =
+      '<div class="cst-drawer-header">' +
+        '<span class="cst-drawer-title">Filtreler</span>' +
+        '<button id="cst-drawer-close" class="cst-drawer-close">&#x2715;</button>' +
+      '</div>' +
+      '<div class="cst-drawer-body">' +
+        '<div class="cst-drawer-section">' +
+          '<div class="cst-drawer-label"><span>Ülkeler</span><span id="cst-clr-c" class="cst-drawer-clear">Temizle</span></div>' +
+          '<input id="cst-csrch" class="cst-drawer-search" type="text" placeholder="Ülke ara..." />' +
+          '<div class="cst-ck-list" id="cst-cklist">' + cItems + '</div>' +
+        '</div>' +
+        '<div class="cst-drawer-section">' +
+          '<div class="cst-drawer-label"><span>Müşteriler</span><span id="cst-clr-m" class="cst-drawer-clear">Temizle</span></div>' +
+          '<input id="cst-msrch" class="cst-drawer-search" type="text" placeholder="Müşteri ara..." />' +
+          '<div class="cst-ck-list" id="cst-mklist">' + mItems + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cst-drawer-footer">' +
+        '<button id="cst-clearall" class="cst-clearall-btn">Tüm Filtreleri Temizle</button>' +
+      '</div>';
+    document.body.appendChild(dr);
+  }
+
+  function _closeCustomerDrawer() {
+    var dr = document.getElementById('cst-drawer');
+    var ov = document.getElementById('cst-overlay');
+    if (dr) dr.classList.remove('open');
+    if (ov) ov.style.display = 'none';
+  }
+
+  function _bindCustomerFilterEvents() {
+    _setupCustomerDrawer();
+    var f = _state.cstFilter;
+
+    var fbtn = document.getElementById('cst-filter-btn');
+    var ov   = document.getElementById('cst-overlay');
+    var dr   = document.getElementById('cst-drawer');
+
+    if (fbtn) fbtn.addEventListener('click', function() {
+      dr.classList.add('open'); ov.style.display = 'block';
+    });
+    if (ov) ov.addEventListener('click', _closeCustomerDrawer);
+    var dclose = document.getElementById('cst-drawer-close');
+    if (dclose) dclose.addEventListener('click', _closeCustomerDrawer);
+
+    function bindCkList(listId, stateKey) {
+      var list = document.getElementById(listId);
+      if (!list) return;
+      list.addEventListener('click', function(e) {
+        var item = e.target.closest('.cst-ck-item');
+        if (!item) return;
+        var val = item.getAttribute('data-val');
+        var cb  = item.querySelector('input[type=checkbox]');
+        cb.checked = !cb.checked;
+        var arr = f[stateKey];
+        var idx = arr.indexOf(val);
+        if (cb.checked) { if (idx===-1) arr.push(val); } else { if (idx!==-1) arr.splice(idx,1); }
+        _applyCustomerFilter();
+      });
+    }
+    bindCkList('cst-cklist', 'countries');
+    bindCkList('cst-mklist', 'customers');
+
+    function bindDrawerSearch(inputId, listId) {
+      var inp = document.getElementById(inputId);
+      if (!inp) return;
+      inp.addEventListener('input', function() {
+        var q = inp.value.toLowerCase().trim();
+        Array.from(document.querySelectorAll('#'+listId+' .cst-ck-item')).forEach(function(item) {
+          var lbl = (item.querySelector('label')||{}).textContent||'';
+          item.style.display = (!q || lbl.toLowerCase().startsWith(q)) ? '' : 'none';
+        });
+      });
+    }
+    bindDrawerSearch('cst-csrch', 'cst-cklist');
+    bindDrawerSearch('cst-msrch', 'cst-mklist');
+
+    var clrC = document.getElementById('cst-clr-c');
+    if (clrC) clrC.addEventListener('click', function(e) {
+      e.stopPropagation(); f.countries = [];
+      Array.from(document.querySelectorAll('#cst-cklist input')).forEach(function(cb){ cb.checked=false; });
+      _applyCustomerFilter();
+    });
+    var clrM = document.getElementById('cst-clr-m');
+    if (clrM) clrM.addEventListener('click', function(e) {
+      e.stopPropagation(); f.customers = [];
+      Array.from(document.querySelectorAll('#cst-mklist input')).forEach(function(cb){ cb.checked=false; });
+      _applyCustomerFilter();
+    });
+    var clrAll = document.getElementById('cst-clearall');
+    if (clrAll) clrAll.addEventListener('click', function() {
+      f.countries=[]; f.customers=[]; f.status='all'; f.nameQ='';
+      var si = document.getElementById('settings-customer-search'); if(si) si.value='';
+      Array.from(document.querySelectorAll('#cst-cklist input,#cst-mklist input')).forEach(function(cb){ cb.checked=false; });
+      document.querySelectorAll('.cst-seg-btn').forEach(function(b){ b.classList.remove('cst-seg-active'); });
+      var allBtn = document.querySelector('.cst-seg-btn[data-s="all"]'); if(allBtn) allBtn.classList.add('cst-seg-active');
+      _applyCustomerFilter();
+    });
+
+    document.querySelectorAll('.cst-seg-btn').forEach(function(b) {
+      b.addEventListener('click', function() {
+        document.querySelectorAll('.cst-seg-btn').forEach(function(x){ x.classList.remove('cst-seg-active'); });
+        b.classList.add('cst-seg-active');
+        f.status = b.getAttribute('data-s');
+        _applyCustomerFilter();
+      });
+    });
+    document.querySelectorAll('.cst-seg-btn').forEach(function(b){ b.classList.remove('cst-seg-active'); });
+    var activeSt = document.querySelector('.cst-seg-btn[data-s="'+f.status+'"]');
+    if (activeSt) activeSt.classList.add('cst-seg-active');
+
+    var si = document.getElementById('settings-customer-search');
+    if (si) {
+      si.value = f.nameQ;
+      si.addEventListener('input', function(){ f.nameQ=si.value.toLowerCase().trim(); _applyCustomerFilter(); });
+    }
+
+    Array.from(document.querySelectorAll('#settings-customer-tbl .cst-th')).forEach(function(th) {
+      th.addEventListener('click', function() {
+        var col = th.getAttribute('data-sc');
+        if (f.sort.col===col) { f.sort.dir = f.sort.dir==='asc'?'desc':'asc'; } else { f.sort.col=col; f.sort.dir='asc'; }
+        _sortCustomerRows();
+        document.querySelectorAll('#settings-customer-tbl .cst-th').forEach(function(h){
+          h.classList.remove('cst-th-sorted');
+          var a=h.querySelector('.cst-arr'); if(a) a.textContent='↕';
+        });
+        th.classList.add('cst-th-sorted');
+        var arr=th.querySelector('.cst-arr'); if(arr) arr.textContent=f.sort.dir==='asc'?'↑':'↓';
+        _applyCustomerFilter();
+      });
+      if (th.getAttribute('data-sc')===f.sort.col && f.sort.col) {
+        th.classList.add('cst-th-sorted');
+        var arr=th.querySelector('.cst-arr'); if(arr) arr.textContent=f.sort.dir==='asc'?'↑':'↓';
+        _sortCustomerRows();
+      }
+    });
+
+    _applyCustomerFilter();
+  }
+
+  function _sortCustomerRows() {
+    var tbody = document.getElementById('settings-customer-tbody');
+    if (!tbody) return;
+    var f = _state.cstFilter;
+    if (!f.sort.col) return;
+    Array.from(tbody.querySelectorAll('.settings-cust-row')).sort(function(a,b) {
+      var va='', vb='';
+      if (f.sort.col==='name')    { va=a.getAttribute('data-cust-name')||'';   vb=b.getAttribute('data-cust-name')||''; }
+      if (f.sort.col==='status')  { va=a.getAttribute('data-cust-status')||''; vb=b.getAttribute('data-cust-status')||''; }
+      if (f.sort.col==='country') { va=(a.getAttribute('data-cust-countries')||'').split(' ')[0]||''; vb=(b.getAttribute('data-cust-countries')||'').split(' ')[0]||''; }
+      return (f.sort.dir==='asc'?1:-1)*va.localeCompare(vb,'tr');
+    }).forEach(function(r){ tbody.appendChild(r); });
+  }
+
+  function _applyCustomerFilter() {
+    var f = _state.cstFilter;
+    var total = (_state.customers||[]).length;
+    var vis = 0;
+    Array.from(document.querySelectorAll('#settings-customer-tbody .settings-cust-row')).forEach(function(r) {
+      var rName = r.getAttribute('data-cust-name')||'';
+      var rCC   = r.getAttribute('data-cust-countries')||'';
+      var rSt   = r.getAttribute('data-cust-status')||'';
+      var rId   = r.getAttribute('data-cust-id')||'';
+      var ok =
+        (!f.nameQ || rName.startsWith(f.nameQ)) &&
+        (f.countries.length===0 || rCC.split(' ').some(function(c){ return f.countries.indexOf(c)!==-1; })) &&
+        (f.customers.length===0 || f.customers.indexOf(rId)!==-1) &&
+        (f.status==='all' || rSt===f.status);
+      r.style.display = ok ? '' : 'none';
+      if (ok) vis++;
+    });
+    var meta = document.getElementById('cst-meta');
+    if (meta) meta.innerHTML = '<b>'+vis+'</b> / '+total+' müşteri';
+    var cnt = f.countries.length + f.customers.length;
+    var badge = document.getElementById('cst-filter-badge');
+    if (badge) { badge.textContent=cnt; badge.style.display=cnt?'':'none'; }
+    var fbtn = document.getElementById('cst-filter-btn');
+    if (fbtn) fbtn.classList.toggle('cst-filter-btn-active', cnt>0);
+  }
+
   function _bindGlobalEvents() {
     document.addEventListener('nsdata:screenActivated', function(e) {
       if (e.detail.screen === 'settings') _loadAll().then(_render);
+      else _closeCustomerDrawer();
     });
     document.addEventListener('nsdata:dataChanged', function(e) {
       var affected = ['products','customers','targets','profiles'];
