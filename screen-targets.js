@@ -432,8 +432,8 @@ function buildAggRow(targets, schema, label, pad, isGrand) {
   var nc = schema.filter(function(c){return c.type==='name';});
   var parts = [];
   nc.forEach(function(c,i) {
-    if (i===0) parts.push('<td class="tgt-td" style="'+bg+'padding-left:'+(pad||10)+'px;font-size:13px;font-weight:700">'+_esc(label)+'</td>');
-    else parts.push('<td class="tgt-td" style="'+bg+'"></td>');
+    if (i===0) parts.push('<td class="tgt-td tgt-td-name tgt-agg-name" style="'+bg+'padding-left:'+(pad||10)+'px;font-size:13px;font-weight:700">'+_esc(label)+'</td>');
+    else parts.push('<td class="tgt-td tgt-td-name tgt-agg-name" style="'+bg+'"></td>');
   });
   schema.forEach(function(c) {
     if (c.type==='name') return;
@@ -550,25 +550,45 @@ function _updateAll() {
 }
 
 function _fixStickyColumns() {
-  var ths = document.querySelectorAll('#tgt-table .tgt-th-name');
-  if (!ths.length) return;
-  // Build left offsets from cumulative widths
+  var table = document.getElementById('tgt-table');
+  if (!table) return;
+
+  // --- 1. Compute cumulative LEFT offsets for each name column ---
+  var nameThs = table.querySelectorAll('thead .tgt-th-name');
+  if (!nameThs.length) return;
   var lefts = [];
   var acc = 0;
-  ths.forEach(function(th) {
-    lefts.push(acc);
-    acc += th.offsetWidth;
-  });
-  // Apply to header
-  ths.forEach(function(th, i) {
+  nameThs.forEach(function(th) { lefts.push(acc); acc += th.offsetWidth; });
+  var nameCount = lefts.length;
+  var stickyWidth = acc; // total width of all name columns
+
+  // --- 2. Header: name th stick left+top, value th stick top only ---
+  nameThs.forEach(function(th, i) {
+    th.style.setProperty('position', 'sticky', 'important');
     th.style.setProperty('left', lefts[i] + 'px', 'important');
+    th.style.setProperty('top', '0px', 'important');
+    th.style.setProperty('z-index', '6', 'important');
   });
-  // Apply to all body cells (tgt-td-name and tgt-grp-name)
-  document.querySelectorAll('#tgt-table .tgt-td-name, #tgt-table .tgt-grp-name').forEach(function(td) {
-    var ci = td.cellIndex;
-    var l = lefts[ci] !== undefined ? lefts[ci] : 0;
-    td.style.setProperty('left', l + 'px', 'important');
-    td.style.setProperty('position', 'sticky', 'important');
+  table.querySelectorAll('thead .tgt-th:not(.tgt-th-name)').forEach(function(th) {
+    th.style.setProperty('left', 'auto', 'important');
+    th.style.setProperty('z-index', '3', 'important');
+  });
+
+  // --- 3. Body: every row's first nameCount cells stick left ---
+  // Works for data rows, group header rows, and agg/grand-total rows.
+  table.querySelectorAll('tbody tr').forEach(function(tr) {
+    var cells = tr.children;
+    var used = 0;       // visual columns consumed
+    var applied = 0;    // name cells styled
+    for (var i = 0; i < cells.length && used < nameCount; i++) {
+      var cell = cells[i];
+      var span = cell.colSpan || 1;
+      cell.style.setProperty('position', 'sticky', 'important');
+      cell.style.setProperty('left', lefts[used] + 'px', 'important');
+      cell.style.setProperty('z-index', '4', 'important');
+      used += span;
+      applied++;
+    }
   });
 }
 
