@@ -609,7 +609,11 @@ function _showImportModal(activeTab) {
       '<button id="tgt-modal-cancel" class="tgt-btn-sec">İptal</button>' +
       '<button id="tgt-modal-confirm" class="tgt-btn-danger">Sil ve Import Et</button>' +
     '</div>' +
-    '<div id="tgt-progress" style="display:none" class="tgt-progress"></div>';
+    '<div id="tgt-progress-wrap" style="display:none" class="tgt-progress">' +
+      '<div id="tgt-progress-msg" style="margin-bottom:8px"></div>' +
+      '<div class="tgt-pbar-track"><div id="tgt-pbar" class="tgt-pbar-fill" style="width:0%"></div></div>' +
+      '<div id="tgt-progress-count" style="margin-top:6px;font-size:11px;text-align:right;color:var(--color-text-secondary)"></div>' +
+    '</div>';
 
   backdrop.style.display = 'flex';
   _bindImportModal(tree, activeTab);
@@ -672,16 +676,28 @@ function _bindImportModal(tree, activeTab) {
     confirm.disabled  = true;
     if (cancelBtn) cancelBtn.disabled = true;
 
-    var prog = document.getElementById('tgt-progress');
-    if (prog) prog.style.display = 'block';
+    var _progWrap = document.getElementById('tgt-progress-wrap');
+    if (_progWrap) _progWrap.style.display = 'block';
     _state.importStep = 'importing';
 
-    var result = await confirmBudgetImport(_state.importPreview, function(msg) {
-      if (prog) prog.textContent = msg;
+    var result = await confirmBudgetImport(_state.importPreview, function(msg, current, total) {
+      var wrap = document.getElementById('tgt-progress-wrap');
+      if (wrap) wrap.style.display = 'block';
+      var msgEl = document.getElementById('tgt-progress-msg');
+      if (msgEl) msgEl.textContent = msg;
+      if (current !== undefined && total && total > 0) {
+        var pct = Math.min(Math.round(current / total * 100), 100);
+        var bar = document.getElementById('tgt-pbar');
+        if (bar) bar.style.width = pct + '%';
+        var cnt = document.getElementById('tgt-progress-count');
+        if (cnt) cnt.textContent = current.toLocaleString('tr-TR') + ' / ' + total.toLocaleString('tr-TR') + ' kayıt';
+      }
     });
 
     if (result.ok) {
-      if (prog) prog.textContent = '\u2713 Tamamland\u0131 \u2014 ' + result.inserted + ' hedef kayd\u0131 olu\u015fturuldu.';
+      var _pmsg = document.getElementById('tgt-progress-msg');
+      if (_pmsg) _pmsg.textContent = '\u2713 Tamamland\u0131 \u2014 ' + result.inserted.toLocaleString('tr-TR') + ' hedef kayd\u0131 olu\u015fturuldu.';
+      var _pbar = document.getElementById('tgt-pbar'); if (_pbar) _pbar.style.width = '100%';
       setTimeout(function() {
         var backdrop = document.getElementById('tgt-modal-backdrop');
         if (backdrop) backdrop.style.display = 'none';
@@ -691,7 +707,8 @@ function _bindImportModal(tree, activeTab) {
         _loadData();
       }, 1800);
     } else {
-      if (prog) prog.textContent = '\u2717 Hata: ' + result.error;
+      var _perr = document.getElementById('tgt-progress-msg');
+      if (_perr) _perr.textContent = '\u2717 Hata: ' + result.error;
       confirm.disabled  = false;
       if (cancelBtn) cancelBtn.disabled = false;
     }

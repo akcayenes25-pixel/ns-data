@@ -419,10 +419,11 @@ async function dbBulkInsertProducts(products) {
   } catch (err) { console.error('dbBulkInsertProducts:', err); return []; }
 }
 
-async function dbBulkInsertTargets(rows) {
-  // Inserts in chunks of 500 to stay within Supabase limits
+async function dbBulkInsertTargets(rows, onChunk) {
+  // Inserts in chunks of 1000. onChunk(done, total) called after each chunk.
+  // setTimeout(0) between chunks lets the browser repaint and stay responsive.
   if (!rows || !rows.length) return 0;
-  var CHUNK = 500;
+  var CHUNK = 1000;
   var done  = 0;
   try {
     for (var i = 0; i < rows.length; i += CHUNK) {
@@ -430,6 +431,9 @@ async function dbBulkInsertTargets(rows) {
       var res   = await _client.from('targets').insert(chunk);
       if (res.error) throw res.error;
       done += chunk.length;
+      if (onChunk) onChunk(done, rows.length);
+      // Yield to UI thread — prevents browser freeze between chunks
+      await new Promise(function(r) { setTimeout(r, 0); });
     }
     return done;
   } catch (err) { console.error('dbBulkInsertTargets at chunk ' + done + ':', err); return done; }

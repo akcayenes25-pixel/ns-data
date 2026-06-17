@@ -676,9 +676,11 @@ async function confirmBudgetImport(preview, onProgress) {
       });
     });
 
-    var inserted = await dbBulkInsertTargets(targetRows);
+    var inserted = await dbBulkInsertTargets(targetRows, function(done, total) {
+      onProgress && onProgress('Hedefler yükleniyor...', done, total);
+    });
 
-    onProgress && onProgress('Tamamlandı — ' + inserted + ' hedef kaydı oluşturuldu.');
+    onProgress && onProgress('Tamamlandı.', inserted, inserted);
     dbResumeRealtime();
     await dbLog('BUDGET_IMPORT', 'targets', 'import',
       preview.stats.customers + ' müşteri, ' + preview.stats.products + ' ürün, ' + inserted + ' hedef');

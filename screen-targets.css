@@ -484,3 +484,21 @@
   min-height: unset !important;
 }
 .pv-month-table td:first-child { text-align: left; color: var(--color-text-secondary); }
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+.tgt-pbar-track {
+  height: 8px;
+  background: var(--color-surface-2);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+.tgt-pbar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
