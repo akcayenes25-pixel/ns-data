@@ -1157,18 +1157,39 @@ function _showCtxMenu(x, y, gk, dim) {
 }
 function _closeCtxMenu() { var m=document.getElementById('tgt-ctx-menu'); if(m) m.style.display='none'; }
 window._toggleGroup       = function(gk)  { _S.collapsed[gk]=!_S.collapsed[gk]; _closeCtxMenu(); _updateTable(); };
+function _gksForDim(dim) {
+  // Build the composite group-keys (same format as buildRowsRecursive: ctx vals joined by '|')
+  // for every group at the level where `dim` sits in _S.rows.
+  var lvl = _S.rows.indexOf(dim);
+  if (lvl === -1) return [];
+  var prefixDims = _S.rows.slice(0, lvl + 1); // dims from top down to and including this one
+  var seen = {};
+  var gks = [];
+  _filteredTargets.forEach(function(t) {
+    var vals = [];
+    for (var i = 0; i < prefixDims.length; i++) {
+      var v = dv(t, prefixDims[i]);
+      if (!v) return; // skip targets missing a prefix dim value
+      vals.push(v);
+    }
+    var gk = vals.join('|');
+    if (!seen[gk]) { seen[gk] = 1; gks.push(gk); }
+  });
+  return gks;
+}
 window._collapseAllByDim  = function(dim) {
-  _filteredTargets.forEach(function(t){ var v=dv(t,dim); if(v) _S.collapsed[v]=true; });
+  _gksForDim(dim).forEach(function(gk){ _S.collapsed[gk] = true; });
   _closeCtxMenu(); _updateTable();
 };
 window._expandAllByDim    = function(dim) {
-  _filteredTargets.forEach(function(t){ var v=dv(t,dim); if(v) delete _S.collapsed[v]; });
+  _gksForDim(dim).forEach(function(gk){ delete _S.collapsed[gk]; });
   _closeCtxMenu(); _updateTable();
 };
-window._collapseAll       = function()    { /* mark all groups collapsed */
-  var keys = {};
-  _filteredTargets.forEach(function(t) { ALL_DIMS.forEach(function(d){ var v=dv(t,d); if(v) keys[v]=true; }); });
-  Object.keys(keys).forEach(function(k){ _S.collapsed[k]=true; });
+window._collapseAll       = function()    {
+  // Collapse every group at every row level using correct composite keys.
+  for (var lvl = 0; lvl < _S.rows.length; lvl++) {
+    _gksForDim(_S.rows[lvl]).forEach(function(gk){ _S.collapsed[gk] = true; });
+  }
   _closeCtxMenu(); _updateTable();
 };
 window._expandAll         = function()    { _S.collapsed={}; _closeCtxMenu(); _updateTable(); };
