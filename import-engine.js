@@ -680,6 +680,11 @@ async function confirmBudgetImport(preview, onProgress) {
       onProgress && onProgress('Hedefler yükleniyor...', done, total);
     });
 
+    var expected = targetRows.length;
+    if (inserted < expected) {
+      throw new Error(inserted + ' / ' + expected + ' kayıt eklenebildi. Kısmi import — lütfen tekrar deneyin.');
+    }
+
     onProgress && onProgress('Tamamlandı.', inserted, inserted);
     dbResumeRealtime();
     await dbLog('BUDGET_IMPORT', 'targets', 'import',

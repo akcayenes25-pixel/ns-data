@@ -436,7 +436,10 @@ async function dbBulkInsertTargets(rows, onChunk) {
       await new Promise(function(r) { setTimeout(r, 0); });
     }
     return done;
-  } catch (err) { console.error('dbBulkInsertTargets at chunk ' + done + ':', err); return done; }
+  } catch (err) {
+    console.error('dbBulkInsertTargets at chunk ' + done + ':', err);
+    throw err; // let confirmBudgetImport handle it and show the error
+  }
 }
 
 async function dbUpdateTarget(id, field, value) {
