@@ -323,7 +323,7 @@
   width: 22px !important;
 }
 .tgt-tog:hover { background: rgba(255,255,255,.3) !important; }
-.tgt-grp-name { cursor: pointer; }
+.tgt-grp-name { cursor: pointer; position: sticky; left: 0; z-index: 2; }
 .tgt-grp-name:hover { filter: brightness(1.1); }
 
 /* Cell editor */

@@ -318,12 +318,18 @@ function buildRowsRecursive(ctxDimVals, schema, level) {
     var lbl = dvLabel(dim, val);
     var isLeaf = (level + 1) >= _S.rows.length;
     var isCollapsed = !!_S.collapsed[gk];
-    // Group header row (always shown in all form modes)
-    if (!isLeaf || _S.form !== 'tabular') {
-      parts.push(_groupRow(gk, lbl, grpTargets, schema, newCtx, level, isCollapsed, dim));
-      _rowCount++;
-    }
-    // Children
+    // Tabular form: flat list, no group headers, no collapse
+    if (_S.form === 'tabular') {
+      if (isLeaf) {
+        parts.push(buildDataRow(newCtx, schema));
+        _rowCount++;
+      } else {
+        parts.push(buildRowsRecursive(newCtx, schema, level + 1));
+      }
+    } else {
+    // Collapse form: group headers + collapse
+    parts.push(_groupRow(gk, lbl, grpTargets, schema, newCtx, level, isCollapsed, dim));
+    _rowCount++;
     if (!isCollapsed) {
       if (isLeaf) {
         parts.push(buildDataRow(newCtx, schema));
@@ -335,6 +341,7 @@ function buildRowsRecursive(ctxDimVals, schema, level) {
         parts.push(buildAggRow(grpTargets, schema, lbl + ' Top.', (level+1)*14, false, false));
       }
     }
+    } // end else (collapse form)
   });
   return parts.join('');
 }
@@ -361,7 +368,6 @@ function _groupRow(gk, lbl, targets, schema, ctx, level, collapsed, dim) {
   var nameCells = '<td class="tgt-td tgt-grp-name" colspan="' + nc + '" style="padding:7px 10px 7px ' + pad + 'px;font-size:13px;font-weight:700;color:#fff;background:#374151;border-bottom:1px solid #4B5563" data-gk="' + _esc(gk) + '" data-dim="' + dim + '">' +
     '<div style="display:flex;align-items:center">' + btn + _esc(lbl) + '</div></td>';
   var valCells = schema.filter(function(c){return c.type!=='name';}).map(function(c) {
-    if (collapsed) return '<td style="background:#374151;border-bottom:1px solid #4B5563"></td>';
     var bl = c.isFirst ? 'border-left:2px solid #4B5563;' : '';
     if (c.type === 'total') {
       var yt = filtTargetsYearly().filter(function(t){ return ctx.every(function(cx){ return dv(t,cx.dim)===cx.val; }); });
@@ -543,6 +549,29 @@ function _updateAll() {
   _saveState();
 }
 
+function _fixStickyColumns() {
+  var ths = document.querySelectorAll('#tgt-table .tgt-th-name');
+  if (!ths.length) return;
+  // Build left offsets from cumulative widths
+  var lefts = [];
+  var acc = 0;
+  ths.forEach(function(th) {
+    lefts.push(acc);
+    acc += th.offsetWidth;
+  });
+  // Apply to header
+  ths.forEach(function(th, i) {
+    th.style.setProperty('left', lefts[i] + 'px', 'important');
+  });
+  // Apply to all body cells (tgt-td-name and tgt-grp-name)
+  document.querySelectorAll('#tgt-table .tgt-td-name, #tgt-table .tgt-grp-name').forEach(function(td) {
+    var ci = td.cellIndex;
+    var l = lefts[ci] !== undefined ? lefts[ci] : 0;
+    td.style.setProperty('left', l + 'px', 'important');
+    td.style.setProperty('position', 'sticky', 'important');
+  });
+}
+
 function _updateTable() {
   if (_editActive) return;
   if (_S.rows.includes('ay') && _S.cols.includes('ay')) {
@@ -560,6 +589,7 @@ function _updateTable() {
   var body = buildRowsRecursive([], schema, 0);
   if (_S.gtShow) body += buildAggRow(_filteredTargets, schema, 'GENEL TOPLAM', 12, true);
   document.getElementById('tgt-table').innerHTML = renderHeader(schema, leaves) + '<tbody>' + body + '</tbody>';
+  setTimeout(_fixStickyColumns, 0);
   // Show/hide "more" button
   var moreWrap = document.getElementById('tgt-more-wrap');
   var moreInfo = document.getElementById('tgt-more-info');
@@ -633,7 +663,9 @@ function _pivotBarHTML() {
     parts.push(
       '<div class="tgt-gap" data-zone="cols" data-idx="' + i + '"></div>' +
       '<span class="tgt-chip tgt-chip-col" draggable="true" data-dim="' + d + '" data-zone="cols" data-action="chip">' +
+        (i>0?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="cols" data-dir="-1">&#8249;</button>':'') +
         DIM_LABEL[d] +
+        (i<_S.cols.length-1?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="cols" data-dir="1">&#8250;</button>':'') +
         '<button class="tgt-rm" data-action="rm" data-dim="' + d + '" data-zone="cols">×</button>' +
       '</span>'
     );
@@ -650,7 +682,7 @@ function _pivotBarHTML() {
 
   // FORM
   parts.push('<div class="tgt-zone"><span class="tgt-zlbl">FORM</span>');
-  [['tabular','Tabular'],['outline','Outline'],['compact','Compact']].forEach(function(f) {
+  [['tabular','Tabular'],['collapse','Collapse']].forEach(function(f) {
     parts.push('<button class="tgt-fbtn' + (_S.form===f[0]?' active':'') + '" data-action="form" data-form="' + f[0] + '">' + f[1] + '</button>');
   });
   parts.push('</div>');
