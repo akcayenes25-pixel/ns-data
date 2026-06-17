@@ -78,8 +78,7 @@ document.addEventListener('nsdata:dataChanged', function() {
 async function _init() {
   await _loadData();
   _restoreState();
-  var p = new URLSearchParams(window.location.search);
-  if (p.get('screen') === 'targets') render();
+  render();
 }
 
 async function _loadData() {
