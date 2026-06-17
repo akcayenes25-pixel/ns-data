@@ -22,11 +22,10 @@ var _S = {
   showEmpty:   false,
   filters:     { ulke: [], musteri: [], urun: [], bolge: [], ay: [] },
   collapsed:   {},
-  sort:        { dim: null, dir: 'none' },
+  sort:        { key: null, dir: 'none' },
   year:        new Date().getFullYear(),
   search:      '',
   selectedDim: null,
-  colWidths:   {},
   rowBudget:   500
 };
 
@@ -87,7 +86,11 @@ function _restoreState() {
     if (s.stShow  !== undefined) _S.stShow  = s.stShow;
     if (s.gtShow  !== undefined) _S.gtShow  = s.gtShow;
     if (s.showEmpty !== undefined) _S.showEmpty = s.showEmpty;
-    if (s.sort) _S.sort = s.sort;
+    if (s.sort) {
+      // Migrate old {dim,...} shape to {key,...}
+      if (s.sort.key !== undefined) _S.sort = {key: s.sort.key, dir: s.sort.dir || 'none'};
+      else if (s.sort.dim !== undefined) _S.sort = {key: s.sort.dim, dir: s.sort.dir || 'none'};
+    }
     if (s.year) _S.year = s.year;
     if (s.filters) {
       ['ulke','urun','bolge','ay'].forEach(function(d) {
@@ -236,17 +239,33 @@ function compute(arr) {
 function cv(m,k) { return k==='eur'?m.eur:k==='usd'?m.usd:m.qty; }
 
 /* ============================================================ SORT */
+function _defaultSortVals(dim, vals) {
+  // Each dimension's natural order
+  if (dim === 'ay')    return vals.slice().sort(function(a,b){ return parseInt(a)-parseInt(b); });           // calendar
+  if (dim === 'bolge') return vals.slice().sort(function(a,b){ return parseFloat(a)-parseFloat(b); });       // 1-9 numeric
+  return vals.slice().sort(function(a,b){ return dvLabel(dim,a).localeCompare(dvLabel(dim,b),'tr'); });       // A-Z turkish
+}
+
 function sortVals(dim, vals, sourceArr) {
-  if (dim === 'ay') return vals.slice().sort(function(a,b){return parseInt(a)-parseInt(b);});
-  var dir = (_S.sort.dim === dim) ? _S.sort.dir : 'none';
-  if (dir === 'none')
-    return vals.slice().sort(function(a,b){ return dvLabel(dim,a).localeCompare(dvLabel(dim,b),'tr'); });
-  var sorted = vals.slice().sort(function(a,b) {
-    var aT = (_dimIdx[dim]&&_dimIdx[dim][a]) || [];
-    var bT = (_dimIdx[dim]&&_dimIdx[dim][b]) || [];
-    return cv(compute(bT),_S.sort.dim) - cv(compute(aT),_S.sort.dim);
-  });
-  return dir === 'asc' ? sorted.reverse() : sorted;
+  var s = _S.sort || {};
+  // Is the active sort targeting THIS name dimension by its own label/value?
+  if (s.key === dim && s.dir && s.dir !== 'none') {
+    var sorted = _defaultSortVals(dim, vals);
+    return s.dir === 'desc' ? sorted.reverse() : sorted;
+  }
+  // Is the active sort targeting a VALUE column (eur/usd/qty)? Sort this dim's rows by aggregated value.
+  // Only apply value-sort to ROW dimensions; column dims stay in natural order.
+  if (s.key && (s.key === 'eur' || s.key === 'usd' || s.key === 'qty') && s.dir && s.dir !== 'none' && _S.rows.indexOf(dim) !== -1) {
+    var byVal = vals.slice().sort(function(a,b) {
+      var aT = (_dimIdx[dim] && _dimIdx[dim][a]) || [];
+      var bT = (_dimIdx[dim] && _dimIdx[dim][b]) || [];
+      var av = cv(compute(aT), s.key), bv = cv(compute(bT), s.key);
+      return bv - av; // desc by default
+    });
+    return s.dir === 'asc' ? byVal.reverse() : byVal;
+  }
+  // No active sort for this dim → natural order
+  return _defaultSortVals(dim, vals);
 }
 
 /* ============================================================ COL LEAVES */
@@ -270,22 +289,22 @@ function buildSchema(leaves) {
   var ci = 0;
   _S.rows.forEach(function(dim, i) {
     var k = 'n'+i;
-    schema.push({ type:'name', dim:dim, label:DIM_LABEL[dim], w:_S.colWidths[k]||(i===0?200:160), ci:k });
+    schema.push({ type:'name', dim:dim, label:DIM_LABEL[dim], w:(i===0?200:160), ci:k });
     ci++;
   });
-  if (!_S.rows.length) schema.push({ type:'name', dim:'_all', label:'—', w:_S.colWidths['n0']||200, ci:'n0' });
+  if (!_S.rows.length) schema.push({ type:'name', dim:'_all', label:'—', w:200, ci:'n0' });
   if (isSingle) {
     vl.forEach(function(v, vi) {
-      var k='t'+vi; schema.push({type:'val',li:0,leaf:leaves[0],valK:v.k,valL:v.l,isFirst:vi===0,bi:0,w:_S.colWidths[k]||(v.k==='eur'?130:95),ci:k,isSingle:true});
+      var k='t'+vi; schema.push({type:'val',li:0,leaf:leaves[0],valK:v.k,valL:v.l,isFirst:vi===0,bi:0,w:(v.k==='eur'?130:95),ci:k,isSingle:true});
     });
   } else {
     leaves.forEach(function(leaf, li) {
       vl.forEach(function(v, vi) {
-        var k='v'+li+'_'+vi; schema.push({type:'val',li:li,leaf:leaf,valK:v.k,valL:v.l,isFirst:vi===0,bi:leaf.bi,w:_S.colWidths[k]||(v.k==='eur'?96:76),ci:k});
+        var k='v'+li+'_'+vi; schema.push({type:'val',li:li,leaf:leaf,valK:v.k,valL:v.l,isFirst:vi===0,bi:leaf.bi,w:(v.k==='eur'?96:76),ci:k});
       });
     });
     vl.forEach(function(v, vi) {
-      var k='T'+vi; schema.push({type:'total',valK:v.k,valL:v.l,w:_S.colWidths[k]||(v.k==='eur'?120:90),ci:k});
+      var k='T'+vi; schema.push({type:'total',valK:v.k,valL:v.l,w:(v.k==='eur'?120:90),ci:k});
     });
   }
   return schema;
@@ -461,15 +480,14 @@ function renderHeader(schema, leaves) {
   var rows = []; for (var i=0;i<nHR;i++) rows.push([]);
   // Name cols
   schema.filter(function(c){return c.type==='name';}).forEach(function(nc) {
-    rows[0].push('<th class="tgt-th tgt-th-name" rowspan="'+nHR+'" data-ci="'+nc.ci+'">'+
+    rows[0].push('<th class="tgt-th tgt-th-name tgt-th-sortable" rowspan="'+nHR+'" data-ci="'+nc.ci+'" data-action="sort" data-sortkey="'+nc.dim+'">'+
       '<div class="tgt-th-inner"><span>'+_esc(nc.label)+'</span>' +
-      '<span class="tgt-sort-btn" data-sortdim="'+nc.dim+'">'+_sortIcon(nc.dim)+'</span>' +
-      '<div class="tgt-rh" data-ci="'+nc.ci+'"></div></div></th>');
+      '<span class="tgt-sort-btn">'+_sortIcon(nc.dim)+'</span></div></th>');
   });
   if (isSingle) {
     vl.forEach(function(v,vi) {
       var c = schema.find(function(s){return s.type==='val'&&s.valK===v.k;});
-      rows[0].push('<th class="tgt-th" data-ci="'+(c?c.ci:'')+'">' + 'Yıllık ' + v.l + '<div class="tgt-rh" data-ci="'+(c?c.ci:'')+'"></div></th>');
+      rows[0].push('<th class="tgt-th tgt-th-sortable" data-ci="'+(c?c.ci:'')+'" data-action="sort" data-sortkey="'+v.k+'">' + 'Yıllık ' + v.l + ' <span class="tgt-sort-btn">'+_sortIcon(v.k)+'</span></th>');
     });
   } else {
     // Multi-level col headers
@@ -492,23 +510,23 @@ function renderHeader(schema, leaves) {
       vl.forEach(function(v,vi){
         var c=schema.find(function(s){return s.type==='val'&&s.li===li&&s.valK===v.k;});
         var bl=vi===0?'border-left:1.5px solid #D1D5DB;':'';
-        rows[nHR-1].push('<th class="tgt-th tgt-th-val" style="'+bl+'" data-ci="'+(c?c.ci:'')+'">'+v.l+'<div class="tgt-rh" data-ci="'+(c?c.ci:'')+'"></div></th>');
+        rows[nHR-1].push('<th class="tgt-th tgt-th-val tgt-th-sortable" style="'+bl+'" data-ci="'+(c?c.ci:'')+'" data-action="sort" data-sortkey="'+v.k+'">'+v.l+' <span class="tgt-sort-btn">'+_sortIcon(v.k)+'</span></th>');
       });
     });
     // Total header
     rows[0].push('<th class="tgt-th tgt-th-total" colspan="'+vl.length+'" rowspan="'+(nHR>1?nHR-1:1)+'" style="border-left:2px solid #374151;text-align:center">Yıllık</th>');
     vl.forEach(function(v,vi){
       var c=schema.find(function(s){return s.type==='total'&&s.valK===v.k;});
-      rows[nHR-1].push('<th class="tgt-th tgt-th-total" style="border-left:'+(vi===0?'2px solid #374151':'none')+';" data-ci="'+(c?c.ci:'')+'">'+v.l+'<div class="tgt-rh" data-ci="'+(c?c.ci:'')+'"></div></th>');
+      rows[nHR-1].push('<th class="tgt-th tgt-th-total tgt-th-sortable" style="border-left:'+(vi===0?'2px solid #374151':'none')+';" data-ci="'+(c?c.ci:'')+'" data-action="sort" data-sortkey="'+v.k+'">'+v.l+' <span class="tgt-sort-btn">'+_sortIcon(v.k)+'</span></th>');
     });
   }
   return cg+'<thead class="tgt-thead">'+rows.map(function(r){return '<tr>'+r.join('')+'</tr>';}).join('')+'</thead>';
 }
 
-function _sortIcon(dim) {
-  if (_S.sort.dim !== dim) return '<span style="color:#6B7280;font-size:10px;margin-left:4px">⇅</span>';
-  return _S.sort.dir==='asc' ? '<span style="color:#4F46E5;font-size:10px;margin-left:4px">↑</span>'
-                              : '<span style="color:#4F46E5;font-size:10px;margin-left:4px">↓</span>';
+function _sortIcon(key) {
+  if (_S.sort.key !== key) return '<span style="color:#9CA3AF;font-size:10px;margin-left:2px">⇅</span>';
+  return _S.sort.dir==='asc' ? '<span style="color:#4F46E5;font-size:11px;margin-left:2px;font-weight:700">↑</span>'
+                              : '<span style="color:#4F46E5;font-size:11px;margin-left:2px;font-weight:700">↓</span>';
 }
 
 
@@ -530,14 +548,12 @@ function _firstRender() {
     '</div>' +
     '<input id="tgt-editor" class="tgt-editor" type="number" step="any">' +
     '<div id="tgt-ctx-menu" class="tgt-ctx-menu" style="display:none"></div>' +
-    '<div id="tgt-resize-line" style="position:fixed;top:0;bottom:0;width:2px;background:#4F46E5;display:none;z-index:999;pointer-events:none"></div>' +
     '<input type="file" id="tgt-file-in" accept=".xlsx,.xls" style="display:none">' +
     '<div id="tgt-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center">' +
       '<div style="background:#fff;border-radius:12px;padding:24px;width:680px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)"><div id="tgt-modal-body"></div></div>' +
     '</div>';
   _initialized = true;
   _bindDelegated();
-  _bindResize();
   _bindDrag();
   _updateAll();
 }
@@ -883,10 +899,10 @@ function _bindDelegated() {
         break;
 
       case 'sort':
-        var sdim = el.dataset.sortdim;
-        if (_S.sort.dim !== sdim) _S.sort = {dim:sdim, dir:'desc'};
-        else if (_S.sort.dir==='desc') _S.sort.dir = 'asc';
-        else _S.sort = {dim:null, dir:'none'};
+        var skey = el.dataset.sortkey;
+        if (_S.sort.key !== skey) _S.sort = {key:skey, dir:'asc'};
+        else if (_S.sort.dir==='asc') _S.sort.dir = 'desc';
+        else _S.sort = {key:null, dir:'none'};
         _buildIndexes(); _updateTable();
         break;
 
@@ -1042,47 +1058,6 @@ function _bindDrag() {
 
     _drag.active = false;
     _updateAll();
-  });
-}
-
-/* ============================================================ COLUMN RESIZE */
-var _resizing = null;
-
-function _bindResize() {
-  document.addEventListener('mousedown', function(e) {
-    var rh = e.target.closest('.tgt-rh'); if (!rh) return;
-    e.preventDefault();
-    var ci = rh.dataset.ci;
-    var th = rh.closest('th');
-    _resizing = { ci: ci, startX: e.clientX, startW: th ? th.offsetWidth : 100 };
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    var line = document.getElementById('tgt-resize-line');
-    if (line) { line.style.display='block'; line.style.left = e.clientX + 'px'; }
-  });
-
-  document.addEventListener('mousemove', function(e) {
-    if (!_resizing) return;
-    var dx  = e.clientX - _resizing.startX;
-    var newW = Math.max(40, _resizing.startW + dx);
-    var line = document.getElementById('tgt-resize-line');
-    if (line) line.style.left = e.clientX + 'px';
-    // Update col widths live without re-render
-    document.querySelectorAll('[data-ci="' + _resizing.ci + '"]').forEach(function(el) {
-      el.style.width    = newW + 'px';
-      el.style.minWidth = newW + 'px';
-    });
-  });
-
-  document.addEventListener('mouseup', function(e) {
-    if (!_resizing) return;
-    var dx   = e.clientX - _resizing.startX;
-    var newW = Math.max(40, _resizing.startW + dx);
-    _S.colWidths[_resizing.ci] = newW;
-    _resizing = null;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    var line = document.getElementById('tgt-resize-line'); if (line) line.style.display='none';
   });
 }
 
