@@ -13,106 +13,151 @@
 .tgt-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  padding: 8px 16px;
+  align-items: stretch;
+  gap: 8px 14px;
+  padding: 12px 16px;
   background: #0F1117;
   border-bottom: 2px solid #374151;
   user-select: none;
+  -webkit-user-select: none;
   width: 100%;
   box-sizing: border-box;
+  touch-action: none;
 }
+
+/* A drop zone: label + chip container */
 .tgt-zone {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.tgt-zone-drop {
+  align-items: stretch;
+}
+.tgt-zinner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
-  padding: 2px 0;
+  min-width: 120px;
+  min-height: 46px;
+  padding: 4px 8px;
+  border: 2px dashed #374151;
+  border-radius: 10px;
+  background: #161922;
+  position: relative;
+  transition: border-color .15s, background .15s;
+}
+.tgt-zinner.tgt-zinner-hot {
+  border-color: #6366F1;
+  background: #1E1B3A;
 }
 .tgt-zlbl {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   color: #9CA3AF;
-  letter-spacing: .5px;
-  margin-right: 4px;
-  cursor: pointer;
+  letter-spacing: .6px;
   white-space: nowrap;
 }
-.tgt-zone-ready .tgt-zlbl { color: #34D399; }
-.tgt-drop-hint {
-  background: #065F46;
-  color: #6EE7B7;
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-  font-weight: 600;
-}
 
-/* Gap drop targets */
-.tgt-gap {
-  width: 4px;
-  height: 26px;
-  border-radius: 2px;
-  flex-shrink: 0;
-  transition: width .1s, background .1s;
-}
-.tgt-gap-over {
-  width: 18px !important;
-  background: #4F46E5 !important;
-  border-radius: 3px;
-}
-
-/* Pool placeholder */
+/* Pool placeholder text */
 .tgt-pool-ph {
-  font-size: 11px;
+  font-size: 12px;
   color: #4B5563;
   font-style: italic;
+  padding: 0 4px;
+  pointer-events: none;
 }
 
-/* Chips */
+/* Chips — large, grippable */
 .tgt-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
   border: none;
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: grab;
   font-family: var(--font-family);
   white-space: nowrap;
-  transition: all .12s;
+  transition: transform .1s, box-shadow .1s, background .12s;
   color: #D1D5DB;
   background: #1F2937;
-  width: auto !important;
+  min-height: 38px;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.tgt-chip:hover { filter: brightness(1.12); }
+.tgt-chip:active { cursor: grabbing; }
+.tgt-chip-grip {
+  font-size: 12px;
+  letter-spacing: -2px;
+  color: rgba(255,255,255,.45);
+  line-height: 1;
+  cursor: grab;
+}
+.tgt-chip-lbl { line-height: 1; }
+.tgt-chip-pool { background: #374151; color: #E5E7EB; }
+.tgt-chip-row  { background: #4F46E5; color: #fff; }
+.tgt-chip-col  { background: #047857; color: #D1FAE5; }
+
+/* Remove button on chip */
+.tgt-rm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.22);
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  padding: 0;
+  margin-left: 2px;
+  font-family: inherit;
   min-height: unset !important;
 }
-.tgt-chip:hover { background: #374151; color: #F9FAFB; }
-.tgt-chip-sel {
-  background: #312E81 !important;
-  color: #C7D2FE !important;
-  outline: 2px solid #6366F1;
-  outline-offset: 1px;
-  animation: tgt-pulse .9s infinite;
-}
-@keyframes tgt-pulse {
-  0%,100% { outline-color: #6366F1; }
-  50%      { outline-color: #A5B4FC; }
-}
-.tgt-chip-row { background: #4F46E5; color: #fff; }
-.tgt-chip-row:hover { background: #4338CA; }
-.tgt-chip-col { background: #065F46; color: #6EE7B7; }
-.tgt-chip-col:hover { background: #047857; }
-.tgt-dragging { opacity: .4; }
+.tgt-rm:hover { background: rgba(220,38,38,.85); color: #fff; }
 
-.tgt-mv, .tgt-rm {
-  background: none; border: none; color: inherit; cursor: pointer;
-  font-size: 14px; padding: 0 3px; opacity: .75;
-  font-family: inherit; width: auto !important; min-height: unset !important;
+/* Dragging: original chip dimmed */
+.tgt-dragging { opacity: .3; }
+
+/* Ghost chip following the pointer */
+.tgt-ghost {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: .92;
+  transform: scale(1.05) rotate(-1deg);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  margin: 0;
 }
-.tgt-mv:hover, .tgt-rm:hover { opacity: 1; }
+
+/* Thick blue insertion line */
+.tgt-dropline {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 5px;
+  border-radius: 3px;
+  background: #6366F1;
+  box-shadow: 0 0 8px rgba(99,102,241,.9);
+  pointer-events: none;
+  z-index: 50;
+  animation: tgt-dl 0.8s ease-in-out infinite;
+}
+@keyframes tgt-dl {
+  0%,100% { opacity: 1; }
+  50%     { opacity: .55; }
+}
+
+body.tgt-drag-cursor, body.tgt-drag-cursor * { cursor: grabbing !important; }
 
 /* Value buttons */
 .tgt-vbtn {

@@ -652,62 +652,36 @@ function _updateFilterBar() {
 var _openFilter = null;
 var _drag = { active: false, dim: null, fromZone: null };
 
+function _zoneHTML(zoneId, zoneName, dims, chipClass) {
+  var parts = [];
+  parts.push('<div class="tgt-zone tgt-zone-drop" id="tz-'+zoneId+'" data-zone="'+zoneId+'">');
+  parts.push('<span class="tgt-zlbl">'+zoneName+'</span>');
+  parts.push('<div class="tgt-zinner" data-zone="'+zoneId+'">');
+  if (!dims.length) {
+    parts.push('<span class="tgt-pool-ph">buraya sürükle</span>');
+  }
+  dims.forEach(function(d, i) {
+    var rmBtn = (zoneId === 'pool') ? '' :
+      '<button class="tgt-rm" data-action="rm" data-dim="'+d+'" data-zone="'+zoneId+'" title="Havuza geri al">×</button>';
+    parts.push(
+      '<span class="tgt-chip '+chipClass+'" data-dim="'+d+'" data-zone="'+zoneId+'" data-idx="'+i+'" data-action="chip">' +
+        '<span class="tgt-chip-grip" aria-hidden="true">⋮⋮</span>' +
+        '<span class="tgt-chip-lbl">'+DIM_LABEL[d]+'</span>' +
+        rmBtn +
+      '</span>'
+    );
+  });
+  parts.push('</div></div>');
+  return parts.join('');
+}
+
 function _pivotBarHTML() {
   var pool = poolDims();
-  var sel  = _S.selectedDim;
   var parts = ['<div class="tgt-bar">'];
 
-  // HAVUZ — always shown
-  parts.push('<div class="tgt-zone" id="tz-pool"><span class="tgt-zlbl">HAVUZ</span>');
-  if (pool.length) {
-    pool.forEach(function(d, i) {
-      var isSel = sel === d;
-      parts.push(
-        '<div class="tgt-gap tgt-gap-pool" data-zone="pool" data-idx="' + i + '"></div>' +
-        '<button class="tgt-chip' + (isSel?' tgt-chip-sel':'') + '" draggable="true" data-dim="' + d + '" data-zone="pool" data-action="chip">' +
-        DIM_LABEL[d] + '</button>'
-      );
-    });
-    parts.push('<div class="tgt-gap tgt-gap-pool" data-zone="pool" data-idx="' + pool.length + '"></div>');
-  } else {
-    parts.push('<span class="tgt-pool-ph">— boş —</span>');
-  }
-  parts.push('</div>');
-
-  // SATIRLAR
-  var dropHint = sel && pool.includes(sel);
-  parts.push('<div class="tgt-zone' + (dropHint?' tgt-zone-ready':'') + '" id="tz-rows">');
-  parts.push('<span class="tgt-zlbl" data-action="zone-drop" data-zone="rows">SATIRLAR' + (dropHint?'<span class="tgt-drop-hint">+ ekle</span>':'') + '</span>');
-  _S.rows.forEach(function(d, i) {
-    parts.push(
-      '<div class="tgt-gap" data-zone="rows" data-idx="' + i + '"></div>' +
-      '<span class="tgt-chip tgt-chip-row" draggable="true" data-dim="' + d + '" data-zone="rows" data-action="chip">' +
-        (i>0?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="rows" data-dir="-1">‹</button>':'') +
-        DIM_LABEL[d] +
-        (i<_S.rows.length-1?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="rows" data-dir="1">›</button>':'') +
-        '<button class="tgt-rm" data-action="rm" data-dim="' + d + '" data-zone="rows">×</button>' +
-      '</span>'
-    );
-  });
-  parts.push('<div class="tgt-gap" data-zone="rows" data-idx="' + _S.rows.length + '"></div>');
-  parts.push('</div>');
-
-  // SÜTUNLAR
-  parts.push('<div class="tgt-zone' + (dropHint?' tgt-zone-ready':'') + '" id="tz-cols">');
-  parts.push('<span class="tgt-zlbl" data-action="zone-drop" data-zone="cols">SÜTUNLAR' + (dropHint?'<span class="tgt-drop-hint">+ ekle</span>':'') + '</span>');
-  _S.cols.forEach(function(d, i) {
-    parts.push(
-      '<div class="tgt-gap" data-zone="cols" data-idx="' + i + '"></div>' +
-      '<span class="tgt-chip tgt-chip-col" draggable="true" data-dim="' + d + '" data-zone="cols" data-action="chip">' +
-        (i>0?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="cols" data-dir="-1">&#8249;</button>':'') +
-        DIM_LABEL[d] +
-        (i<_S.cols.length-1?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="cols" data-dir="1">&#8250;</button>':'') +
-        '<button class="tgt-rm" data-action="rm" data-dim="' + d + '" data-zone="cols">×</button>' +
-      '</span>'
-    );
-  });
-  parts.push('<div class="tgt-gap" data-zone="cols" data-idx="' + _S.cols.length + '"></div>');
-  parts.push('</div>');
+  parts.push(_zoneHTML('pool', 'HAVUZ',     pool,     'tgt-chip-pool'));
+  parts.push(_zoneHTML('rows', 'SATIRLAR',  _S.rows,  'tgt-chip-row'));
+  parts.push(_zoneHTML('cols', 'SÜTUNLAR',  _S.cols,  'tgt-chip-col'));
 
   // DEĞERLER
   parts.push('<div class="tgt-zone"><span class="tgt-zlbl">DEĞERLER</span>');
@@ -815,27 +789,8 @@ function _bindDelegated() {
 
     switch(action) {
       case 'chip':
-        var dim = el.dataset.dim, zone = el.dataset.zone;
-        if (zone === 'pool') {
-          _S.selectedDim = (_S.selectedDim === dim) ? null : dim;
-          _updatePivotBar();
-        } else {
-          // Click on active chip → return to pool
-          if (e.target.classList.contains('tgt-mv') || e.target.classList.contains('tgt-rm')) return;
-          _S.rows = _S.rows.filter(function(d){return d!==dim;});
-          _S.cols = _S.cols.filter(function(d){return d!==dim;});
-          _S.selectedDim = null;
-          _updateAll();
-        }
-        break;
-
-      case 'zone-drop':
-        if (!_S.selectedDim || !poolDims().includes(_S.selectedDim)) return;
-        var zone2 = el.dataset.zone;
-        if (zone2==='rows') _S.rows.push(_S.selectedDim);
-        else _S.cols.push(_S.selectedDim);
-        _S.selectedDim = null;
-        _updateAll();
+        // Movement is handled by drag. A plain click does nothing disruptive.
+        // Removal is via the explicit × button (action 'rm').
         break;
 
       case 'val':
@@ -907,9 +862,10 @@ function _bindDelegated() {
         break;
 
       case 'rm':
-        var rdim = el.dataset.dim, rzone = el.dataset.zone;
-        if (rzone === 'rows') _S.rows = _S.rows.filter(function(d){return d!==rdim;});
-        else _S.cols = _S.cols.filter(function(d){return d!==rdim;});
+        var rdim = el.dataset.dim;
+        // Remove from wherever it is → returns to pool
+        _S.rows = _S.rows.filter(function(d){return d!==rdim;});
+        _S.cols = _S.cols.filter(function(d){return d!==rdim;});
         _S.selectedDim = null;
         _updateAll();
         break;
@@ -1009,55 +965,176 @@ function _bindDelegated() {
 function _bindDrag() {
   var screen = document.getElementById('screen-targets'); if (!screen) return;
 
-  screen.addEventListener('dragstart', function(e) {
-    var chip = e.target.closest('[data-action="chip"]'); if (!chip) return;
-    _drag.active   = true;
-    _drag.dim      = chip.dataset.dim;
-    _drag.fromZone = chip.dataset.zone;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', chip.dataset.dim);
-    chip.classList.add('tgt-dragging');
-  });
+  var st = null;       // active drag state
+  var THRESH = 6;      // px before a press becomes a drag
 
-  screen.addEventListener('dragend', function(e) {
-    _drag.active = false;
-    screen.querySelectorAll('.tgt-dragging').forEach(function(el){ el.classList.remove('tgt-dragging'); });
-    screen.querySelectorAll('.tgt-gap-over').forEach(function(el){ el.classList.remove('tgt-gap-over'); });
-  });
+  function zoneOf(dim) {
+    if (_S.rows.indexOf(dim) !== -1) return 'rows';
+    if (_S.cols.indexOf(dim) !== -1) return 'cols';
+    return 'pool';
+  }
 
-  screen.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    var gap = e.target.closest('.tgt-gap'); if (!gap) return;
-    screen.querySelectorAll('.tgt-gap-over').forEach(function(el){ el.classList.remove('tgt-gap-over'); });
-    gap.classList.add('tgt-gap-over');
-  });
+  function cleanupMarker() {
+    screen.querySelectorAll('.tgt-dropline').forEach(function(el){ el.remove(); });
+  }
 
-  screen.addEventListener('dragleave', function(e) {
-    var gap = e.target.closest('.tgt-gap'); if (gap) gap.classList.remove('tgt-gap-over');
-  });
+  function removeGhost() {
+    if (st && st.ghost) { st.ghost.remove(); st.ghost = null; }
+  }
 
-  screen.addEventListener('drop', function(e) {
-    e.preventDefault();
-    var gap = e.target.closest('.tgt-gap'); if (!gap) return;
-    var dim = _drag.dim; if (!dim) return;
-    var targetZone = gap.dataset.zone;
-    var insertIdx  = parseInt(gap.dataset.idx);
-
-    // Remove from current zone
-    _S.rows = _S.rows.filter(function(d){return d!==dim;});
-    _S.cols = _S.cols.filter(function(d){return d!==dim;});
-    _S.selectedDim = null;
-
-    // Insert into target zone at position
-    if (targetZone === 'rows') {
-      _S.rows.splice(insertIdx, 0, dim);
-    } else if (targetZone === 'cols') {
-      _S.cols.splice(insertIdx, 0, dim);
+  // Compute the target zone + insert index from pointer position
+  function computeTarget(x, y) {
+    var zones = ['pool','rows','cols'];
+    var best = null;
+    for (var zi=0; zi<zones.length; zi++) {
+      var zid = zones[zi];
+      var zEl = document.getElementById('tz-'+zid);
+      if (!zEl) continue;
+      var r = zEl.getBoundingClientRect();
+      // Expand hit area vertically a bit for forgiving aim
+      if (y >= r.top-12 && y <= r.bottom+12) {
+        best = { zone: zid, el: zEl };
+        break;
+      }
     }
-    // If dropped on pool, dim is already removed above — stays in pool
+    if (!best) {
+      // Fallback: nearest zone by vertical distance
+      var minD = Infinity;
+      for (var zj=0; zj<zones.length; zj++) {
+        var ze = document.getElementById('tz-'+zones[zj]); if (!ze) continue;
+        var rr = ze.getBoundingClientRect();
+        var cy = (rr.top+rr.bottom)/2;
+        var d = Math.abs(y-cy);
+        if (d < minD) { minD = d; best = { zone: zones[zj], el: ze }; }
+      }
+    }
+    if (!best) return null;
 
-    _drag.active = false;
-    _updateAll();
+    var inner = best.el.querySelector('.tgt-zinner');
+    var chips = inner ? Array.prototype.slice.call(inner.querySelectorAll('.tgt-chip')) : [];
+    // Exclude the chip being dragged from index math
+    var visChips = chips.filter(function(ch){ return ch.dataset.dim !== st.dim; });
+
+    var idx = visChips.length; // default: end
+    for (var i=0; i<visChips.length; i++) {
+      var cr = visChips[i].getBoundingClientRect();
+      var mid = cr.left + cr.width/2;
+      if (x < mid) { idx = i; break; }
+    }
+    return { zone: best.zone, inner: inner, index: idx, visChips: visChips };
+  }
+
+  function showDropline(target) {
+    cleanupMarker();
+    screen.querySelectorAll('.tgt-zinner-hot').forEach(function(el){ el.classList.remove('tgt-zinner-hot'); });
+    if (!target || !target.inner) return;
+    target.inner.classList.add('tgt-zinner-hot');
+    var line = document.createElement('div');
+    line.className = 'tgt-dropline';
+    var inner = target.inner;
+    inner.style.position = inner.style.position || 'relative';
+    var ir = inner.getBoundingClientRect();
+    var left;
+    if (target.visChips.length === 0) {
+      left = 4;
+    } else if (target.index >= target.visChips.length) {
+      var last = target.visChips[target.visChips.length-1].getBoundingClientRect();
+      left = last.right - ir.left + 3;
+    } else {
+      var at = target.visChips[target.index].getBoundingClientRect();
+      left = at.left - ir.left - 3;
+    }
+    line.style.left = left + 'px';
+    inner.appendChild(line);
+  }
+
+  function onMove(e) {
+    if (!st) return;
+    var x = e.clientX, y = e.clientY;
+
+    if (!st.active) {
+      if (Math.abs(x - st.x0) < THRESH && Math.abs(y - st.y0) < THRESH) return;
+      // Promote to active drag
+      st.active = true;
+      st.chip.classList.add('tgt-dragging');
+      document.body.classList.add('tgt-drag-cursor');
+      // Build ghost
+      var g = st.chip.cloneNode(true);
+      g.className = 'tgt-chip tgt-ghost ' + (st.chipClass||'');
+      g.style.width = st.chip.offsetWidth + 'px';
+      document.body.appendChild(g);
+      st.ghost = g;
+      st.offX = x - st.rect.left;
+      st.offY = y - st.rect.top;
+    }
+    if (e.cancelable) e.preventDefault();
+    // Move ghost
+    if (st.ghost) {
+      st.ghost.style.left = (x - st.offX) + 'px';
+      st.ghost.style.top  = (y - st.offY) + 'px';
+    }
+    var target = computeTarget(x, y);
+    st.target = target;
+    showDropline(target);
+  }
+
+  function onUp(e) {
+    if (!st) { teardown(); return; }
+    var wasActive = st.active;
+    var dim = st.dim;
+    var target = st.target;
+
+    removeGhost();
+    cleanupMarker();
+    screen.querySelectorAll('.tgt-zinner-hot').forEach(function(el){ el.classList.remove('tgt-zinner-hot'); });
+    st.chip.classList.remove('tgt-dragging');
+    document.body.classList.remove('tgt-drag-cursor');
+
+    if (wasActive && target) {
+      // Remove from all zones
+      _S.rows = _S.rows.filter(function(d){return d!==dim;});
+      _S.cols = _S.cols.filter(function(d){return d!==dim;});
+      _S.selectedDim = null;
+      if (target.zone === 'rows') {
+        var ri = Math.max(0, Math.min(target.index, _S.rows.length));
+        _S.rows.splice(ri, 0, dim);
+      } else if (target.zone === 'cols') {
+        var ci = Math.max(0, Math.min(target.index, _S.cols.length));
+        _S.cols.splice(ci, 0, dim);
+      }
+      // pool: just stays removed
+      teardown();
+      _updateAll();
+      return;
+    }
+    teardown();
+  }
+
+  function teardown() {
+    window.removeEventListener('pointermove', onMove, true);
+    window.removeEventListener('pointerup', onUp, true);
+    window.removeEventListener('pointercancel', onUp, true);
+    st = null;
+  }
+
+  screen.addEventListener('pointerdown', function(e) {
+    if (e.button !== undefined && e.button !== 0) return;
+    // Ignore presses that start on the remove button
+    if (e.target.closest('.tgt-rm')) return;
+    var chip = e.target.closest('.tgt-chip'); if (!chip) return;
+    var p = e;
+    st = {
+      chip: chip,
+      dim: chip.dataset.dim,
+      chipClass: chip.classList.contains('tgt-chip-row') ? 'tgt-chip-row'
+               : chip.classList.contains('tgt-chip-col') ? 'tgt-chip-col' : 'tgt-chip-pool',
+      x0: p.clientX, y0: p.clientY,
+      rect: chip.getBoundingClientRect(),
+      active: false, ghost: null, target: null
+    };
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerup', onUp, true);
+    window.addEventListener('pointercancel', onUp, true);
   });
 }
 
