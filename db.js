@@ -101,7 +101,7 @@ async function dbSetCustomerActive(customerId, active) {
 /* TARGETS */
 async function dbGetTargets() {
   try {
-    var res = await _client.from('targets').select('*');
+    var res = await _client.from('targets').select('*').limit(50000);
     if (res.error) throw res.error;
     return res.data || [];
   } catch (err) { console.error('dbGetTargets:', err); return []; }
