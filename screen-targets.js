@@ -65,20 +65,46 @@ function _restoreState() {
 }
 
 /* ============================================================ ACTIVATION */
+document.addEventListener('nsdata:appReady', function() {
+  _loadData().then(function() {
+    _restoreState();
+    var p = new URLSearchParams(window.location.search);
+    if (p.get('screen') === 'targets') render();
+  });
+});
+
 document.addEventListener('nsdata:screenActivated', function(e) {
   if (e.detail.screen !== 'targets') return;
-  _init();
+  _showLoading();
+  _loadData().then(function() { _restoreState(); render(); }).catch(function(err) { _showError(err); });
 });
+
 document.addEventListener('nsdata:dataChanged', function() {
   var el = document.getElementById('screen-targets');
   if (!el || !el.classList.contains('active')) return;
   _loadData().then(function(){ render(); });
 });
 
+function _showLoading() {
+  var el = document.getElementById('screen-targets'); if (!el) return;
+  el.innerHTML = '<div style="padding:3rem;text-align:center;color:#4A5068;font-size:14px">Yukleniyor...</div>';
+}
+
+function _showError(err) {
+  var el = document.getElementById('screen-targets'); if (!el) return;
+  el.innerHTML = '<div style="padding:2rem;color:#DC2626;font-size:13px;font-family:monospace">Hata: '+(err&&err.message?err.message:String(err))+'</div>';
+  console.error('Hedefler render error:', err);
+}
+
+function _safeRender() {
+  try { render(); } catch(err) { _showError(err); }
+}
+
 async function _init() {
+  _showLoading();
   await _loadData();
   _restoreState();
-  render();
+  _safeRender();
 }
 
 async function _loadData() {
@@ -400,6 +426,7 @@ function renderHeader(schema, leaves) {
 /* ============================================================ MAIN RENDER */
 function render() {
   var el = document.getElementById('screen-targets'); if (!el) return;
+  try {
   var targets = filtTargets();
   var leaves  = buildColLeaves(targets);
   var schema  = buildSchema(leaves);
@@ -421,6 +448,7 @@ function render() {
   _bind();
   if (_state.importPreview && _state.importStep==='preview') _showImportModal();
   _saveState();
+  } catch(err) { _showError(err); }
 }
 
 /* ============================================================ PIVOT BAR */
