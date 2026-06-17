@@ -591,7 +591,7 @@ function _showImportModal(activeTab) {
     '</div>' +
     '<div class="pv-content">' +
       '<div id="pv-ozet"    style="' + (activeTab==='ozet'    ?'':'display:none') + '">' +
-        '<div class="tgt-modal-warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i>&nbsp;Bu işlem <strong>TÜM mevcut datayı siler</strong> ve Excel'den yeniden oluşturur.</div>' +
+        '<div class="tgt-modal-warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i>&nbsp;Bu işlem <strong>TÜM mevcut datayı siler</strong> ve Excel\'den yeniden oluşturur.</div>' +
         '<div class="tgt-modal-stats">' +
           _sbox('Müşteri',p.stats.customers)+_sbox('Ürün',p.stats.products)+
           _sbox('Ülke',p.stats.countries)+_sbox('Combo',p.stats.combos)+_sbox('Target Kaydı',p.stats.targetRows) +
