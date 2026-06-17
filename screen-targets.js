@@ -681,6 +681,13 @@ function _cancelEdit(editor) {
   if (_aCell){ _aCell.style.outline=''; _aCell=null; }
 }
 
+/* ============================================================ IMPORT MODAL HTML */
+function _renderImportModal() {
+  return '<div id="tgt-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(15,17,23,.5);z-index:200;display:none;align-items:center;justify-content:center">'+
+    '<div style="background:#fff;border-radius:12px;padding:24px;width:500px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)"><div id="tgt-modal-body"></div></div>'+
+  '</div>';
+}
+
 /* ============================================================ IMPORT TRIGGER */
 function _bindImport() {
   var btn=document.getElementById('tgt-import-btn'), fi=document.getElementById('tgt-file-in');
