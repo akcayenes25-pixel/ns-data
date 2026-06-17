@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.0.0';
+const APP_VERSION = 'v3.1.0';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,14 @@ const APP_VERSION = 'v3.0.0';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v3.1.0': {
+    tarih: 'Haziran 2026',
+    maddeler: [
+      '[İyileştirildi] Hedefler ekranı yeniden yazıldı: index sistemi, bölünmüş render, delegated events',
+      '[Eklendi] Sütun sürükleme ile yeniden boyutlandırma, Excel collapse, drag-drop boyut yerleştirme',
+      '[Düzeltildi] Türkçe karakterler, tam genişlik, yapışkan sütun, hücre editörü konumu'
+    ]
+  },
   'v3.0.0': {
     date: 'Haziran 2026',
     items: [
