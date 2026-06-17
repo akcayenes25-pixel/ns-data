@@ -466,31 +466,145 @@ function _bindImport() {
   });
 }
 
-function _showImportModal() {
+/* Preview tree state */
+var _pvOpen = { c: {}, cu: {} };
+
+function _fE(v) { var n = parseFloat(v); return isNaN(n)||n===0 ? '—' : n.toLocaleString('tr-TR',{maximumFractionDigits:0}) + ' €'; }
+function _fU(v) { var n = parseFloat(v); return isNaN(n)||n===0 ? '—' : '$ ' + n.toLocaleString('tr-TR',{maximumFractionDigits:0}); }
+function _fQ(v) { var n = parseFloat(v); return isNaN(n)||n===0 ? '—' : n.toLocaleString('tr-TR',{maximumFractionDigits:0}); }
+
+function _buildPreviewTree(combos) {
+  var tree = {};
+  (combos || []).forEach(function(combo) {
+    var ct = combo.country;
+    if (!tree[ct]) tree[ct] = { eur:0, usd:0, qty:0, customers:{} };
+    var cu = combo.custName;
+    if (!tree[ct].customers[cu]) tree[ct].customers[cu] = { eur:0, usd:0, qty:0, products:{} };
+    var pr = combo.prodName;
+    if (!tree[ct].customers[cu].products[pr]) tree[ct].customers[cu].products[pr] = { eur:0, usd:0, qty:0, months: combo.months };
+    combo.months.forEach(function(m) {
+      tree[ct].eur                            += (m.target_eur || 0);
+      tree[ct].usd                            += (m.target_usd || 0);
+      tree[ct].qty                            += (m.target_qty || 0);
+      tree[ct].customers[cu].eur              += (m.target_eur || 0);
+      tree[ct].customers[cu].usd              += (m.target_usd || 0);
+      tree[ct].customers[cu].qty              += (m.target_qty || 0);
+      tree[ct].customers[cu].products[pr].eur += (m.target_eur || 0);
+      tree[ct].customers[cu].products[pr].usd += (m.target_usd || 0);
+      tree[ct].customers[cu].products[pr].qty += (m.target_qty || 0);
+    });
+  });
+  return tree;
+}
+
+var _MN_FULL = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+function _renderPreviewExplorer(tree) {
+  var countries = Object.keys(tree).sort();
+  if (!countries.length) return '<div style="padding:16px;color:var(--color-text-secondary)">Veri bulunamadı.</div>';
+
+  var h = '<div style="font-size:11px;display:flex;gap:12px;padding:6px 0 10px;color:var(--color-text-secondary);font-weight:500">' +
+    '<span style="flex:1">Ülke / Müşteri / Ürün</span><span style="min-width:80px;text-align:right">EUR</span>' +
+    '<span style="min-width:80px;text-align:right">USD</span><span style="min-width:60px;text-align:right">Adet</span></div>';
+
+  countries.forEach(function(ct) {
+    var node = tree[ct];
+    var isOpen = !!_pvOpen.c[ct];
+    var custKeys = Object.keys(node.customers).sort();
+    h += '<div class="pv-row pv-country" data-pvc="' + _esc(ct) + '">' +
+      '<span class="pv-chev">' + (isOpen?'▾':'▸') + '</span>' +
+      '<span class="pv-name"><strong>' + _esc(ct) + '</strong> <span class="pv-meta">' + custKeys.length + ' müşteri</span></span>' +
+      '<span class="pv-amt">' + _fE(node.eur) + '</span>' +
+      '<span class="pv-amt">' + _fU(node.usd) + '</span>' +
+      '<span class="pv-amt">' + _fQ(node.qty) + '</span>' +
+    '</div>';
+
+    if (!isOpen) return;
+
+    custKeys.forEach(function(cu) {
+      var cuNode = node.customers[cu];
+      var cuKey = ct + '|' + cu;
+      var isCuOpen = !!_pvOpen.cu[cuKey];
+      var prodKeys = Object.keys(cuNode.products).sort();
+      h += '<div class="pv-row pv-customer" data-pvcu="' + _esc(cuKey) + '">' +
+        '<span class="pv-chev">' + (isCuOpen?'▾':'▸') + '</span>' +
+        '<span class="pv-name">' + _esc(cu) + '</span>' +
+        '<span class="pv-amt">' + _fE(cuNode.eur) + '</span>' +
+        '<span class="pv-amt">' + _fU(cuNode.usd) + '</span>' +
+        '<span class="pv-amt">' + _fQ(cuNode.qty) + '</span>' +
+      '</div>';
+
+      if (!isCuOpen) return;
+
+      prodKeys.forEach(function(pr) {
+        var prNode = cuNode.products[pr];
+        var prKey = cuKey + '|' + pr;
+        var isPrOpen = !!_pvOpen.cu[prKey];
+        h += '<div class="pv-row pv-product" data-pvpr="' + _esc(prKey) + '">' +
+          '<span class="pv-chev">' + (isPrOpen?'▾':'▸') + '</span>' +
+          '<span class="pv-name">' + _esc(pr) + '</span>' +
+          '<span class="pv-amt">' + _fE(prNode.eur) + '</span>' +
+          '<span class="pv-amt">' + _fU(prNode.usd) + '</span>' +
+          '<span class="pv-amt">' + _fQ(prNode.qty) + '</span>' +
+        '</div>';
+
+        if (isPrOpen) {
+          h += '<div class="pv-months"><table class="pv-month-table"><thead><tr>' +
+            '<th>Ay</th><th>EUR</th><th>USD</th><th>Adet</th></tr></thead><tbody>';
+          prNode.months.forEach(function(m, mi) {
+            var hasVal = m.target_eur || m.target_usd || m.target_qty;
+            h += '<tr' + (hasVal ? '' : ' style="opacity:.4"') + '><td>' + _MN_FULL[mi] + '</td>' +
+              '<td>' + _fE(m.target_eur) + '</td><td>' + _fU(m.target_usd) + '</td><td>' + _fQ(m.target_qty) + '</td></tr>';
+          });
+          h += '</tbody></table></div>';
+        }
+      });
+    });
+  });
+  return h;
+}
+
+function _showImportModal(activeTab) {
   var backdrop = document.getElementById('tgt-modal-backdrop');
   var body     = document.getElementById('tgt-modal-body');
   if (!backdrop || !body) return;
 
   var p = _state.importPreview;
   if (!p) return;
+  if (!activeTab) activeTab = 'ozet';
+
+  var tree = _buildPreviewTree(p.rawCombos);
 
   var warnHtml = (p.warnings || []).map(function(w) {
     return '<div class="tgt-warn tgt-warn-' + w.type + '">' + _esc(w.msg) + '</div>';
   }).join('');
 
+  var tabs = ['ozet','incele','uyarilar'];
+  var tabLabels = { ozet:'Özet', incele:'İncele (' + p.stats.combos + ')', uyarilar:'Uyarılar (' + (p.warnings||[]).length + ')' };
+
   body.innerHTML =
     '<div class="tgt-modal-title">Excel Import Önizleme</div>' +
-    '<div class="tgt-modal-warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i>&nbsp;' +
-      'Bu işlem <strong>TÜM mevcut datayı siler</strong> ve Excel\'den yeniden oluşturur.' +
+    '<div class="pv-tabs">' +
+      tabs.map(function(t) {
+        return '<button class="pv-tab' + (t===activeTab?' pv-tab-active':'') + '" data-pvtab="' + t + '">' + tabLabels[t] + '</button>';
+      }).join('') +
     '</div>' +
-    '<div class="tgt-modal-stats">' +
-      _sbox('Müşteri',      p.stats.customers) +
-      _sbox('Ürün',         p.stats.products) +
-      _sbox('Ülke',         p.stats.countries) +
-      _sbox('Combo',        p.stats.combos) +
-      _sbox('Target Kaydı', p.stats.targetRows) +
+    '<div class="pv-content">' +
+      '<div id="pv-ozet"    style="' + (activeTab==='ozet'    ?'':'display:none') + '">' +
+        '<div class="tgt-modal-warn"><i class="ti ti-alert-triangle" aria-hidden="true"></i>&nbsp;Bu işlem <strong>TÜM mevcut datayı siler</strong> ve Excel'den yeniden oluşturur.</div>' +
+        '<div class="tgt-modal-stats">' +
+          _sbox('Müşteri',p.stats.customers)+_sbox('Ürün',p.stats.products)+
+          _sbox('Ülke',p.stats.countries)+_sbox('Combo',p.stats.combos)+_sbox('Target Kaydı',p.stats.targetRows) +
+        '</div>' +
+        (warnHtml ? '<div class="tgt-warn-list">' + warnHtml + '</div>' : '<div class="tgt-warn tgt-warn-ok">✓ Kritik uyarı yok</div>') +
+      '</div>' +
+      '<div id="pv-incele"  style="' + (activeTab==='incele'  ?'':'display:none') + '">' +
+        _renderPreviewExplorer(tree) +
+      '</div>' +
+      '<div id="pv-uyarilar" style="' + (activeTab==='uyarilar'?'':'display:none') + '">' +
+        (warnHtml || '<div class="tgt-warn tgt-warn-ok">✓ Uyarı yok</div>') +
+      '</div>' +
     '</div>' +
-    (warnHtml ? '<div class="tgt-warn-list">' + warnHtml + '</div>' : '') +
     '<div class="tgt-modal-actions">' +
       '<button id="tgt-modal-cancel" class="tgt-btn-sec">İptal</button>' +
       '<button id="tgt-modal-confirm" class="tgt-btn-danger">Sil ve Import Et</button>' +
@@ -498,19 +612,53 @@ function _showImportModal() {
     '<div id="tgt-progress" style="display:none" class="tgt-progress"></div>';
 
   backdrop.style.display = 'flex';
-  _bindImportModal();
+  _bindImportModal(tree, activeTab);
 }
 
 function _sbox(label, val) {
-  return '<div class="tgt-stat-box">' +
-    '<div class="tgt-stat-val">' + (typeof val === 'number' ? val.toLocaleString('tr-TR') : val) + '</div>' +
-    '<div class="tgt-stat-lbl">' + label + '</div>' +
-  '</div>';
+  return '<div class="tgt-stat-box"><div class="tgt-stat-val">' +
+    (typeof val === 'number' ? val.toLocaleString('tr-TR') : val) +
+    '</div><div class="tgt-stat-lbl">' + label + '</div></div>';
 }
 
-function _bindImportModal() {
+function _bindImportModal(tree, activeTab) {
+  /* Tab switching */
+  document.querySelectorAll('.pv-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      _showImportModal(this.dataset.pvtab);
+    });
+  });
+
+  /* Tree toggles — country */
+  document.querySelectorAll('.pv-country').forEach(function(row) {
+    row.addEventListener('click', function() {
+      var ct = this.dataset.pvc;
+      _pvOpen.c[ct] = !_pvOpen.c[ct];
+      _showImportModal('incele');
+    });
+  });
+
+  /* Tree toggles — customer */
+  document.querySelectorAll('.pv-customer').forEach(function(row) {
+    row.addEventListener('click', function() {
+      var key = this.dataset.pvcu;
+      _pvOpen.cu[key] = !_pvOpen.cu[key];
+      _showImportModal('incele');
+    });
+  });
+
+  /* Tree toggles — product */
+  document.querySelectorAll('.pv-product').forEach(function(row) {
+    row.addEventListener('click', function() {
+      var key = this.dataset.pvpr;
+      _pvOpen.cu[key] = !_pvOpen.cu[key];
+      _showImportModal('incele');
+    });
+  });
+
   var cancel = document.getElementById('tgt-modal-cancel');
   if (cancel) cancel.addEventListener('click', function() {
+    _pvOpen = { c:{}, cu:{} };
     document.getElementById('tgt-modal-backdrop').style.display = 'none';
     _state.importStep    = 'idle';
     _state.importPreview = null;
@@ -537,6 +685,7 @@ function _bindImportModal() {
       setTimeout(function() {
         var backdrop = document.getElementById('tgt-modal-backdrop');
         if (backdrop) backdrop.style.display = 'none';
+        _pvOpen = { c:{}, cu:{} };
         _state.importStep    = 'idle';
         _state.importPreview = null;
         _loadData();

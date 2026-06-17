@@ -396,3 +396,91 @@
   color: var(--color-text-secondary);
   line-height: 1.5;
 }
+
+/* ============================================================
+   IMPORT MODAL — PREVIEW EXPLORER
+   ============================================================ */
+.tgt-modal {
+  width: 680px !important;
+}
+.pv-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1.5px solid var(--color-border);
+  margin-bottom: 14px;
+}
+.pv-tab {
+  padding: 6px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  white-space: nowrap;
+  width: auto !important;
+  min-height: unset !important;
+}
+.pv-tab-active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent);
+}
+.pv-content {
+  max-height: 380px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+}
+
+/* Tree rows */
+.pv-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+}
+.pv-row:hover { background: var(--color-surface-2); }
+.pv-country  { background: var(--color-surface-2); font-weight: 600; border-bottom: 1.5px solid var(--color-border); }
+.pv-customer { padding-left: 24px; }
+.pv-product  { padding-left: 44px; color: var(--color-text-secondary); }
+.pv-chev { font-size: 10px; color: var(--color-text-secondary); width: 12px; flex-shrink: 0; }
+.pv-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-meta { font-size: 10px; color: var(--color-text-secondary); font-weight: 400; margin-left: 6px; }
+.pv-amt  { min-width: 80px; text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); font-size: 11px; }
+
+/* Month table inside expanded product */
+.pv-months {
+  padding: 6px 8px 6px 56px;
+  border-bottom: 1px solid var(--color-border);
+}
+.pv-month-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.pv-month-table th {
+  text-align: right;
+  padding: 3px 8px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+  width: auto !important;
+  min-height: unset !important;
+}
+.pv-month-table th:first-child { text-align: left; }
+.pv-month-table td {
+  text-align: right;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--color-border);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  width: auto !important;
+  min-height: unset !important;
+}
+.pv-month-table td:first-child { text-align: left; color: var(--color-text-secondary); }
