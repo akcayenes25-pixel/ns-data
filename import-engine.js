@@ -490,3 +490,205 @@ function _detectTargetHeader(rows) {
   }
   return null;
 }
+
+/* ============================================================
+   BÜTÇE IMPORT — "2026 Genel Satış Bütçesi" sheet parser
+   Full wipe + rebuild. Mevcut tüm data silinir.
+   ============================================================ */
+
+var _BUDGET_SHEET = '2026 Genel Satış Bütçesi';
+var _BC = { BOLGE:1, COUNTRY:2, CUST_NAME:4, PROD_NAME:7, YEAR:8, DURUM:9, M0:10 };
+
+function _normBudgetCountry(n) {
+  if (!n) return '';
+  return String(n).trim().replace(/HIrvatistan/g, 'Hırvatistan');
+}
+
+function _extractBolgeNum(s) {
+  if (!s) return null;
+  var m = String(s).match(/(\d+)/);
+  return m ? parseInt(m[1]) : null;
+}
+
+function processBudgetImportFile(file, callback) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb   = XLSX.read(data, { type: 'array', raw: true });
+
+      if (!wb.SheetNames.includes(_BUDGET_SHEET)) {
+        return callback({ error: '"' + _BUDGET_SHEET + '" bulunamadı. Mevcut: ' + wb.SheetNames.join(', ') });
+      }
+
+      var rows     = XLSX.utils.sheet_to_json(wb.Sheets[_BUDGET_SHEET], { header:1, raw:true, defval:null });
+      var dataRows = rows.slice(1).filter(function(r) { return r && r[4]; });
+
+      var groups   = {};
+      var warnings = [];
+
+      dataRows.forEach(function(r) {
+        var country  = _normBudgetCountry(r[_BC.COUNTRY]);
+        var custName = String(r[_BC.CUST_NAME] || '').trim();
+        var prodName = String(r[_BC.PROD_NAME] || '').trim();
+        var year     = r[_BC.YEAR];
+        var durum    = String(r[_BC.DURUM]     || '').trim();
+        var bolge    = _extractBolgeNum(r[_BC.BOLGE]);
+        if (!country || !custName || !prodName || !year || !durum) return;
+
+        var key = country + '|||' + custName + '|||' + prodName + '|||' + year;
+        if (!groups[key]) groups[key] = { country:country, custName:custName, prodName:prodName, year:year, bolge:bolge, rows:{}, dupTypes:[] };
+        if (groups[key].rows[durum]) groups[key].dupTypes.push(durum);
+        groups[key].rows[durum] = r;
+      });
+
+      var productsMap  = {};
+      var customersMap = {};
+      var rawCombos    = [];
+      var dupWarnings  = [];
+
+      Object.values(groups).forEach(function(g) {
+        productsMap[g.prodName] = true;
+
+        if (!customersMap[g.custName]) customersMap[g.custName] = { bolge:g.bolge, countries:[] };
+        if (customersMap[g.custName].countries.indexOf(g.country) === -1) {
+          customersMap[g.custName].countries.push(g.country);
+        }
+
+        if (g.dupTypes.length > 0) {
+          dupWarnings.push(g.country + ' / ' + g.custName + ' / ' + g.prodName);
+        }
+
+        var mR = g.rows['Miktar'];
+        var eR = g.rows['Ciro EUR'];
+        var uR = g.rows['Ciro USD'];
+        var months = [];
+        for (var m = 0; m < 12; m++) {
+          months.push({
+            month:      m + 1,
+            target_qty: mR ? _parseNumber(mR[_BC.M0 + m]) : null,
+            target_eur: eR ? _parseNumber(eR[_BC.M0 + m]) : null,
+            target_usd: uR ? _parseNumber(uR[_BC.M0 + m]) : null
+          });
+        }
+        rawCombos.push({ country:g.country, custName:g.custName, prodName:g.prodName, year:g.year, bolge:g.bolge, months:months });
+      });
+
+      if (dupWarnings.length > 0) {
+        warnings.push({ type:'duplicate', msg: dupWarnings.length + ' duplicate combo tespit edildi — import sonrası kontrol edin: ' + dupWarnings.slice(0,3).join('; ') + (dupWarnings.length > 3 ? '...' : '') });
+      }
+
+      var yeniCount = Object.keys(customersMap).filter(function(n) {
+        var l = n.toLowerCase();
+        return l.includes('yeni m') && l.includes('teri');
+      }).length;
+      if (yeniCount > 0) warnings.push({ type:'info', msg: yeniCount + ' "Yeni müşteri" placeholder — aktif müşteri olarak eklenecek' });
+
+      var productList  = Object.keys(productsMap).sort();
+      var customerList = Object.keys(customersMap).sort().map(function(name) {
+        return { name:name, bolge:customersMap[name].bolge, countries:customersMap[name].countries.sort() };
+      });
+      var allCountries = [];
+      customerList.forEach(function(c) { c.countries.forEach(function(ct) { if (allCountries.indexOf(ct) === -1) allCountries.push(ct); }); });
+
+      callback({
+        ok:          true,
+        productList: productList,
+        customerList:customerList,
+        rawCombos:   rawCombos,
+        warnings:    warnings,
+        stats: {
+          products:   productList.length,
+          customers:  customerList.length,
+          countries:  allCountries.length,
+          combos:     rawCombos.length,
+          targetRows: rawCombos.length * 12
+        }
+      });
+
+    } catch(err) {
+      console.error('processBudgetImportFile error:', err);
+      callback({ error: 'Parse hatası: ' + err.message });
+    }
+  };
+  reader.onerror = function() { callback({ error: 'Dosya okunamadı.' }); };
+  reader.readAsArrayBuffer(file);
+}
+
+async function confirmBudgetImport(preview, onProgress) {
+  try {
+    onProgress && onProgress('Realtime durduruluyor...');
+    dbPauseRealtime();
+
+    onProgress && onProgress('Mevcut data siliniyor...');
+    var wiped = await dbFullWipe();
+    if (!wiped) throw new Error('dbFullWipe başarısız oldu');
+
+    // 1. Products (price=1, ratio=1)
+    onProgress && onProgress('Ürünler oluşturuluyor (' + preview.productList.length + ')...');
+    var productRows = preview.productList.map(function(name) {
+      return { name:name, avg_price_eur:1, container_ratio:1, active:true };
+    });
+    var createdProducts = await dbBulkInsertProducts(productRows);
+    var productIdMap = {};
+    createdProducts.forEach(function(p) { productIdMap[p.name] = p.id; });
+
+    // 2. Customers
+    onProgress && onProgress('Müşteriler oluşturuluyor (' + preview.customerList.length + ')...');
+    var customerNames   = preview.customerList.map(function(c) { return c.name; });
+    var createdCustomers = await dbBulkAddCustomers(customerNames);
+    var customerIdMap   = {};
+    createdCustomers.forEach(function(c) { customerIdMap[c.name] = c.id; });
+
+    // 3. Customer countries
+    onProgress && onProgress('Müşteri ülkeleri bağlanıyor...');
+    var ccPairs = [];
+    preview.customerList.forEach(function(c) {
+      var custId = customerIdMap[c.name];
+      if (!custId) return;
+      c.countries.forEach(function(country) {
+        ccPairs.push({ customer_id:custId, country:country });
+      });
+    });
+    await dbBulkAddCustomerCountries(ccPairs);
+
+    // 4. Target rows
+    onProgress && onProgress('Hedefler oluşturuluyor (' + (preview.rawCombos.length * 12) + ' kayıt)...');
+    var targetRows = [];
+    preview.rawCombos.forEach(function(combo) {
+      var custId = customerIdMap[combo.custName];
+      var prodId = productIdMap[combo.prodName];
+      if (!custId || !prodId) return;
+      combo.months.forEach(function(m) {
+        targetRows.push({
+          scope:       'customer',
+          customer_id: custId,
+          country:     combo.country,
+          product_id:  prodId,
+          month:       m.month,
+          year:        combo.year,
+          bolge:       combo.bolge,
+          target_qty:  m.target_qty,
+          target_eur:  m.target_eur,
+          target_usd:  m.target_usd
+        });
+      });
+    });
+
+    var inserted = await dbBulkInsertTargets(targetRows);
+
+    onProgress && onProgress('Tamamlandı — ' + inserted + ' hedef kaydı oluşturuldu.');
+    dbResumeRealtime();
+    await dbLog('BUDGET_IMPORT', 'targets', 'import',
+      preview.stats.customers + ' müşteri, ' + preview.stats.products + ' ürün, ' + inserted + ' hedef');
+    emitDataChange('targets', {});
+
+    return { ok:true, inserted:inserted };
+
+  } catch(err) {
+    console.error('confirmBudgetImport error:', err);
+    dbResumeRealtime();
+    return { ok:false, error:err.message };
+  }
+}

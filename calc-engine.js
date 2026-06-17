@@ -211,10 +211,26 @@ function calcCustomerPlannedEuro(orders, customerId, productMap) {
    TARGET MAP HELPERS
    ============================================================ */
 function buildTargetMap(targets) {
+  // Sums target_eur, target_qty, target_usd across all products and countries
+  // per customer+month+year. Fixes key collision when a customer has multiple
+  // product/country targets for the same month.
   var map = {};
   targets.forEach(function(t) {
+    if (!t.customer_id) return; // skip country-scoped records
     var key = t.customer_id + '_' + t.month + '_' + t.year;
-    map[key] = t;
+    if (!map[key]) {
+      map[key] = {
+        customer_id: t.customer_id,
+        month:       t.month,
+        year:        t.year,
+        target_eur:  0,
+        target_qty:  0,
+        target_usd:  0
+      };
+    }
+    map[key].target_eur += (t.target_eur || 0);
+    map[key].target_qty += (t.target_qty || 0);
+    map[key].target_usd += (t.target_usd || 0);
   });
   return map;
 }

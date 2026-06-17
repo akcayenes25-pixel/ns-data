@@ -58,12 +58,19 @@ var TargetManager = (function() {
 
   // Get all country targets for a specific month/year, keyed by country+product_id
   function getCountryTargetMap(month, year) {
+    // Aggregates from customer-scoped targets — scope='country' records no longer created
     var map = {};
     _targets.filter(function(t) {
-      return t.scope === 'country' && t.month === month && t.year === year;
+      return t.scope === 'customer' && t.country && t.month === month && t.year === year;
     }).forEach(function(t) {
       var key = (t.country || '') + '__' + t.product_id;
-      map[key] = t;
+      if (!map[key]) {
+        map[key] = { target_eur: 0, target_qty: 0, target_usd: 0,
+                     country: t.country, product_id: t.product_id, month: month, year: year };
+      }
+      map[key].target_eur += (t.target_eur || 0);
+      map[key].target_qty += (t.target_qty || 0);
+      map[key].target_usd  = (map[key].target_usd || 0) + (t.target_usd || 0);
     });
     return map;
   }
@@ -137,8 +144,9 @@ var TargetManager = (function() {
   function buildCountryGridHTML(country, year, products) {
     if (!country || !products.length) return '';
 
+    // Aggregated read-only view — sums across all customers in this country
     var yearTargets = _targets.filter(function(t) {
-      return t.scope === 'country' && t.country === country && t.year === year;
+      return t.scope === 'customer' && t.country === country && t.year === year;
     });
 
     var productCols = products.map(function(p) {
@@ -154,26 +162,15 @@ var TargetManager = (function() {
     var rows = MONTHS_TR.map(function(monthName, idx) {
       var month = idx + 1;
       var cells = products.map(function(p) {
-        var t = yearTargets.find(function(x) { return x.product_id === p.id && x.month === month; });
-        var eurVal = t ? (t.target_eur || '') : '';
-        var qtyVal = t ? (t.target_qty || '') : '';
-        var tid    = t ? t.id : '';
-        return '<td style="padding:4px 6px;border-left:2px solid #E2E5EF">' +
-          '<input type="number" min="0" class="tgt-eur" ' +
-            'data-scope="country" data-country="' + _esc(country) + '" ' +
-            'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
-            'data-tid="' + tid + '" value="' + eurVal + '" placeholder="—" ' +
-            'style="width:110px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
-            'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
-        '</td>' +
-        '<td style="padding:4px 6px">' +
-          '<input type="number" min="0" class="tgt-qty" ' +
-            'data-scope="country" data-country="' + _esc(country) + '" ' +
-            'data-product-id="' + p.id + '" data-month="' + month + '" data-year="' + year + '" ' +
-            'data-tid="' + tid + '" value="' + qtyVal + '" placeholder="—" ' +
-            'style="width:100px;text-align:right;font-size:14px;font-weight:600;min-height:36px;' +
-            'border:1.5px solid #E2E5EF;border-radius:4px;padding:4px 8px" />' +
-        '</td>';
+        var pTargets = yearTargets.filter(function(x) { return x.product_id === p.id && x.month === month; });
+        var eurSum = pTargets.reduce(function(s, x) { return s + (x.target_eur || 0); }, 0);
+        var qtySum = pTargets.reduce(function(s, x) { return s + (x.target_qty || 0); }, 0);
+        var eurFmt = eurSum ? eurSum.toLocaleString('tr-TR', {maximumFractionDigits:0}) + ' €' : '—';
+        var qtyFmt = qtySum ? qtySum.toLocaleString('tr-TR', {maximumFractionDigits:0})        : '—';
+        return '<td style="padding:4px 6px;border-left:2px solid #E2E5EF;text-align:right;' +
+            'font-size:13px;font-weight:600;min-width:110px;color:#0F1117">' + eurFmt + '</td>' +
+          '<td style="padding:4px 6px;text-align:right;' +
+            'font-size:13px;font-weight:600;min-width:100px;color:#4A5068">' + qtyFmt + '</td>';
       }).join('');
 
       return '<tr style="border-bottom:1px solid #E2E5EF">' +

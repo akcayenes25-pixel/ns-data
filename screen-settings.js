@@ -29,9 +29,9 @@
     if (!_state.selectedCustomerId && _state.customers.length) {
       _state.selectedCustomerId = _state.customers.filter(function(c){ return c.active !== false; })[0]?.id || _state.customers[0].id;
     }
-    // Countries come from targets scope='country'
+    // Countries come from customer-scoped targets (scope='country' no longer created)
     var countries = [];
-    _state.targets.filter(function(t){ return t.scope === 'country' && t.country; }).forEach(function(t) {
+    _state.targets.filter(function(t){ return t.scope === 'customer' && t.country; }).forEach(function(t) {
       if (!countries.includes(t.country)) countries.push(t.country);
     });
     countries.sort();

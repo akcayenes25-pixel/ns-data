@@ -63,6 +63,16 @@
       totalExpected  += ((parseNum(o.shipped_qty) || 0) + (parseNum(o.planned_qty) || 0)) * price;
     });
 
+    // Sum all customer targets for this country in the current month
+    _state.targets.filter(function(t) {
+      return t.scope === 'customer' &&
+             t.country === country &&
+             t.month   === _state.currentMonth &&
+             t.year    === _state.currentYear;
+    }).forEach(function(t) {
+      totalTarget += (t.target_eur || 0);
+    });
+
     var pct = calcTargetPct(totalExpected, totalTarget);
 
     screen.innerHTML =

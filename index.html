@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="screen-limits.css" />
   <link rel="stylesheet" href="screen-analysis.css" />
   <link rel="stylesheet" href="screen-customer.css" />
+  <link rel="stylesheet" href="screen-targets.css" />
   <link rel="stylesheet" href="screen-country.css" />
   <link rel="stylesheet" href="screen-product.css" />
   <link rel="stylesheet" href="screen-settings.css" />
@@ -47,7 +48,7 @@
   <nav id="main-nav" class="main-nav" role="navigation" aria-label="Ana navigasyon">
     <div class="nav-brand">
       <span class="nav-logo">NSDATA</span>
-      <span class="nav-version" id="nav-version">v2.5.0</span>
+      <span class="nav-version" id="nav-version">v3.0.0</span>
     </div>
 
     <div class="nav-screens" role="tablist">
@@ -55,6 +56,7 @@
       <button class="nav-btn" data-screen="orders" role="tab" aria-selected="false">Sipari&#x15F;ler</button>
       <button class="nav-btn" data-screen="limits" role="tab" aria-selected="false">Limitler</button>
       <button class="nav-btn" data-screen="analysis" role="tab" aria-selected="false">Analiz</button>
+      <button class="nav-btn" data-screen="targets" role="tab" aria-selected="false">Hedefler</button>
       <button class="nav-btn" data-screen="settings" role="tab" aria-selected="false">Ayarlar</button>
       <button class="nav-btn" data-screen="log" role="tab" aria-selected="false" style="color:#DC2626">Log</button>
     </div>
@@ -81,6 +83,7 @@
     <section id="screen-analysis" class="screen" role="tabpanel" aria-label="Analiz"></section>
 
     <!-- Settings screen -->
+    <section id="screen-targets" class="screen" role="tabpanel" aria-label="Hedefler"></section>
     <section id="screen-settings" class="screen" role="tabpanel" aria-label="Ayarlar"></section>
 
     <!-- Activity log screen -->
@@ -114,7 +117,7 @@
 
   <!-- Footer -->
   <footer class="app-footer" role="contentinfo">
-    <button class="footer-version-badge" id="footer-version-badge" aria-label="Yenilikleri goster">v2.5.0</button>
+    <button class="footer-version-badge" id="footer-version-badge" aria-label="Yenilikleri goster">v3.0.0</button>
     <span class="footer-last-update" id="footer-last-update"></span>
   </footer>
 
@@ -142,6 +145,7 @@
   <script src="screen-orders.js"></script>
   <script src="screen-limits.js"></script>
   <script src="screen-analysis.js"></script>
+  <script src="screen-targets.js"></script>
   <script src="screen-settings.js"></script>
   <script src="screen-log.js"></script>
   <script src="screen-customer.js"></script>

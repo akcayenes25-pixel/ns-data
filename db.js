@@ -5,6 +5,7 @@ var SUPABASE_URL = 'https://eiltpqvtdojsmjfukkah.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbHRwcXZ0ZG9qc21qZnVra2FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTExMjksImV4cCI6MjA5NjAyNzEyOX0.wHzHUvmGck6bB8PkueCTKd22dB6xb4KdWRO-PDwYS_Y';
 
 var _client = null;
+var _realtimeChannel = null;
 
 function dbInit() {
   try {
@@ -18,11 +19,22 @@ function dbInit() {
 
 function dbInitRealtime() {
   if (!_client) return;
-  _client.channel('nsdata-realtime')
+  _realtimeChannel = _client.channel('nsdata-realtime')
     .on('postgres_changes', { event: '*', schema: 'public' }, function(payload) {
       emitDataChange(payload.table, payload);
     })
     .subscribe();
+}
+
+function dbPauseRealtime() {
+  if (_realtimeChannel && _client) {
+    _client.removeChannel(_realtimeChannel);
+    _realtimeChannel = null;
+  }
+}
+
+function dbResumeRealtime() {
+  dbInitRealtime();
 }
 
 /* PRODUCTS */
@@ -373,10 +385,63 @@ async function dbBulkAddCustomerCountries(pairs) {
   if (!pairs || !pairs.length) return false;
   try {
     var rows = pairs.map(function(p) {
-      return { customer_id: p.customer_id, country: p.country.toUpperCase().trim() };
+      return { customer_id: p.customer_id, country: p.country.trim() };
     });
     var res = await _client.from('customer_countries').insert(rows);
     if (res.error) throw res.error;
     return true;
   } catch (err) { console.error('dbBulkAddCustomerCountries:', err); return false; }
+}
+
+/* ============================================================
+   BUDGET IMPORT — Full wipe + bulk insert
+   ============================================================ */
+
+async function dbFullWipe() {
+  try {
+    await dbLog('FULL_WIPE', 'all', 'import', 'budget import full wipe');
+    var dummy = '00000000-0000-0000-0000-000000000000';
+    // Deleting products cascades: targets, orders
+    // Deleting customers cascades: customer_countries, limits, incoming_payments
+    await _client.from('products').delete().neq('id', dummy);
+    await _client.from('customers').delete().neq('id', dummy);
+    return true;
+  } catch (err) { console.error('dbFullWipe:', err); return false; }
+}
+
+async function dbBulkInsertProducts(products) {
+  // products: [{name, avg_price_eur, container_ratio, active}]
+  if (!products || !products.length) return [];
+  try {
+    var res = await _client.from('products').insert(products).select('id, name');
+    if (res.error) throw res.error;
+    return res.data || [];
+  } catch (err) { console.error('dbBulkInsertProducts:', err); return []; }
+}
+
+async function dbBulkInsertTargets(rows) {
+  // Inserts in chunks of 500 to stay within Supabase limits
+  if (!rows || !rows.length) return 0;
+  var CHUNK = 500;
+  var done  = 0;
+  try {
+    for (var i = 0; i < rows.length; i += CHUNK) {
+      var chunk = rows.slice(i, i + CHUNK);
+      var res   = await _client.from('targets').insert(chunk);
+      if (res.error) throw res.error;
+      done += chunk.length;
+    }
+    return done;
+  } catch (err) { console.error('dbBulkInsertTargets at chunk ' + done + ':', err); return done; }
+}
+
+async function dbUpdateTarget(id, field, value) {
+  if (!id) return false;
+  try {
+    var payload = {};
+    payload[field] = value;
+    var res = await _client.from('targets').update(payload).eq('id', id);
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbUpdateTarget:', err); return false; }
 }

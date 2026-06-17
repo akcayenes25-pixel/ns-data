@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v2.5.0';
+const APP_VERSION = 'v3.0.0';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,22 @@ const APP_VERSION = 'v2.5.0';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v3.0.0': {
+    date: 'Haziran 2026',
+    items: [
+      '[Eklendi] Hedefler ekrani: Ulke + Musteri + Urun + Ay bazinda tam hedef yonetimi.',
+      '[Eklendi] Excel butce import: tek dosyayla musteri, ulke, urun ve tum hedefler yukleniyor.',
+      '[Iyilestirildi] Hedef hesaplamalari tum urun ve ulkeler icin dogru toplaniyor.',
+    ]
+  },
+  'v2.6.0': {
+    date: 'Haziran 2026',
+    items: [
+      '[Eklendi] Excelden toplu musteri yukleme: ulke otomatik taninir, benzer isimler uyarir.',
+      '[Eklendi] Arama cubugunda ulke yazinca o ulkedeki tum cariler tabloya eklenir.',
+      '[Iyilestirildi] Hucre editoru: ortalanmis metin, temiz boyut, Delete ile temizleme.',
+    ]
+  },
   'v2.5.0': {
     date: 'Haziran 2026',
     items: [
@@ -199,7 +215,7 @@ const CHANGELOG = {
 /* ============================================================
    NAVIGATION
    ============================================================ */
-const SCREENS = ['dashboard', 'orders', 'limits', 'analysis', 'settings', 'log', 'customer', 'country', 'product'];
+const SCREENS = ['dashboard', 'orders', 'limits', 'analysis', 'targets', 'settings', 'log', 'customer', 'country', 'product'];
 const DETAIL_SCREENS = ['customer', 'country', 'product'];
 
 let activeScreen = 'dashboard';
