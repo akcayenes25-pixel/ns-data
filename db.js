@@ -100,10 +100,23 @@ async function dbSetCustomerActive(customerId, active) {
 
 /* TARGETS */
 async function dbGetTargets() {
+  // Supabase server caps single select at 1000 rows — paginate to get all
   try {
-    var res = await _client.from('targets').select('*').limit(50000);
-    if (res.error) throw res.error;
-    return res.data || [];
+    var all     = [];
+    var PAGE    = 1000;
+    var page    = 0;
+    while (true) {
+      var res = await _client
+        .from('targets')
+        .select('*')
+        .range(page * PAGE, (page + 1) * PAGE - 1);
+      if (res.error) throw res.error;
+      var batch = res.data || [];
+      all = all.concat(batch);
+      if (batch.length < PAGE) break; // last page
+      page++;
+    }
+    return all;
   } catch (err) { console.error('dbGetTargets:', err); return []; }
 }
 
