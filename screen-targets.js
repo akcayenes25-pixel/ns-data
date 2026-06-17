@@ -1,470 +1,703 @@
 /* NSDATA - screen-targets.js */
-/* Hedefler ekranı — Ülke → Müşteri → Ürün → Ay */
+/* Hedefler pivot ekrani — v3.0.0 */
 
-(function() {
+(function () {
+'use strict';
 
+/* ============================================================ DATA STATE */
 var _state = {
-  targets:        [],
-  customers:      [],
-  products:       [],
-  year:           new Date().getFullYear(),
-  metric:         'eur',
-  openCountries:  {},
-  openCustomers:  {},
-  filterBolge:    '',
-  filterCountry:  '',
-  importStep:     'idle',
-  importPreview:  null
+  targets: [], customers: [], products: [], customerCountries: [],
+  customerMap: {}, productMap: {},
+  importPreview: null, importStep: 'idle'
 };
 
-var _cMap = {};
-var _pMap = {};
-var _MN   = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+/* ============================================================ PIVOT STATE */
+var _S = {
+  rows:      ['ulke', 'musteri', 'urun'],
+  cols:      ['ay'],
+  vals:      { eur: true, usd: false, qty: false },
+  form:      'tabular',
+  editMode:  false,
+  stShow:    false,
+  gtShow:    true,
+  showEmpty: false,
+  repeat:    false,
+  filters:   { ulke: [], musteri: [], urun: [], bolge: [] },
+  collapsed: {},
+  sort:      { key: null, dir: 'none' },
+  year:      new Date().getFullYear(),
+  search:    ''
+};
 
-/* ============================================================
-   ACTIVATION
-   ============================================================ */
+/* ============================================================ CONSTANTS */
+var ROW_DIMS  = ['ulke', 'musteri', 'urun', 'bolge'];
+var DIM_LABEL = { ulke: 'Ulke', musteri: 'Musteri', urun: 'Urun', bolge: 'Bolge', ay: 'Aylar' };
+var VAL_DEFS  = [{ k: 'eur', l: 'EUR' }, { k: 'usd', l: 'USD' }, { k: 'qty', l: 'Adet' }];
+var MN_SHORT  = ['Oca','\u015eub','Mar','Nis','May','Haz','Tem','\u0130\u011eu','Eyl','Eki','Kas','Ara'];
+var BAND_BG   = ['#FFFFFF','#F7F8FC','#FFFFFF','#F7F8FC'];
+
+/* ============================================================ SESSION STATE */
+var _PKEY = 'nsdata_tgt_pivot';
+function _saveState() {
+  try { sessionStorage.setItem(_PKEY, JSON.stringify({ rows:_S.rows, cols:_S.cols, vals:_S.vals, form:_S.form, stShow:_S.stShow, gtShow:_S.gtShow, showEmpty:_S.showEmpty, filters:_S.filters, year:_S.year })); } catch(e) {}
+}
+function _restoreState() {
+  try {
+    var s = JSON.parse(sessionStorage.getItem(_PKEY) || 'null'); if (!s) return;
+    if (s.rows)  _S.rows  = s.rows;
+    if (s.cols)  { _S.cols = s.cols; if (!_S.cols.includes('ay')) _S.cols.unshift('ay'); }
+    if (s.vals)  _S.vals  = s.vals;
+    if (s.form)  _S.form  = s.form;
+    if (s.stShow    !== undefined) _S.stShow    = s.stShow;
+    if (s.gtShow    !== undefined) _S.gtShow    = s.gtShow;
+    if (s.showEmpty !== undefined) _S.showEmpty = s.showEmpty;
+    if (s.year) _S.year = s.year;
+    if (s.filters) {
+      if (s.filters.ulke)  _S.filters.ulke  = s.filters.ulke;
+      if (s.filters.urun)  _S.filters.urun  = s.filters.urun;
+      if (s.filters.bolge) _S.filters.bolge = s.filters.bolge;
+      if (s.filters.musteri) {
+        var ids = _state.customers.map(function(c){ return c.id; });
+        _S.filters.musteri = s.filters.musteri.filter(function(id){ return ids.includes(id); });
+      }
+    }
+  } catch(e) {}
+}
+
+/* ============================================================ ACTIVATION */
 document.addEventListener('nsdata:screenActivated', function(e) {
   if (e.detail.screen !== 'targets') return;
   _init();
 });
-
 document.addEventListener('nsdata:dataChanged', function() {
   var el = document.getElementById('screen-targets');
   if (!el || !el.classList.contains('active')) return;
-  _loadData();
+  _loadData().then(function(){ render(); });
 });
 
 async function _init() {
   await _loadData();
+  _restoreState();
+  var p = new URLSearchParams(window.location.search);
+  if (p.get('screen') === 'targets') render();
 }
 
 async function _loadData() {
-  var results = await Promise.all([
-    dbGetTargets(),
-    dbGetCustomers(),
-    dbGetProducts()
-  ]);
-  _state.targets   = results[0] || [];
-  _state.customers = results[1] || [];
-  _state.products  = results[2] || [];
-  _buildMaps();
-  _render();
+  var res = await Promise.all([dbGetTargets(), dbGetCustomers(), dbGetProducts(), dbGetCustomerCountries()]);
+  _state.targets           = _adapt(res[0] || []);
+  _state.customers         = res[1] || [];
+  _state.products          = res[2] || [];
+  _state.customerCountries = res[3] || [];
+  _state.customerMap = {}; _state.productMap = {};
+  _state.customers.forEach(function(c){ _state.customerMap[c.id] = c; });
+  _state.products.forEach(function(p){  _state.productMap[p.id]  = p; });
 }
 
-/* ============================================================
-   MAP BUILDERS
-   ============================================================ */
-function _buildMaps() {
-  _cMap = {};
-  _pMap = {};
-  _state.customers.forEach(function(c) { _cMap[c.id] = c; });
-  _state.products.forEach(function(p)  { _pMap[p.id] = p; });
-}
-
-/* ============================================================
-   TREE BUILDER — Ülke → Müşteri → Ürün → Ay[12]
-   ============================================================ */
-function _buildTree() {
-  var filtered = _state.targets.filter(function(t) {
-    if (t.scope !== 'customer' || !t.customer_id || !t.country) return false;
-    if (t.year !== _state.year) return false;
-    if (_state.filterBolge   && String(t.bolge)   !== _state.filterBolge)   return false;
-    if (_state.filterCountry && t.country          !== _state.filterCountry) return false;
-    return true;
+function _adapt(raw) {
+  return (raw || []).map(function(t) {
+    return { id: t.id, musteri: t.customer_id, urun: t.product_id,
+             ulke: t.country || '', bolge: t.bolge ? String(t.bolge) : null,
+             month: t.month, year: t.year,
+             eur: parseFloat(t.target_eur) || 0,
+             usd: parseFloat(t.target_usd) || 0,
+             qty: parseFloat(t.target_qty) || 0 };
   });
-
-  var tree = {};
-  filtered.forEach(function(t) {
-    if (!tree[t.country]) tree[t.country] = {};
-    if (!tree[t.country][t.customer_id]) tree[t.country][t.customer_id] = {};
-    if (!tree[t.country][t.customer_id][t.product_id]) {
-      tree[t.country][t.customer_id][t.product_id] = Array(12).fill(null);
-    }
-    tree[t.country][t.customer_id][t.product_id][t.month - 1] = t;
-  });
-  return tree;
 }
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
-function _field() {
-  if (_state.metric === 'eur') return 'target_eur';
-  if (_state.metric === 'usd') return 'target_usd';
-  return 'target_qty';
+/* ============================================================ HELPERS */
+function dvLabel(dim, val) {
+  if (!val && val !== 0) return '';
+  if (dim === 'ay')      return MN_SHORT[parseInt(val) - 1] || String(val);
+  if (dim === 'musteri') { var c = _state.customerMap[val]; return c ? c.name  : val; }
+  if (dim === 'urun')    { var p = _state.productMap[val];  return p ? p.name  : val; }
+  if (dim === 'bolge')   return 'Bolge ' + val;
+  return String(val || '');
 }
 
-function _fmtVal(v) {
-  if (v === null || v === undefined || v === 0) return null;
-  var n = parseFloat(v);
-  if (isNaN(n)) return null;
-  var s = n.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
-  if (_state.metric === 'eur') return s + '\u00a0€';
-  if (_state.metric === 'usd') return '$\u00a0' + s;
-  return s;
-}
-
-function _sumCells(cells, f) {
-  return cells.reduce(function(s, t) { return s + (t ? (t[f] || 0) : 0); }, 0);
-}
-
-function _esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function _allBolge() {
-  var seen = {};
-  _state.targets.forEach(function(t) { if (t.bolge) seen[t.bolge] = true; });
-  return Object.keys(seen).map(Number).sort(function(a,b){return a-b;});
-}
-
-function _allCountries() {
-  var seen = {};
-  _state.targets.forEach(function(t) { if (t.country) seen[t.country] = true; });
-  return Object.keys(seen).sort();
-}
-
-function _getBolgeForCustomer(countryData, custId) {
-  var prodIds = Object.keys(countryData[custId]);
-  for (var pi = 0; pi < prodIds.length; pi++) {
-    var cells = countryData[custId][prodIds[pi]];
-    for (var mi = 0; mi < cells.length; mi++) {
-      if (cells[mi] && cells[mi].bolge) return cells[mi].bolge;
-    }
-  }
+function dv(t, dim) {
+  if (dim === 'ulke')    return t.ulke;
+  if (dim === 'musteri') return t.musteri;
+  if (dim === 'urun')    return t.urun;
+  if (dim === 'bolge')   return t.bolge;
+  if (dim === 'ay')      return String(t.month);
   return null;
 }
 
-/* ============================================================
-   RENDER
-   ============================================================ */
-function _render() {
-  var el = document.getElementById('screen-targets');
-  if (!el) return;
+function dimVals(dim, targets) {
+  if (dim === 'ay') return ['1','2','3','4','5','6','7','8','9','10','11','12'];
+  if (dim === 'urun') return _state.products.filter(function(p){ return p.active !== false; }).map(function(p){ return p.id; });
+  var seen = {}, vals = [];
+  (targets || []).forEach(function(t){ var v = dv(t,dim); if (v && !seen[v]){ seen[v]=1; vals.push(v); } });
+  return vals;
+}
 
-  var hasData = _state.targets.some(function(t) { return t.year === _state.year; });
-  var tree     = _buildTree();
-  var countries = Object.keys(tree).sort();
-  var f         = _field();
+function activeVals() { return VAL_DEFS.filter(function(v){ return _S.vals[v.k]; }); }
 
-  var html = _renderHeader() + _renderControls();
+function poolDims() {
+  return ['ulke','musteri','urun','bolge','ay'].filter(function(d){ return !_S.rows.includes(d) && !_S.cols.includes(d); });
+}
 
-  if (!hasData) {
-    html += '<div class="tgt-empty">' +
-      '<i class="ti ti-database-off" style="font-size:32px;display:block;margin-bottom:12px" aria-hidden="true"></i>' +
-      '<p>' + _state.year + ' yılı için hedef verisi bulunamadı.</p>' +
-      '<p style="font-size:12px;margin-top:6px">Excel bütçe dosyanızı yüklemek için yukarıdaki butonu kullanın.</p>' +
-    '</div>';
-    el.innerHTML = html + _renderImportModal();
-    _bind();
-    return;
+function fmtN(v) { if (!v || v===0) return '\u2014'; return Number(v).toLocaleString('de-DE',{maximumFractionDigits:1}); }
+function fmtE(v) { if (!v || v===0) return '\u2014'; return Math.round(v).toLocaleString('de-DE') + ' \u20ac'; }
+function fmtU(v) { if (!v || v===0) return '\u2014'; return '$ ' + Math.round(v).toLocaleString('de-DE'); }
+function fmtVal(v, k) { return k==='eur' ? fmtE(v) : k==='usd' ? fmtU(v) : fmtN(v); }
+function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ============================================================ FILTER */
+function filtTargets() {
+  return _state.targets.filter(function(t) {
+    if (t.year !== _S.year) return false;
+    var f = _S.filters;
+    if (f.ulke.length    && !f.ulke.includes(t.ulke))       return false;
+    if (f.musteri.length && !f.musteri.includes(t.musteri)) return false;
+    if (f.urun.length    && !f.urun.includes(t.urun))       return false;
+    if (f.bolge.length   && !f.bolge.includes(t.bolge))     return false;
+    if (_S.search) {
+      var q = _S.search.toLowerCase();
+      if (!t.ulke.toLowerCase().includes(q) && !dvLabel('musteri',t.musteri).toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+/* ============================================================ COMPUTE */
+function compute(targets) {
+  var e=0, u=0, q=0;
+  (targets||[]).forEach(function(t){ e+=t.eur; u+=t.usd; q+=t.qty; });
+  return { eur: Math.round(e), usd: Math.round(u), qty: Math.round(q*10)/10 };
+}
+function computeVal(m, k) { return k==='eur' ? m.eur : k==='usd' ? m.usd : m.qty; }
+
+/* ============================================================ SORT */
+function sortVals(dim, vals, targets) {
+  if (!_S.sort.key || _S.sort.dir === 'none') {
+    if (dim === 'ay') return vals.slice().sort(function(a,b){ return parseInt(a)-parseInt(b); });
+    return vals.slice().sort(function(a,b){ return dvLabel(dim,a).localeCompare(dvLabel(dim,b),'tr'); });
+  }
+  var sorted = vals.slice().sort(function(a,b) {
+    var tA = (targets||[]).filter(function(t){ return dv(t,dim)===a; });
+    var tB = (targets||[]).filter(function(t){ return dv(t,dim)===b; });
+    return computeVal(compute(tB),_S.sort.key) - computeVal(compute(tA),_S.sort.key);
+  });
+  return _S.sort.dir==='asc' ? sorted.reverse() : sorted;
+}
+
+/* ============================================================ COL LEAVES */
+function buildColLeaves(targets) {
+  var combos = [[]];
+  _S.cols.forEach(function(dim) {
+    var vals = sortVals(dim, dimVals(dim, targets), targets);
+    var next = [];
+    combos.forEach(function(c){ vals.forEach(function(v){ next.push(c.concat([{dim:dim,val:v}])); }); });
+    combos = next;
+  });
+  return combos.map(function(c,i){ return { keys:c, label:c.map(function(k){ return dvLabel(k.dim,k.val); }).join(' / '), bi:i%4 }; });
+}
+
+/* ============================================================ SCHEMA */
+function buildSchema(leaves) {
+  var vl = activeVals(); if (!vl.length) return null;
+  var schema = [];
+  _S.rows.forEach(function(dim,i){ schema.push({ type:'name', dim:dim, label:DIM_LABEL[dim], w:i===0?180:140 }); });
+  if (!_S.rows.length) schema.push({ type:'name', dim:'_all', label:'\u2014', w:180 });
+  leaves.forEach(function(leaf,li){
+    vl.forEach(function(v,vi){
+      schema.push({ type:'val', li:li, leaf:leaf, valK:v.k, valL:v.l, isFirst:vi===0, bi:leaf.bi, w:v.k==='eur'?90:68 });
+    });
+  });
+  vl.forEach(function(v){ schema.push({ type:'total', valK:v.k, valL:v.l, w:v.k==='eur'?100:76 }); });
+  return schema;
+}
+
+/* ============================================================ ROW BUILDER */
+function buildRowsRecursive(targets, schema, ctx, level) {
+  if (level >= _S.rows.length) return buildDataRow(targets, schema, ctx);
+  var dim = _S.rows[level];
+  var base;
+  if (dim === 'urun') {
+    base = _state.products.filter(function(p){ return p.active!==false; }).map(function(p){ return p.id; });
+  } else if (dim === 'musteri' && _S.showEmpty && _S.filters.musteri.length) {
+    var ulkeCtx = ctx.find(function(r){ return r.dim==='ulke'; });
+    if (ulkeCtx) {
+      var inU = (_state.customerCountries||[]).filter(function(cc){ return cc.country===ulkeCtx.val; }).map(function(cc){ return cc.customer_id; });
+      base = _S.filters.musteri.filter(function(id){ return inU.includes(id); });
+      if (!base.length) base = _S.filters.musteri.slice();
+    } else { base = _S.filters.musteri.slice(); }
+  } else if (_S.showEmpty) {
+    base = dimVals(dim, _state.targets.filter(function(t){ return t.year===_S.year; }));
+  } else {
+    base = dimVals(dim, targets);
+  }
+  var sorted = sortVals(dim, base, targets);
+  var html = '';
+  sorted.forEach(function(val) {
+    var grp = (targets||[]).filter(function(t){ return dv(t,dim)===val; });
+    if (!_S.showEmpty && dim!=='urun' && !grp.length) return;
+    var gk  = ctx.map(function(r){ return r.val; }).join('|')+'|'+val;
+    var lbl = dvLabel(dim, val);
+    var nc  = ctx.concat([{ dim:dim, val:val }]);
+    if (_S.form==='outline') html += buildOutline(grp, schema, nc, level, val, lbl, gk);
+    else if (_S.form==='compact') html += buildCompact(grp, schema, nc, level, val, lbl, gk);
+    else html += buildTabular(grp, schema, nc, level, val, lbl, gk, level+1);
+  });
+  return html;
+}
+
+function buildTabular(targets, schema, ctx, level, val, lbl, gk, next) {
+  var isLeaf = next >= _S.rows.length;
+  var html = isLeaf ? buildDataRow(targets,schema,ctx) : buildRowsRecursive(targets,schema,ctx,next);
+  if (_S.stShow && !isLeaf) html += buildAggRow(targets,schema,lbl+' Top.',0,false);
+  return html;
+}
+
+function buildOutline(targets, schema, ctx, level, val, lbl, gk) {
+  var next = level+1, isLeaf = next >= _S.rows.length;
+  var nc   = schema.filter(function(c){ return c.type==='name'; }).length;
+  var pad  = level*14+6;
+  var coll = !!_S.collapsed[gk];
+  var meta = isLeaf ? '' : '';
+  var html = '<tr class="tgt-gr"><td colspan="'+nc+'" style="padding-left:'+pad+'px;font-weight:600;background:#F1F3F9">'+
+    '<div style="display:flex;align-items:center;gap:6px">'+
+    '<button class="tgt-nc-tog" data-gk="'+_esc(gk)+'" style="background:none;border:none;cursor:pointer;font-size:11px;padding:0 4px;color:#4A5068">'+(coll?'&#9654;':'&#9660;')+'</button>'+
+    '<span>'+_esc(lbl)+'</span></div></td>'+
+    schema.filter(function(c){ return c.type!=='name'; }).map(function(){ return '<td style="background:#F1F3F9"></td>'; }).join('')+
+    '</tr>';
+  if (!coll) {
+    html += isLeaf ? buildDataRow(targets,schema,ctx) : buildRowsRecursive(targets,schema,ctx,next);
+    if (_S.stShow && !isLeaf) html += buildAggRow(targets,schema,lbl+' Top.',pad+14,false);
+  }
+  return html;
+}
+
+function buildCompact(targets, schema, ctx, level, val, lbl, gk) {
+  var next = level+1, isLeaf = next >= _S.rows.length;
+  var coll = !!_S.collapsed[gk];
+  var html = '';
+  if (level===0) html += '<tr class="tgt-gr"><td colspan="'+schema.length+'" style="font-weight:600;background:#F1F3F9;padding:6px 10px">'+
+    '<button class="tgt-nc-tog" data-gk="'+_esc(gk)+'" style="background:none;border:none;cursor:pointer;font-size:11px;margin-right:6px;color:#4A5068">'+(coll?'&#9654;':'&#9660;')+'</button>'+_esc(lbl)+'</td></tr>';
+  if (!coll) {
+    html += isLeaf ? buildDataRow(targets,schema,ctx) : buildRowsRecursive(targets,schema,ctx,next);
+    if (_S.stShow && !isLeaf) html += buildAggRow(targets,schema,lbl+' Top.',(level+1)*12,false);
+  }
+  return html;
+}
+
+/* ============================================================ DATA ROW */
+function buildDataRow(targets, schema, ctx) {
+  var nameCols = schema.filter(function(c){ return c.type==='name'; });
+  var cells = '';
+  nameCols.forEach(function(nc,i) {
+    if (nc.dim==='_all') { cells += '<td style="padding:5px 8px">\u2014</td>'; return; }
+    var c = ctx.find(function(r){ return r.dim===nc.dim; });
+    if (!c) { cells += '<td></td>'; return; }
+    cells += '<td style="padding:5px 8px 5px '+(i*12+8)+'px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px" title="'+_esc(dvLabel(nc.dim,c.val))+'">'+
+      '<span style="font-weight:'+(i===nameCols.length-1?'500':'400')+'">'+_esc(dvLabel(nc.dim,c.val))+'</span></td>';
+  });
+  schema.forEach(function(c) {
+    if (c.type==='name') return;
+    var bl = c.isFirst ? 'border-left:1.5px solid #D1D5DB;' : '';
+    if (c.type==='total') {
+      var m = compute(targets);
+      cells += '<td style="text-align:right;padding:5px 8px;background:#F1F3F9;border-left:2px solid #374151;font-weight:600;white-space:nowrap">'+fmtVal(computeVal(m,c.valK),c.valK)+'</td>';
+      return;
+    }
+    var lt = (targets||[]).filter(function(t){ return c.leaf.keys.every(function(k){ return dv(t,k.dim)===k.val; }); });
+    var m2 = compute(lt);
+    var v  = computeVal(m2,c.valK);
+    var bg = BAND_BG[c.bi||0];
+    var single = lt.length===1 ? lt[0] : null;
+    var canEdit = _S.editMode && single && single.id;
+    if (canEdit) {
+      var raw   = c.valK==='eur' ? single.eur : c.valK==='usd' ? single.usd : single.qty;
+      var field = 'target_'+c.valK;
+      cells += '<td class="tgt-ce" style="background:#EFF6FF;'+bl+'cursor:pointer;text-align:right;padding:5px 8px;white-space:nowrap" '+
+        'data-tid="'+_esc(single.id)+'" data-field="'+field+'" data-val="'+(raw||'')+'">'+(raw?fmtVal(raw,c.valK):'-')+'</td>';
+    } else {
+      cells += '<td style="background:'+bg+';'+bl+'text-align:right;padding:5px 8px;color:#4A5068;white-space:nowrap">'+fmtVal(v,c.valK)+'</td>';
+    }
+  });
+  return '<tr class="tgt-dr" style="border-bottom:0.5px solid #E2E5EF">'+cells+'</tr>';
+}
+
+/* ============================================================ AGG ROW */
+function buildAggRow(targets, schema, label, pad, isGrand) {
+  var nc = schema.filter(function(c){ return c.type==='name'; });
+  var bg = isGrand ? 'background:#0F1117;color:#fff;' : 'background:#6B7280;color:#fff;';
+  var cells = '';
+  nc.forEach(function(c,i){
+    if (i===0) cells += '<td style="'+bg+'padding:5px 8px 5px '+(pad||6)+'px;font-weight:700">'+_esc(label)+'</td>';
+    else cells += '<td style="'+bg+'"></td>';
+  });
+  schema.forEach(function(c){
+    if (c.type==='name') return;
+    var bl = c.isFirst ? 'border-left:1.5px solid rgba(255,255,255,.3);' : '';
+    if (c.type==='total') {
+      var m = compute(targets);
+      cells += '<td style="'+bg+'border-left:2px solid rgba(255,255,255,.5);text-align:right;padding:5px 8px;font-weight:700">'+fmtVal(computeVal(m,c.valK),c.valK)+'</td>';
+      return;
+    }
+    var lt = (targets||[]).filter(function(t){ return c.leaf.keys.every(function(k){ return dv(t,k.dim)===k.val; }); });
+    cells += '<td style="'+bg+bl+'text-align:right;padding:5px 8px;font-weight:700">'+fmtVal(computeVal(compute(lt),c.valK),c.valK)+'</td>';
+  });
+  return '<tr class="tgt-agg">'+cells+'</tr>';
+}
+
+/* ============================================================ HEADER */
+function renderHeader(schema, leaves) {
+  var vl = activeVals();
+  var nc = schema.filter(function(c){ return c.type==='name'; }).length;
+  var nColDims = _S.cols.length;
+  var nHR = nColDims + 1;
+  var rows = []; for (var i=0;i<nHR;i++) rows.push('');
+
+  var cg = '<colgroup>'+schema.map(function(c){ return '<col style="width:'+c.w+'px;min-width:'+c.w+'px">'; }).join('')+'</colgroup>';
+
+  // Name cols
+  schema.filter(function(c){ return c.type==='name'; }).forEach(function(nc2){
+    rows[0] += '<th rowspan="'+nHR+'" style="text-align:left;padding:6px 8px;background:#F1F3F9;border-bottom:1.5px solid #E2E5EF;font-size:11px;font-weight:600;color:#4A5068;vertical-align:bottom;white-space:nowrap">'+_esc(nc2.label)+'</th>';
+  });
+
+  // Group leaves per dim level
+  for (var level=0; level<nColDims; level++) {
+    var groups=[], prev=null, cnt=0, startLeaf=null;
+    leaves.forEach(function(leaf,li){
+      var k = leaf.keys[level]; var key = k ? k.dim+':'+k.val : '_';
+      if (key!==prev) {
+        if (cnt>0) groups.push({ lbl: prev, count:cnt, leaf:startLeaf, level:level });
+        prev=key; cnt=1; startLeaf=leaf;
+      } else cnt++;
+    });
+    if (cnt>0) groups.push({ lbl:prev, count:cnt, leaf:startLeaf, level:level });
+
+    groups.forEach(function(g,gi){
+      var k = g.leaf.keys[level]; var lbl = k ? dvLabel(k.dim,k.val) : '';
+      var span = g.count * vl.length;
+      var bl = gi>0 ? 'border-left:1.5px solid #D1D5DB;' : 'border-left:1.5px solid #E2E5EF;';
+      rows[level] += '<th colspan="'+span+'" style="text-align:center;padding:5px 6px;background:#F8F9FC;border-bottom:1px solid #E2E5EF;font-size:11px;font-weight:600;color:#0F1117;'+bl+'">'+_esc(lbl)+'</th>';
+    });
   }
 
-  html += '<div class="tgt-table-wrap"><table class="tgt-table"><thead><tr class="tgt-head-row">' +
-    '<th class="tgt-col-name">Ülke / Müşteri / Ürün</th>' +
-    _MN.map(function(m) { return '<th class="tgt-col-month">' + m + '</th>'; }).join('') +
-    '<th class="tgt-col-total">Yıllık</th>' +
-    '</tr></thead><tbody>';
-
-  countries.forEach(function(country) {
-    var custIds = Object.keys(tree[country]).sort(function(a, b) {
-      return (_cMap[a] ? _cMap[a].name : '').localeCompare(_cMap[b] ? _cMap[b].name : '');
-    });
-    var isOpen = !!_state.openCountries[country];
-
-    var countryMonths = Array(12).fill(0);
-    custIds.forEach(function(cid) {
-      Object.values(tree[country][cid]).forEach(function(cells) {
-        cells.forEach(function(t, mi) { if (t && t[f]) countryMonths[mi] += t[f]; });
-      });
-    });
-    var countryTotal = countryMonths.reduce(function(s,v){return s+v;},0);
-
-    html += '<tr class="tgt-row-country" data-country="' + _esc(country) + '">' +
-      '<td class="tgt-cell-name tgt-country-name">' +
-        '<span class="tgt-chevron">' + (isOpen ? '▾' : '▸') + '</span>' +
-        '<strong>' + _esc(country) + '</strong>' +
-        '<span class="tgt-row-meta">' + custIds.length + ' müşteri</span>' +
-      '</td>' +
-      countryMonths.map(function(v) {
-        var d = _fmtVal(v);
-        return '<td class="tgt-cell-total">' + (d || '<span class="tgt-null">–</span>') + '</td>';
-      }).join('') +
-      '<td class="tgt-cell-total tgt-grand">' + (_fmtVal(countryTotal) || '–') + '</td>' +
-    '</tr>';
-
-    if (!isOpen) return;
-
-    custIds.forEach(function(custId) {
-      var cust     = _cMap[custId] || { name: custId };
-      var cuKey    = country + '|' + custId;
-      var isCuOpen = !!_state.openCustomers[cuKey];
-      var prodIds  = Object.keys(tree[country][custId]).sort(function(a, b) {
-        return (_pMap[a] ? _pMap[a].name : '').localeCompare(_pMap[b] ? _pMap[b].name : '');
-      });
-      var bolge    = _getBolgeForCustomer(tree[country], custId);
-
-      var custMonths = Array(12).fill(0);
-      prodIds.forEach(function(pid) {
-        tree[country][custId][pid].forEach(function(t, mi) { if (t && t[f]) custMonths[mi] += t[f]; });
-      });
-      var custTotal = custMonths.reduce(function(s,v){return s+v;},0);
-
-      html += '<tr class="tgt-row-customer" data-country="' + _esc(country) + '" data-cust="' + custId + '">' +
-        '<td class="tgt-cell-name tgt-customer-name">' +
-          '<span class="tgt-chevron">' + (isCuOpen ? '▾' : '▸') + '</span>' +
-          _esc(cust.name) +
-          (bolge ? '<span class="tgt-bolge-badge">B' + bolge + '</span>' : '') +
-        '</td>' +
-        custMonths.map(function(v) {
-          var d = _fmtVal(v);
-          return '<td class="tgt-cell-total tgt-cust-total">' + (d || '<span class="tgt-null">–</span>') + '</td>';
-        }).join('') +
-        '<td class="tgt-cell-total tgt-grand">' + (_fmtVal(custTotal) || '–') + '</td>' +
-      '</tr>';
-
-      if (!isCuOpen) return;
-
-      prodIds.forEach(function(prodId) {
-        var prod   = _pMap[prodId] || { name: prodId };
-        var cells  = tree[country][custId][prodId];
-        var rowTotal = 0;
-
-        html += '<tr class="tgt-row-product"><td class="tgt-cell-name tgt-product-name">' + _esc(prod.name) + '</td>';
-
-        cells.forEach(function(t, mi) {
-          var val = t ? t[f] : null;
-          if (val) rowTotal += val;
-          var tid = t ? t.id : '';
-          var d   = _fmtVal(val);
-          html += '<td class="tgt-cell-editable" data-tid="' + _esc(tid) + '" data-field="' + f + '" data-val="' + (val || '') + '">' +
-            (d ? d : '<span class="tgt-null">–</span>') +
-          '</td>';
-        });
-
-        html += '<td class="tgt-cell-total">' + (_fmtVal(rowTotal) || '–') + '</td></tr>';
-      });
+  // Val label row
+  leaves.forEach(function(leaf,li){
+    vl.forEach(function(v,vi){
+      var bl = vi===0 ? 'border-left:1.5px solid #D1D5DB;' : '';
+      rows[nHR-1] += '<th style="text-align:right;padding:5px 8px;background:#F1F3F9;border-bottom:1.5px solid #E2E5EF;font-size:10px;font-weight:600;color:#6B7280;'+bl+'">'+v.l+'</th>';
     });
   });
 
-  html += '</tbody></table></div>';
-  html += '<input id="tgt-editor" class="tgt-editor-input" type="number" step="any">';
-  html += _renderImportModal();
-
-  el.innerHTML = html;
-  _bind();
-
-  if (_state.importStep === 'preview' && _state.importPreview) {
-    _showImportModal();
+  // Total header
+  var hasTot = schema.some(function(c){ return c.type==='total'; });
+  if (hasTot) {
+    var rspan = nHR>1 ? nHR-1 : 1;
+    rows[0] += '<th colspan="'+vl.length+'" rowspan="'+rspan+'" style="text-align:center;padding:5px 8px;background:#E5E7EB;border-left:2px solid #374151;border-bottom:1px solid #D1D5DB;font-size:11px;font-weight:700;color:#0F1117">Yillik</th>';
+    vl.forEach(function(v){
+      rows[nHR-1] += '<th style="text-align:right;padding:5px 8px;background:#E5E7EB;border-left:1.5px solid #374151;border-bottom:1.5px solid #E2E5EF;font-size:10px;font-weight:600;color:#374151">'+v.l+'</th>';
+    });
   }
+
+  return cg+'<thead>'+rows.map(function(r){ return '<tr>'+r+'</tr>'; }).join('')+'</thead>';
 }
 
-/* ============================================================
-   PARTIAL HTML BUILDERS
-   ============================================================ */
-function _renderHeader() {
-  return '<div class="tgt-header">' +
-    '<div class="tgt-title"><i class="ti ti-target" aria-hidden="true"></i> Hedefler ' + _state.year + '</div>' +
-    '<div class="tgt-header-actions">' +
-      '<input type="file" id="tgt-file-in" accept=".xlsx,.xls" style="display:none">' +
-      '<button class="tgt-btn-import" id="tgt-import-btn">' +
-        '<i class="ti ti-upload" aria-hidden="true"></i> Excel\'den Yükle' +
-      '</button>' +
-    '</div>' +
-  '</div>';
+/* ============================================================ MAIN RENDER */
+function render() {
+  var el = document.getElementById('screen-targets'); if (!el) return;
+  var targets = filtTargets();
+  var leaves  = buildColLeaves(targets);
+  var schema  = buildSchema(leaves);
+  if (!schema) { el.innerHTML = '<div style="padding:2rem;text-align:center;color:#4A5068">Deger secin (EUR/USD/Adet).</div>'; return; }
+  var body = buildRowsRecursive(targets, schema, [], 0);
+  var gran = _S.gtShow ? buildAggRow(targets, schema, 'GENEL TOPLAM', 6, true) : '';
+  el.innerHTML =
+    _pivotBar() +
+    _filterBar() +
+    '<div id="tgt-table-wrap" style="overflow:auto;height:calc(100vh - 175px);position:relative">'+
+      '<table style="border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;width:100%">'+
+        renderHeader(schema, leaves)+
+        '<tbody>'+body+gran+'</tbody>'+
+      '</table>'+
+    '</div>'+
+    '<input id="tgt-editor" style="position:absolute;display:none;border:2px solid #4F46E5;border-radius:2px;padding:3px 8px;font-size:12px;text-align:right;background:#fff;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15);font-family:inherit" type="number" step="any">'+
+    '<input type="file" id="tgt-file-in" accept=".xlsx,.xls" style="display:none">'+
+    _renderImportModal();
+  _bind();
+  if (_state.importPreview && _state.importStep==='preview') _showImportModal();
+  _saveState();
 }
 
-function _renderControls() {
-  var bolges    = _allBolge();
-  var countries = _allCountries();
-  return '<div class="tgt-controls">' +
-    '<select id="tgt-year">' +
-      [_state.year - 1, _state.year, _state.year + 1].map(function(y) {
-        return '<option value="' + y + '"' + (y === _state.year ? ' selected' : '') + '>' + y + '</option>';
-      }).join('') +
-    '</select>' +
-    '<select id="tgt-bolge"><option value="">Tüm Bölgeler</option>' +
-      bolges.map(function(b) {
-        return '<option value="' + b + '"' + (_state.filterBolge === String(b) ? ' selected' : '') + '>Bölge ' + b + '</option>';
-      }).join('') +
-    '</select>' +
-    '<select id="tgt-country"><option value="">Tüm Ülkeler</option>' +
-      countries.map(function(c) {
-        return '<option value="' + _esc(c) + '"' + (_state.filterCountry === c ? ' selected' : '') + '>' + _esc(c) + '</option>';
-      }).join('') +
-    '</select>' +
-    '<div class="tgt-metric-btns">' +
-      ['eur','usd','qty'].map(function(m) {
-        var lbl = m === 'eur' ? 'EUR' : m === 'usd' ? 'USD' : 'Adet';
-        return '<button class="tgt-metric-btn' + (_state.metric === m ? ' active' : '') + '" data-metric="' + m + '">' + lbl + '</button>';
-      }).join('') +
-    '</div>' +
-  '</div>';
+/* ============================================================ PIVOT BAR */
+function _pivotBar() {
+  var pool = poolDims();
+  var vl   = activeVals();
+  var html = '<div id="tgt-pivot-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 16px;background:#0F1117;color:#fff;font-size:11px;font-family:inherit">';
+
+  if (pool.length) {
+    html += '<div style="display:flex;align-items:center;gap:4px"><span style="color:#9CA3AF;font-weight:600;font-size:10px;margin-right:2px">HAVUZ</span>';
+    pool.forEach(function(d) {
+      html += '<span style="display:inline-flex;gap:2px;background:#374151;border-radius:4px;overflow:hidden">'+
+        '<button class="tgt-pool-rows" data-dim="'+d+'" style="background:none;border:none;color:#D1D5DB;cursor:pointer;padding:3px 6px;font-size:10px;font-family:inherit" title="SATIRLARA ekle">'+DIM_LABEL[d]+' \u2193</button>'+
+        (d!=='ay' ? '<button class="tgt-pool-cols" data-dim="'+d+'" style="background:none;border:none;color:#9CA3AF;cursor:pointer;padding:3px 6px;font-size:10px;font-family:inherit;border-left:1px solid #4B5563" title="SUTUNLARA ekle">\u2192</button>' : '')+
+      '</span>';
+    });
+    html += '</div><div style="width:1px;height:20px;background:#374151;margin:0 2px"></div>';
+  }
+
+  html += '<div style="display:flex;align-items:center;gap:4px"><span style="color:#9CA3AF;font-weight:600;font-size:10px;margin-right:2px">SATIRLAR</span>';
+  _S.rows.forEach(function(d,i) {
+    html += '<span style="display:inline-flex;align-items:center;gap:2px;background:#4F46E5;border-radius:4px;padding:2px 4px">'+
+      (i>0 ? '<button class="tgt-mv" data-dim="'+d+'" data-zone="rows" data-dir="-1" style="background:none;border:none;color:#C7D2FE;cursor:pointer;padding:0 2px;font-family:inherit">\u2039</button>' : '')+
+      '<span style="color:#fff;font-size:10px;font-weight:600">'+DIM_LABEL[d]+'</span>'+
+      (i<_S.rows.length-1 ? '<button class="tgt-mv" data-dim="'+d+'" data-zone="rows" data-dir="1" style="background:none;border:none;color:#C7D2FE;cursor:pointer;padding:0 2px;font-family:inherit">\u203a</button>' : '')+
+      '<button class="tgt-rm" data-dim="'+d+'" data-zone="rows" style="background:none;border:none;color:#A5B4FC;cursor:pointer;padding:0 2px;font-family:inherit">\xd7</button>'+
+    '</span>';
+  });
+  html += '</div>';
+
+  html += '<div style="width:1px;height:20px;background:#374151;margin:0 2px"></div>';
+  html += '<div style="display:flex;align-items:center;gap:4px"><span style="color:#9CA3AF;font-weight:600;font-size:10px;margin-right:2px">SUTUNLAR</span>';
+  _S.cols.forEach(function(d,i) {
+    var fixed = d==='ay';
+    html += '<span style="display:inline-flex;align-items:center;gap:2px;background:'+(fixed?'#1F2937':'#065F46')+';border-radius:4px;padding:2px 6px">'+
+      '<span style="color:#fff;font-size:10px;font-weight:600">'+DIM_LABEL[d]+'</span>'+
+      (!fixed ? '<button class="tgt-rm" data-dim="'+d+'" data-zone="cols" style="background:none;border:none;color:#6EE7B7;cursor:pointer;padding:0 2px;font-family:inherit">\xd7</button>' : '')+
+    '</span>';
+  });
+  html += '</div>';
+
+  html += '<div style="width:1px;height:20px;background:#374151;margin:0 2px"></div>';
+  html += '<div style="display:flex;align-items:center;gap:4px"><span style="color:#9CA3AF;font-weight:600;font-size:10px;margin-right:2px">DEGERLER</span>';
+  VAL_DEFS.forEach(function(v){
+    html += '<button class="tgt-val" data-val="'+v.k+'" style="background:'+(_S.vals[v.k]?'#15803D':'#374151')+';border:none;color:#fff;cursor:pointer;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;font-family:inherit">'+v.l+'</button>';
+  });
+  html += '</div>';
+
+  html += '<div style="width:1px;height:20px;background:#374151;margin:0 2px"></div>';
+  html += '<div style="display:flex;align-items:center;gap:3px"><span style="color:#9CA3AF;font-weight:600;font-size:10px;margin-right:2px">FORM</span>';
+  [['tabular','Tabular'],['outline','Outline'],['compact','Compact']].forEach(function(f){
+    html += '<button class="tgt-form" data-form="'+f[0]+'" style="background:'+(_S.form===f[0]?'#6B7280':'#374151')+';border:none;color:#fff;cursor:pointer;border-radius:4px;padding:3px 8px;font-size:10px;font-family:inherit">'+f[1]+'</button>';
+  });
+  html += '</div>';
+
+  html += '<div style="margin-left:auto;display:flex;gap:6px">'+
+    '<button id="tgt-edit-btn" style="background:'+(_S.editMode?'#B45309':'#374151')+';border:none;color:#fff;cursor:pointer;border-radius:4px;padding:4px 12px;font-size:11px;font-weight:600;font-family:inherit">'+(_S.editMode?'\u270F Duzenle Aktif':'\u270F Duzenle')+'</button>'+
+    '<button id="tgt-import-btn" style="background:#4F46E5;border:none;color:#fff;cursor:pointer;border-radius:4px;padding:4px 12px;font-size:11px;font-weight:600;font-family:inherit">Excel\u2019den Yukle</button>'+
+  '</div></div>';
+  return html;
 }
 
-function _renderImportModal() {
-  return '<div id="tgt-modal-backdrop" class="tgt-modal-backdrop" style="display:none">' +
-    '<div class="tgt-modal"><div id="tgt-modal-body"></div></div>' +
-  '</div>';
+/* ============================================================ FILTER BAR */
+var _openFilter = null;
+function _filterBar() {
+  var FDIMS = [
+    { dim:'ulke',    lbl:'Ulke',    vals:_fVals('ulke')    },
+    { dim:'musteri', lbl:'Musteri', vals:_fVals('musteri') },
+    { dim:'urun',    lbl:'Urun',    vals:_fVals('urun')    },
+    { dim:'bolge',   lbl:'Bolge',   vals:_fVals('bolge')   },
+  ];
+  var html = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:7px 16px;background:#fff;border-bottom:1.5px solid #E2E5EF;font-size:12px">';
+  html += '<select id="tgt-yr" style="font-size:12px;border:1.5px solid #E2E5EF;border-radius:5px;padding:4px 8px;cursor:pointer;background:#fff;height:30px;min-height:unset!important;width:auto!important">'+
+    [_S.year-1,_S.year,_S.year+1].map(function(y){ return '<option value="'+y+'"'+(y===_S.year?' selected':'')+'>'+y+'</option>'; }).join('')+
+  '</select>';
+
+  FDIMS.forEach(function(fd) {
+    var act = _S.filters[fd.dim].length;
+    var isO = _openFilter===fd.dim;
+    html += '<div style="position:relative">'+
+      '<button class="tgt-fbtn" data-fdim="'+fd.dim+'" style="background:#fff;border:1.5px solid '+(act?'#4F46E5':'#E2E5EF')+';border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;color:'+(act?'#4F46E5':'#4A5068')+';font-family:inherit;min-height:unset!important;width:auto!important">'+
+        fd.lbl+(act?' ('+act+')':'')+' \u25be'+
+      '</button>'+
+      (isO ? _fDrop(fd) : '')+
+    '</div>';
+  });
+
+  html += '<div style="margin-left:auto;display:flex;gap:6px;align-items:center">'+
+    '<input id="tgt-search" placeholder="Ara..." value="'+_esc(_S.search)+'" style="font-size:12px;border:1.5px solid #E2E5EF;border-radius:5px;padding:4px 10px;width:180px;min-height:unset!important">'+
+    (_hasActiveFilters() ? '<button id="tgt-clr" style="background:none;border:1px solid #DC2626;color:#DC2626;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;min-height:unset!important;width:auto!important">\xd7 Temizle</button>' : '')+
+  '</div></div>';
+  return html;
 }
 
-/* ============================================================
-   EVENT BINDING
-   ============================================================ */
+function _hasActiveFilters() {
+  return _S.search || Object.values(_S.filters).some(function(f){ return f.length>0; });
+}
+
+function _fVals(dim) {
+  if (dim==='musteri') return _state.customers.slice().sort(function(a,b){ return a.name.localeCompare(b.name,'tr'); });
+  if (dim==='urun')    return _state.products.filter(function(p){ return p.active!==false; }).sort(function(a,b){ return a.name.localeCompare(b.name,'tr'); });
+  var seen={}, vals=[];
+  _state.targets.forEach(function(t){ var v=dv(t,dim); if(v&&!seen[v]){seen[v]=1;vals.push(v);} });
+  if (dim==='bolge') return vals.map(Number).sort(function(a,b){return a-b;}).map(String);
+  return vals.sort();
+}
+
+function _fDrop(fd) {
+  var dim=fd.dim, vals=fd.vals, sel=_S.filters[dim], isId=(dim==='musteri'||dim==='urun');
+  return '<div id="tgt-fdrop-'+dim+'" style="position:absolute;top:calc(100% + 4px);left:0;z-index:300;background:#fff;border:1.5px solid #E2E5EF;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:240px;max-width:320px">'+
+    '<div style="padding:8px"><input class="tgt-fsrch" data-dim="'+dim+'" placeholder="Ara..." style="width:100%;font-size:12px;border:1.5px solid #E2E5EF;border-radius:5px;padding:5px 8px;min-height:unset!important;box-sizing:border-box"></div>'+
+    '<div id="tgt-flist-'+dim+'" style="max-height:240px;overflow-y:auto;padding:0 4px">'+
+      vals.map(function(v){
+        var id=isId?v.id:v, lbl=isId?v.name:(dim==='bolge'?'Bolge '+v:v), chk=sel.includes(id);
+        return '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;border-radius:4px;font-size:12px" onmouseover="this.style.background=\'#F3F4F6\'" onmouseout="this.style.background=\'\'">'+
+          '<input type="checkbox" class="tgt-fchk" data-dim="'+dim+'" value="'+_esc(String(id))+'"'+(chk?' checked':'')+' style="accent-color:#4F46E5;width:14px;height:14px;flex-shrink:0;min-height:unset!important">'+
+          '<span>'+_esc(lbl)+'</span></label>';
+      }).join('')+
+    '</div>'+
+    '<div style="display:flex;gap:6px;padding:8px;border-top:1px solid #E2E5EF">'+
+      '<button class="tgt-fall" data-dim="'+dim+'" style="flex:1;background:#F3F4F6;border:none;border-radius:5px;padding:5px;font-size:11px;cursor:pointer;font-family:inherit;min-height:unset!important">Tümünü Sec</button>'+
+      '<button class="tgt-fnone" data-dim="'+dim+'" style="flex:1;background:#F3F4F6;border:none;border-radius:5px;padding:5px;font-size:11px;cursor:pointer;font-family:inherit;min-height:unset!important">Sifirla</button>'+
+    '</div></div>';
+}
+
+/* ============================================================ BIND */
 function _bind() {
-  _bindControls();
-  _bindImport();
-  _bindTableClicks();
+  // Pool → rows
+  document.querySelectorAll('.tgt-pool-rows').forEach(function(b){
+    b.addEventListener('click', function(){ _S.rows.push(this.dataset.dim); render(); });
+  });
+  // Pool → cols
+  document.querySelectorAll('.tgt-pool-cols').forEach(function(b){
+    b.addEventListener('click', function(){ _S.cols.push(this.dataset.dim); render(); });
+  });
+  // Remove from rows/cols
+  document.querySelectorAll('.tgt-rm').forEach(function(b){
+    b.addEventListener('click', function(){
+      var d=this.dataset.dim, z=this.dataset.zone;
+      if (z==='rows') _S.rows=_S.rows.filter(function(x){return x!==d;});
+      else            _S.cols=_S.cols.filter(function(x){return x!==d;});
+      render();
+    });
+  });
+  // Reorder
+  document.querySelectorAll('.tgt-mv').forEach(function(b){
+    b.addEventListener('click', function(){
+      var d=this.dataset.dim, z=this.dataset.zone, dir=parseInt(this.dataset.dir);
+      var arr=z==='rows'?_S.rows:_S.cols, i=arr.indexOf(d);
+      if (i+dir>=0 && i+dir<arr.length){ var tmp=arr[i+dir]; arr[i+dir]=arr[i]; arr[i]=tmp; }
+      render();
+    });
+  });
+  // Val toggle
+  document.querySelectorAll('.tgt-val').forEach(function(b){
+    b.addEventListener('click', function(){ _S.vals[this.dataset.val]=!_S.vals[this.dataset.val]; render(); });
+  });
+  // Form
+  document.querySelectorAll('.tgt-form').forEach(function(b){
+    b.addEventListener('click', function(){ _S.form=this.dataset.form; render(); });
+  });
+  // Edit mode
+  var eb=document.getElementById('tgt-edit-btn');
+  if (eb) eb.addEventListener('click', function(){ _S.editMode=!_S.editMode; render(); });
+  // Year
+  var yr=document.getElementById('tgt-yr');
+  if (yr) yr.addEventListener('change', function(){ _S.year=parseInt(this.value); render(); });
+  // Search
+  var sr=document.getElementById('tgt-search');
+  if (sr) sr.addEventListener('input', function(){ _S.search=this.value; render(); });
+  // Clear
+  var cl=document.getElementById('tgt-clr');
+  if (cl) cl.addEventListener('click', function(){ _S.filters={ulke:[],musteri:[],urun:[],bolge:[]}; _S.search=''; render(); });
+  // Outline collapse
+  document.querySelectorAll('.tgt-nc-tog').forEach(function(b){
+    b.addEventListener('click', function(e){ e.stopPropagation(); var gk=this.dataset.gk; _S.collapsed[gk]=!_S.collapsed[gk]; render(); });
+  });
+  // Filter buttons
+  document.querySelectorAll('.tgt-fbtn').forEach(function(b){
+    b.addEventListener('click', function(e){ e.stopPropagation(); var d=this.dataset.fdim; _openFilter=(_openFilter===d)?null:d; render(); });
+  });
+  document.querySelectorAll('.tgt-fchk').forEach(function(chk){
+    chk.addEventListener('change', function(){
+      var d=this.dataset.dim, v=this.value;
+      if (this.checked) { if (!_S.filters[d].includes(v)) _S.filters[d].push(v); }
+      else _S.filters[d]=_S.filters[d].filter(function(x){return x!==v;});
+      render();
+    });
+  });
+  document.querySelectorAll('.tgt-fsrch').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      var q=this.value.toLowerCase(), list=document.getElementById('tgt-flist-'+this.dataset.dim);
+      if (!list) return;
+      list.querySelectorAll('label').forEach(function(l){ l.style.display=l.textContent.toLowerCase().includes(q)?'':'none'; });
+    });
+  });
+  document.querySelectorAll('.tgt-fall').forEach(function(b){
+    b.addEventListener('click', function(){
+      var d=this.dataset.dim, vals=_fVals(d), isId=(d==='musteri'||d==='urun');
+      _S.filters[d]=vals.map(function(v){ return String(isId?v.id:v); });
+      render();
+    });
+  });
+  document.querySelectorAll('.tgt-fnone').forEach(function(b){
+    b.addEventListener('click', function(){ _S.filters[this.dataset.dim]=[]; render(); });
+  });
+  document.addEventListener('click', function(e){
+    if (_openFilter && !e.target.closest('[data-fdim]') && !e.target.closest('[id^="tgt-fdrop"]')) {
+      _openFilter=null; render();
+    }
+  }, { once: false });
+  // Cell editor
   _bindCellEditor();
+  // Import
+  _bindImport();
   _bindImportModal();
 }
 
-function _bindControls() {
-  var el;
-  el = document.getElementById('tgt-year');
-  if (el) el.addEventListener('change', function() {
-    _state.year = parseInt(this.value);
-    _state.openCountries = {};
-    _state.openCustomers = {};
-    _render();
-  });
-  el = document.getElementById('tgt-bolge');
-  if (el) el.addEventListener('change', function() {
-    _state.filterBolge = this.value;
-    _render();
-  });
-  el = document.getElementById('tgt-country');
-  if (el) el.addEventListener('change', function() {
-    _state.filterCountry = this.value;
-    _render();
-  });
-  document.querySelectorAll('.tgt-metric-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      _state.metric = this.dataset.metric;
-      _render();
-    });
-  });
-}
-
-function _bindTableClicks() {
-  var tbody = document.querySelector('.tgt-table tbody');
-  if (!tbody) return;
-  tbody.addEventListener('click', function(e) {
-    if (e.target.closest('.tgt-cell-editable')) return;
-
-    var cRow = e.target.closest('.tgt-row-country');
-    if (cRow) {
-      var c = cRow.dataset.country;
-      _state.openCountries[c] = !_state.openCountries[c];
-      _render();
-      return;
-    }
-    var cuRow = e.target.closest('.tgt-row-customer');
-    if (cuRow) {
-      var key = cuRow.dataset.country + '|' + cuRow.dataset.cust;
-      _state.openCustomers[key] = !_state.openCustomers[key];
-      _render();
-    }
-  });
-}
-
-/* ============================================================
-   CELL EDITOR
-   ============================================================ */
-var _activeCell = null;
-
+/* ============================================================ CELL EDITOR */
+var _aCell=null;
 function _bindCellEditor() {
-  var editor = document.getElementById('tgt-editor');
-  if (!editor) return;
-
-  document.querySelectorAll('.tgt-cell-editable').forEach(function(td) {
-    td.addEventListener('click', function(e) {
-      e.stopPropagation();
-      _activateCell(td, editor);
-    });
+  var editor=document.getElementById('tgt-editor'); if (!editor) return;
+  document.querySelectorAll('.tgt-ce').forEach(function(td){
+    td.addEventListener('click', function(e){ e.stopPropagation(); _activateCell(td,editor); });
   });
-
-  editor.addEventListener('blur', function() { _commitEdit(editor); });
-  editor.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter')  { e.preventDefault(); _commitEdit(editor); }
-    if (e.key === 'Escape') { _cancelEdit(editor); }
+  editor.addEventListener('blur', function(){ _commitEdit(editor); });
+  editor.addEventListener('keydown', function(e){
+    if (e.key==='Enter'){ e.preventDefault(); _commitEdit(editor); }
+    if (e.key==='Escape') _cancelEdit(editor);
   });
 }
-
 function _activateCell(td, editor) {
-  if (_activeCell) _activeCell.classList.remove('tgt-cell-active');
-  _activeCell = td;
-  td.classList.add('tgt-cell-active');
-
-  var wrap  = document.querySelector('.tgt-table-wrap');
-  var wRect = wrap  ? wrap.getBoundingClientRect()  : { left: 0, top: 0 };
-  var tdRect = td.getBoundingClientRect();
-  var scrollL = wrap ? wrap.scrollLeft : 0;
-  var scrollT = wrap ? wrap.scrollTop  : 0;
-
-  editor.style.left    = (tdRect.left - wRect.left + scrollL) + 'px';
-  editor.style.top     = (tdRect.top  - wRect.top  + scrollT) + 'px';
-  editor.style.width   = tdRect.width  + 'px';
-  editor.style.height  = tdRect.height + 'px';
-  editor.style.display = 'block';
-  editor.dataset.tid   = td.dataset.tid;
-  editor.dataset.field = td.dataset.field;
-  editor.value         = td.dataset.val || '';
-  editor.focus();
-  editor.select();
+  if (_aCell) _aCell.style.outline='';
+  _aCell=td; td.style.outline='2px solid #4F46E5';
+  var wrap=document.getElementById('tgt-table-wrap');
+  var wr=wrap?wrap.getBoundingClientRect():{left:0,top:0};
+  var tr=td.getBoundingClientRect();
+  editor.style.left  =(tr.left-wr.left+(wrap?wrap.scrollLeft:0))+'px';
+  editor.style.top   =(tr.top -wr.top +(wrap?wrap.scrollTop :0))+'px';
+  editor.style.width =tr.width+'px'; editor.style.height=tr.height+'px';
+  editor.style.display='block';
+  editor.dataset.tid=td.dataset.tid; editor.dataset.field=td.dataset.field;
+  editor.value=td.dataset.val||''; editor.focus(); editor.select();
 }
-
 async function _commitEdit(editor) {
-  var tid   = editor.dataset.tid;
-  var field = editor.dataset.field;
-  var raw   = editor.value.trim();
-  var val   = raw === '' ? null : parseFloat(raw.replace(',', '.'));
-
-  editor.style.display = 'none';
-  if (_activeCell) { _activeCell.classList.remove('tgt-cell-active'); _activeCell = null; }
-
-  if (!tid || !field) return;
-  if (isNaN(val)) val = null;
-
-  await dbUpdateTarget(tid, field, val);
-
-  var t = _state.targets.find(function(x) { return x.id === tid; });
-  if (t) { t[field] = val; }
-  _render();
+  var tid=editor.dataset.tid, field=editor.dataset.field;
+  var raw=editor.value.trim(), val=raw===''?null:parseFloat(raw.replace(',','.'));
+  editor.style.display='none';
+  if (_aCell){ _aCell.style.outline=''; _aCell=null; }
+  if (!tid||!field) return; if (isNaN(val)) val=null;
+  await dbUpdateTarget(tid,field,val);
+  var t=_state.targets.find(function(x){ return x.id===tid; });
+  if (t) { if (field==='target_eur') t.eur=val||0; else if (field==='target_usd') t.usd=val||0; else t.qty=val||0; }
+  render();
 }
-
 function _cancelEdit(editor) {
-  editor.style.display = 'none';
-  if (_activeCell) { _activeCell.classList.remove('tgt-cell-active'); _activeCell = null; }
+  editor.style.display='none';
+  if (_aCell){ _aCell.style.outline=''; _aCell=null; }
 }
 
-/* ============================================================
-   IMPORT FLOW
-   ============================================================ */
+/* ============================================================ IMPORT TRIGGER */
 function _bindImport() {
-  var btn    = document.getElementById('tgt-import-btn');
-  var fileIn = document.getElementById('tgt-file-in');
-  if (!btn || !fileIn) return;
-
-  btn.addEventListener('click', function() { fileIn.click(); });
-
-  fileIn.addEventListener('change', function() {
-    var file = this.files[0];
-    if (!file) return;
-    this.value = '';
+  var btn=document.getElementById('tgt-import-btn'), fi=document.getElementById('tgt-file-in');
+  if (!btn||!fi) return;
+  btn.addEventListener('click', function(){ fi.click(); });
+  fi.addEventListener('change', function(){
+    var file=this.files[0]; if (!file) return; this.value='';
     showToast('Dosya okunuyor...');
     processBudgetImportFile(file, function(preview) {
-      if (preview.error) {
-        showToast('Hata: ' + preview.error);
-        return;
-      }
-      _state.importPreview = preview;
-      _state.importStep    = 'preview';
-      _showImportModal();
+      if (preview.error){ showToast('Hata: '+preview.error); return; }
+      _state.importPreview=preview; _state.importStep='preview'; _showImportModal();
     });
   });
 }
+
+
 
 /* Preview tree state */
 var _pvOpen = { c: {}, cu: {} };
@@ -699,12 +932,12 @@ function _bindImportModal(tree, activeTab) {
       if (_pmsg) _pmsg.textContent = '\u2713 Tamamland\u0131 \u2014 ' + result.inserted.toLocaleString('tr-TR') + ' hedef kayd\u0131 olu\u015fturuldu.';
       var _pbar = document.getElementById('tgt-pbar'); if (_pbar) _pbar.style.width = '100%';
       setTimeout(function() {
-        var backdrop = document.getElementById('tgt-modal-backdrop');
+        var backdrop = document.getElementById('tgt-modal-backdrop')
         if (backdrop) backdrop.style.display = 'none';
         _pvOpen = { c:{}, cu:{} };
         _state.importStep    = 'idle';
         _state.importPreview = null;
-        _loadData();
+        _loadData().then(function(){ render(); });
       }, 1800);
     } else {
       var _perr = document.getElementById('tgt-progress-msg');
