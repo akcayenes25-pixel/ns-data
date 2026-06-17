@@ -20,8 +20,8 @@ const APP_VERSION = 'v3.1.0';
    ============================================================= */
 const CHANGELOG = {
   'v3.1.0': {
-    tarih: 'Haziran 2026',
-    maddeler: [
+    date: 'Haziran 2026',
+    items: [
       '[İyileştirildi] Hedefler ekranı yeniden yazıldı: index sistemi, bölünmüş render, delegated events',
       '[Eklendi] Sütun sürükleme ile yeniden boyutlandırma, Excel collapse, drag-drop boyut yerleştirme',
       '[Düzeltildi] Türkçe karakterler, tam genişlik, yapışkan sütun, hücre editörü konumu'
