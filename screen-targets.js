@@ -180,7 +180,6 @@ function dimVals(dim, source) {
     (source||[]).forEach(function(t) { if (!ms[t.month]){ ms[t.month]=1; mv.push(String(t.month)); } });
     return mv.length ? mv : ['1','2','3','4','5','6','7','8','9','10','11','12'];
   }
-  if (dim === 'urun') return _state.products.filter(function(p){ return p.active!==false; }).map(function(p){ return p.id; });
   var seen = {}, vals = [];
   (source||[]).forEach(function(t){ var v=dv(t,dim); if(v&&!seen[v]){seen[v]=1;vals.push(v);} });
   return vals;
@@ -318,13 +317,8 @@ function buildRowsRecursive(ctxDimVals, schema, level) {
   var dim  = _S.rows[level];
   var base;
   // Get dimension values from index (already filtered)
-  if (dim === 'urun') {
-    base = _state.products.filter(function(p){ return p.active!==false; }).map(function(p){ return p.id; });
-  } else {
-    // Build candidate values from index intersection
-    var source = _getIndexedTargets(ctxDimVals);
-    base = dimVals(dim, source);
-  }
+  var source = _getIndexedTargets(ctxDimVals);
+  base = dimVals(dim, source);
   base = sortVals(dim, base, null);
   var parts = [];
   base.forEach(function(val) {
