@@ -357,7 +357,7 @@ function _getIndexedTargets(ctx) {
 function _groupRow(gk, lbl, targets, schema, ctx, level, collapsed, dim) {
   var nc = schema.filter(function(c){return c.type==='name';}).length;
   var pad = level * 18 + 10;
-  var btn = '<button class="tgt-tog" data-gk="' + _esc(gk) + '" data-dim="' + dim + '" style="margin-right:6px;color:#fff;font-size:13px;font-weight:700;background:rgba(255,255,255,.15);border:none;border-radius:3px;width:20px;height:20px;cursor:pointer;padding:0;line-height:20px;flex-shrink:0">' + (collapsed?'+':'-') + '</button>';
+  var btn = '<button class="tgt-tog" data-action="tog" data-gk="' + _esc(gk) + '" data-dim="' + dim + '" style="margin-right:6px;color:#fff;font-size:13px;font-weight:700;background:rgba(255,255,255,.15);border:none;border-radius:3px;width:20px;height:20px;cursor:pointer;padding:0;line-height:20px;flex-shrink:0">' + (collapsed?'+':'-') + '</button>';
   var nameCells = '<td class="tgt-td tgt-grp-name" colspan="' + nc + '" style="padding:7px 10px 7px ' + pad + 'px;font-size:13px;font-weight:700;color:#fff;background:#374151;border-bottom:1px solid #4B5563" data-gk="' + _esc(gk) + '" data-dim="' + dim + '">' +
     '<div style="display:flex;align-items:center">' + btn + _esc(lbl) + '</div></td>';
   var valCells = schema.filter(function(c){return c.type!=='name';}).map(function(c) {
@@ -616,10 +616,10 @@ function _pivotBarHTML() {
     parts.push(
       '<div class="tgt-gap" data-zone="rows" data-idx="' + i + '"></div>' +
       '<span class="tgt-chip tgt-chip-row" draggable="true" data-dim="' + d + '" data-zone="rows" data-action="chip">' +
-        (i>0?'<button class="tgt-mv" data-dim="' + d + '" data-zone="rows" data-dir="-1">‹</button>':'') +
+        (i>0?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="rows" data-dir="-1">‹</button>':'') +
         DIM_LABEL[d] +
-        (i<_S.rows.length-1?'<button class="tgt-mv" data-dim="' + d + '" data-zone="rows" data-dir="1">›</button>':'') +
-        '<button class="tgt-rm" data-dim="' + d + '" data-zone="rows">×</button>' +
+        (i<_S.rows.length-1?'<button class="tgt-mv" data-action="mv" data-dim="' + d + '" data-zone="rows" data-dir="1">›</button>':'') +
+        '<button class="tgt-rm" data-action="rm" data-dim="' + d + '" data-zone="rows">×</button>' +
       '</span>'
     );
   });
@@ -634,7 +634,7 @@ function _pivotBarHTML() {
       '<div class="tgt-gap" data-zone="cols" data-idx="' + i + '"></div>' +
       '<span class="tgt-chip tgt-chip-col" draggable="true" data-dim="' + d + '" data-zone="cols" data-action="chip">' +
         DIM_LABEL[d] +
-        '<button class="tgt-rm" data-dim="' + d + '" data-zone="cols">×</button>' +
+        '<button class="tgt-rm" data-action="rm" data-dim="' + d + '" data-zone="cols">×</button>' +
       '</span>'
     );
   });
@@ -836,6 +836,25 @@ function _bindDelegated() {
         else if (_S.sort.dir==='desc') _S.sort.dir = 'asc';
         else _S.sort = {dim:null, dir:'none'};
         _buildIndexes(); _updateTable();
+        break;
+
+      case 'rm':
+        var rdim = el.dataset.dim, rzone = el.dataset.zone;
+        if (rzone === 'rows') _S.rows = _S.rows.filter(function(d){return d!==rdim;});
+        else _S.cols = _S.cols.filter(function(d){return d!==rdim;});
+        _S.selectedDim = null;
+        _updateAll();
+        break;
+
+      case 'mv':
+        var mdim = el.dataset.dim, mzone = el.dataset.zone, mdir = parseInt(el.dataset.dir);
+        var arr = mzone === 'rows' ? _S.rows : _S.cols;
+        var mi = arr.indexOf(mdim);
+        if (mi >= 0 && mi + mdir >= 0 && mi + mdir < arr.length) {
+          arr.splice(mi, 1);
+          arr.splice(mi + mdir, 0, mdim);
+        }
+        _updateAll();
         break;
 
       case 'tog':
