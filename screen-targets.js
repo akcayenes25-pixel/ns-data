@@ -983,28 +983,29 @@ function _bindDrag() {
   }
 
   // Compute the target zone + insert index from pointer position
+  // Zones are laid out HORIZONTALLY (HAVUZ | SATIRLAR | SÜTUNLAR), so pick by X.
   function computeTarget(x, y) {
     var zones = ['pool','rows','cols'];
     var best = null;
+    // Primary: pointer X falls inside a zone's horizontal span
     for (var zi=0; zi<zones.length; zi++) {
       var zid = zones[zi];
       var zEl = document.getElementById('tz-'+zid);
       if (!zEl) continue;
       var r = zEl.getBoundingClientRect();
-      // Expand hit area vertically a bit for forgiving aim
-      if (y >= r.top-12 && y <= r.bottom+12) {
+      if (x >= r.left-8 && x <= r.right+8) {
         best = { zone: zid, el: zEl };
         break;
       }
     }
     if (!best) {
-      // Fallback: nearest zone by vertical distance
+      // Fallback: nearest zone by horizontal distance to its center
       var minD = Infinity;
       for (var zj=0; zj<zones.length; zj++) {
         var ze = document.getElementById('tz-'+zones[zj]); if (!ze) continue;
         var rr = ze.getBoundingClientRect();
-        var cy = (rr.top+rr.bottom)/2;
-        var d = Math.abs(y-cy);
+        var cx = (rr.left+rr.right)/2;
+        var d = Math.abs(x-cx);
         if (d < minD) { minD = d; best = { zone: zones[zj], el: ze }; }
       }
     }
