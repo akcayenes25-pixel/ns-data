@@ -1938,9 +1938,12 @@
     document.body.appendChild(_overlay);
 
     var _activeSpan = null;
-    var _pendingSaves = {};
+    var _writeQueue = {};           // saveKey -> { payload, timer }
+    var _writePendingPromises = []; // in-flight dbUpsertOrder promises
 
     window._nsActivateCell = function(span) {
+      // Bekleyen render timer'i iptal et — stale span freeze bugunu onler
+      clearTimeout(window._nsRenderTimer);
       // Onceki hucreyi kaydet
       if (_activeSpan && _activeSpan !== span) _nsSaveOverlay();
       _activeSpan = span;
@@ -2047,12 +2050,46 @@
       }
       if (payload) {
         var saveKey = oid || (_overlay.dataset.newCust + '_' + _overlay.dataset.newUrun);
-        _pendingSaves[saveKey] = payload;
-        // DB'ye hemen gonder ama UI'yi bekleme
-        dbUpsertOrder(payload).then(function(ok){
+        // Ayni siparis icin bekleyen timer varsa iptal et — sadece son degeri gonder
+        if (_writeQueue[saveKey]) clearTimeout(_writeQueue[saveKey].timer);
+        _writeQueue[saveKey] = {
+          payload: payload,
+          timer: setTimeout(function() {
+            delete _writeQueue[saveKey];
+            var p = dbUpsertOrder(payload).then(function(ok) {
+              if (!ok) showToast('Kaydedilemedi');
+            });
+            _writePendingPromises.push(p);
+            p.then(function() {
+              var idx = _writePendingPromises.indexOf(p);
+              if (idx !== -1) _writePendingPromises.splice(idx, 1);
+            }, function() {
+              var idx = _writePendingPromises.indexOf(p);
+              if (idx !== -1) _writePendingPromises.splice(idx, 1);
+            });
+          }, 300)
+        };
+      }
+    }
+
+    // Bekleyen tum debounce timer'lari iptal et, DB yazimlarini hemen gonder
+    // Promise.allSettled ile in-flight yazimlar da beklenir
+    function _flushWrites() {
+      var promises = [];
+      Object.keys(_writeQueue).forEach(function(key) {
+        clearTimeout(_writeQueue[key].timer);
+        var payload = _writeQueue[key].payload;
+        delete _writeQueue[key];
+        var p = dbUpsertOrder(payload).then(function(ok) {
           if (!ok) showToast('Kaydedilemedi');
         });
-      }
+        promises.push(p);
+      });
+      return Promise.all(
+        promises.concat(_writePendingPromises).map(function(p) {
+          return p.then(function(v) { return v; }, function() { return null; });
+        })
+      );
     }
 
     function _nsDeactivateCell() {
@@ -2060,14 +2097,16 @@
       _activeSpan = null;
       _overlay.style.display = 'none';
       clearTimeout(window._nsRenderTimer);
-      window._nsRenderTimer = setTimeout(function() {
+      _flushWrites().then(function() {
+        // Kullanici bu sirada baska bir hucreye gecmisse atla
+        if (document.activeElement && document.activeElement.id === 'ns-cell-editor') return;
         if (window._nsOrdersPendingReload) {
           window._nsOrdersPendingReload = false;
           _loadAll().then(function() { if (_screenActive()) renderData(); });
         } else {
-          renderData();
+          if (_screenActive()) renderData();
         }
-      }, 150);
+      });
     }
 
     function _nsMoveCell(direction) {

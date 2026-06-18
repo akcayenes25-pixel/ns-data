@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.1.2';
+const APP_VERSION = 'v3.1.3';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,14 @@ const APP_VERSION = 'v3.1.2';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v3.1.3': {
+    date: 'Haziran 2026',
+    items: [
+      '[Düzeltildi] Hızlı veri girişinde değerler gecikmeli görünüyor veya kayboluyordu',
+      '[Düzeltildi] 5-6 Enter sonrası hücre aktivasyonu donuyor, sayfa sona kayıyordu',
+      '[İyileştirildi] Aynı satıra hızlı yazışta tek DB yazımı yapılır, çakışma olmaz',
+    ]
+  },
   'v3.1.2': {
     date: 'Haziran 2026',
     items: [
