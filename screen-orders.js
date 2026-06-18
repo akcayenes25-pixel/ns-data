@@ -537,7 +537,11 @@
     var html2 = '';
     sortedVals.forEach(function (val) {
       var groupOrders = orders.filter(function (o) { return dv(o, dim) === val; });
-      if (!_S.showEmpty && !groupOrders.length) return;
+      if (!_S.showEmpty) {
+        var _gTot = 0;
+        groupOrders.forEach(function (o) { _gTot += (o.cikan || 0) + (o.cikacak || 0); });
+        if (_gTot === 0) return;
+      }
       // Check hiddenRows for musteri+urun combination
       if (dim === 'urun') {
         var musteriCtx = rowContext.find(function(r){ return r.dim === 'musteri'; });
