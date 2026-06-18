@@ -537,7 +537,7 @@
     var html2 = '';
     sortedVals.forEach(function (val) {
       var groupOrders = orders.filter(function (o) { return dv(o, dim) === val; });
-      if (dim !== 'urun' && !_S.showEmpty && !groupOrders.length) return;
+      if (!_S.showEmpty && !groupOrders.length) return;
       // Check hiddenRows for musteri+urun combination
       if (dim === 'urun') {
         var musteriCtx = rowContext.find(function(r){ return r.dim === 'musteri'; });
