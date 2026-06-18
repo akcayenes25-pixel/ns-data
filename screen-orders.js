@@ -1719,10 +1719,11 @@
       _dbgLog('DATA_CHANGED', { table: e.detail.table, filtersMusteri: _S.filters.musteri.slice(), hiddenRows: _S.hiddenRows.slice(), stateOrdersCount: _state.orders.length });
       if (['orders', 'products', 'customers'].includes(e.detail.table)) {
         var activeInput = document.activeElement && document.activeElement.classList.contains('o-ci');
-        if (activeInput) {
-          // Input odaktayken render etme — blur olunca yükle
-          activeInput._nsPendingReload = true;
-          document.activeElement._nsPendingReload = true;
+        var overlayActive = document.activeElement && document.activeElement.id === 'ns-cell-editor';
+        if (activeInput || overlayActive) {
+          // Input/overlay odaktayken DOM'u yeniden olusturma — blur olunca yuklenir
+          if (activeInput) { activeInput._nsPendingReload = true; document.activeElement._nsPendingReload = true; }
+          window._nsOrdersPendingReload = true;
         } else {
           _loadAll().then(function () { if (_screenActive()) renderData(); });
         }
@@ -2058,9 +2059,15 @@
       if (_activeSpan) _nsSaveOverlay();
       _activeSpan = null;
       _overlay.style.display = 'none';
-      // Tablodayken render et
       clearTimeout(window._nsRenderTimer);
-      window._nsRenderTimer = setTimeout(function() { renderData(); }, 150);
+      window._nsRenderTimer = setTimeout(function() {
+        if (window._nsOrdersPendingReload) {
+          window._nsOrdersPendingReload = false;
+          _loadAll().then(function() { if (_screenActive()) renderData(); });
+        } else {
+          renderData();
+        }
+      }, 150);
     }
 
     function _nsMoveCell(direction) {
@@ -2071,32 +2078,41 @@
       var target   = null;
 
       if (direction === 'right') {
-        // Satir sinirinda dur — bir sonraki satira gecme
         target = rowCells[rowIdx + 1] || null;
+        if (!target) {
+          // Son sutun — toplam kolonlarini goster
+          var _oTs4 = document.getElementById('o-ts');
+          if (_oTs4) _oTs4.scrollLeft = _oTs4.scrollWidth;
+        }
 
       } else if (direction === 'left') {
         if (rowIdx > 0) {
           target = rowCells[rowIdx - 1];
         } else {
-          // Zaten ilk sutun — satir basliklarini goster
           var _oTs3 = document.getElementById('o-ts');
           if (_oTs3) _oTs3.scrollLeft = 0;
         }
 
       } else if (direction === 'down' || direction === 'enter') {
-        // .o-ce iceren bir sonraki tr'yi bul (subtotal/group satirlarini atla)
         var nTr = tr.nextElementSibling;
         while (nTr && !nTr.querySelector('.o-ce')) nTr = nTr.nextElementSibling;
-        if (nTr) { var nc = Array.from(nTr.querySelectorAll('.o-ce')); target = nc[Math.min(rowIdx, nc.length - 1)] || null; }
+        if (nTr) {
+          var nc = Array.from(nTr.querySelectorAll('.o-ce'));
+          target = nc[Math.min(rowIdx, nc.length - 1)] || null;
+        } else {
+          // Son satir — genel toplam satirini goster
+          var gtr = document.querySelector('#screen-orders .o-dt tbody tr.gtr');
+          if (gtr) gtr.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+        }
 
       } else if (direction === 'up') {
-        // .o-ce iceren bir onceki tr'yi bul
         var pTr = tr.previousElementSibling;
         while (pTr && !pTr.querySelector('.o-ce')) pTr = pTr.previousElementSibling;
         if (pTr) { var pc = Array.from(pTr.querySelectorAll('.o-ce')); target = pc[Math.min(rowIdx, pc.length - 1)] || null; }
       }
 
-      _nsSaveOverlay();
+      // Deger degismediyse (fresh) kaydetme — DOM yeniden olusturmayi engelle
+      if (_overlay.dataset.fresh !== 'true') _nsSaveOverlay();
       if (target) {
         _activeSpan = null;
         window._nsActivateCell(target);
