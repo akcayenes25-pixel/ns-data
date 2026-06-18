@@ -966,7 +966,7 @@
     var mirror = document.getElementById('o-th-inner');
     if (!ts || !mirror) return;
     ts.removeEventListener('scroll', ts._sh || null);
-    ts._sh = function () { mirror.scrollLeft = ts.scrollLeft; };
+    ts._sh = function () { mirror.scrollLeft = ts.scrollLeft; if (window._nsReposOverlay) window._nsReposOverlay(); };
     ts.addEventListener('scroll', ts._sh);
   }
 
@@ -1944,8 +1944,16 @@
       if (_activeSpan && _activeSpan !== span) _nsSaveOverlay();
       _activeSpan = span;
 
+      // Hucreyi viewport'a getir — behavior:instant CSS scroll-behavior:smooth'u bypass eder
+      span.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+      // Ilk sutundaysa yatay kaymayi sifirla — satir basliklarini goster
+      var _oTs = document.getElementById('o-ts');
+      var _tr = span.closest('tr');
+      if (_oTs && _tr && _tr.querySelectorAll('.o-ce')[0] === span) _oTs.scrollLeft = 0;
+
       // Overlay'i span'in uzerine pozisyonla
       var rect = span.getBoundingClientRect();
+      _overlay.style.visibility = 'visible';
       _overlay.style.left = rect.left + 'px';
       _overlay.style.top = rect.top + 'px';
       _overlay.style.setProperty('width', rect.width + 'px', 'important');
@@ -2056,15 +2064,38 @@
     }
 
     function _nsMoveCell(direction) {
-      var cells = _nsGetCells();
-      var idx = cells.indexOf(_activeSpan);
-      if (idx === -1) return;
-      var colCount = _activeSpan.closest('tr') ? _activeSpan.closest('tr').querySelectorAll('.o-ce').length : 6;
-      var target = null;
-      if (direction === 'down' || direction === 'enter') target = cells[idx + colCount];
-      else if (direction === 'up') target = cells[idx - colCount];
-      else if (direction === 'right') target = cells[idx + 1];
-      else if (direction === 'left') target = cells[idx - 1];
+      if (!_activeSpan) return;
+      var tr = _activeSpan.closest('tr'); if (!tr) return;
+      var rowCells = Array.from(tr.querySelectorAll('.o-ce'));
+      var rowIdx   = rowCells.indexOf(_activeSpan);
+      var target   = null;
+
+      if (direction === 'right') {
+        // Satir sinirinda dur — bir sonraki satira gecme
+        target = rowCells[rowIdx + 1] || null;
+
+      } else if (direction === 'left') {
+        if (rowIdx > 0) {
+          target = rowCells[rowIdx - 1];
+        } else {
+          // Zaten ilk sutun — satir basliklarini goster
+          var _oTs3 = document.getElementById('o-ts');
+          if (_oTs3) _oTs3.scrollLeft = 0;
+        }
+
+      } else if (direction === 'down' || direction === 'enter') {
+        // .o-ce iceren bir sonraki tr'yi bul (subtotal/group satirlarini atla)
+        var nTr = tr.nextElementSibling;
+        while (nTr && !nTr.querySelector('.o-ce')) nTr = nTr.nextElementSibling;
+        if (nTr) { var nc = Array.from(nTr.querySelectorAll('.o-ce')); target = nc[Math.min(rowIdx, nc.length - 1)] || null; }
+
+      } else if (direction === 'up') {
+        // .o-ce iceren bir onceki tr'yi bul
+        var pTr = tr.previousElementSibling;
+        while (pTr && !pTr.querySelector('.o-ce')) pTr = pTr.previousElementSibling;
+        if (pTr) { var pc = Array.from(pTr.querySelectorAll('.o-ce')); target = pc[Math.min(rowIdx, pc.length - 1)] || null; }
+      }
+
       _nsSaveOverlay();
       if (target) {
         _activeSpan = null;
@@ -2133,6 +2164,24 @@
         }, 30);
       }
     };
+    // Scroll sirasinda overlay reposition — window scroll + o-ts yatay scroll
+    function _nsRepos() {
+      if (!_activeSpan || _overlay.style.display === 'none') return;
+      var r    = _activeSpan.getBoundingClientRect();
+      var flEl = document.querySelector('#screen-orders .o-fl');
+      var topH = flEl ? flEl.getBoundingClientRect().bottom : 120;
+      if (r.bottom <= topH || r.top >= window.innerHeight - 10) {
+        _overlay.style.visibility = 'hidden';
+        return;
+      }
+      _overlay.style.visibility = 'visible';
+      _overlay.style.left = r.left + 'px';
+      _overlay.style.top  = r.top  + 'px';
+      _overlay.style.setProperty('width',  r.width  + 'px', 'important');
+      _overlay.style.setProperty('height', r.height + 'px', 'important');
+    }
+    window.addEventListener('scroll', _nsRepos, { passive: true });
+    window._nsReposOverlay = _nsRepos; // syncScroll icin expose
   })();
 
 })();
