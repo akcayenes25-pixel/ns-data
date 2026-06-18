@@ -735,11 +735,28 @@ function _filterBarHTML() {
 }
 
 function _fVals(dim) {
-  if (dim==='musteri') return _state.customers.slice().sort(function(a,b){return a.name.localeCompare(b.name,'tr');});
-  if (dim==='urun')    return _state.products.filter(function(p){return p.active!==false;}).sort(function(a,b){return a.name.localeCompare(b.name,'tr');});
-  if (dim==='ay')      return MN.map(function(_,i){return {id:String(i+1),lbl:MN[i]+' ('+MNF[i]+')'}; });
+  if (dim==='ay') return MN.map(function(_,i){return {id:String(i+1),lbl:MN[i]+' ('+MNF[i]+')'}; });
+  /* cross-filter: only show values that exist in targets after applying all OTHER active filters */
+  var f = _S.filters;
+  var crossed = _state.targets.filter(function(t) {
+    if (t.year !== _S.year) return false;
+    if (dim !== 'ulke'    && f.ulke.length    && !f.ulke.includes(t.ulke))        return false;
+    if (dim !== 'musteri' && f.musteri.length && !f.musteri.includes(t.musteri))  return false;
+    if (dim !== 'urun'    && f.urun.length    && !f.urun.includes(t.urun))        return false;
+    if (dim !== 'bolge'   && f.bolge.length   && !f.bolge.includes(t.bolge))      return false;
+    if (dim !== 'ay'      && f.ay.length      && !f.ay.includes(String(t.month))) return false;
+    return true;
+  });
+  if (dim==='musteri') {
+    var ids = {}; crossed.forEach(function(t){ ids[t.musteri]=1; });
+    return _state.customers.filter(function(c){ return ids[c.id]; }).sort(function(a,b){return a.name.localeCompare(b.name,'tr');});
+  }
+  if (dim==='urun') {
+    var ids = {}; crossed.forEach(function(t){ ids[t.urun]=1; });
+    return _state.products.filter(function(p){ return p.active!==false && ids[p.id]; }).sort(function(a,b){return a.name.localeCompare(b.name,'tr');});
+  }
   var seen={},vals=[];
-  _state.targets.forEach(function(t){var v=dv(t,dim);if(v&&!seen[v]){seen[v]=1;vals.push(v);}});
+  crossed.forEach(function(t){var v=dv(t,dim);if(v&&!seen[v]){seen[v]=1;vals.push(v);}});
   if (dim==='bolge') return vals.map(Number).sort(function(a,b){return a-b;}).map(function(n){return String(n);});
   return vals.sort();
 }
