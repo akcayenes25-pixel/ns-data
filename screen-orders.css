@@ -496,6 +496,7 @@
 #screen-orders .o-cv { text-align: center !important; display: flex !important; align-items: center !important; justify-content: center !important; }
 /* scrollIntoView icin sticky bar ve footer margin */
 #screen-orders .o-ce { scroll-margin-top: 150px; scroll-margin-bottom: 54px; }
+#screen-orders .o-dt tr.gtr { scroll-margin-bottom: 54px; }
 #screen-orders .o-dt td { text-align: center !important; }
 #screen-orders .o-ht th { text-align: center !important; }
 #screen-orders .o-dt td.th-n,

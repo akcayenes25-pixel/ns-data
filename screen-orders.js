@@ -2102,7 +2102,7 @@
         } else {
           // Son satir — genel toplam satirini goster
           var gtr = document.querySelector('#screen-orders .o-dt tbody tr.gtr');
-          if (gtr) gtr.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+          if (gtr) gtr.scrollIntoView({ block: 'end', behavior: 'instant' });
         }
 
       } else if (direction === 'up') {
