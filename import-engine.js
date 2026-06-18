@@ -31,10 +31,61 @@ function _recordMapping(type, erpName, nsName, confidence) {
 }
 
 /* ============================================================
+   DÖNEM TESPİTİ — dosya adı veya içerik
+   ============================================================ */
+var _TR_MONTH_MAP = {
+  'ocak':1,'oca':1,'jan':1,'january':1,
+  'subat':2,'şubat':2,'feb':2,'february':2,
+  'mart':3,'mar':3,'march':3,
+  'nisan':4,'nis':4,'apr':4,'april':4,
+  'mayis':5,'mayıs':5,'may':5,
+  'haziran':6,'haz':6,'jun':6,'june':6,
+  'temmuz':7,'tem':7,'jul':7,'july':7,
+  'agustos':8,'ağustos':8,'agu':8,'aug':8,'august':8,
+  'eylul':9,'eylül':9,'eyl':9,'sep':9,'september':9,
+  'ekim':10,'eki':10,'oct':10,'october':10,
+  'kasim':11,'kasım':11,'kas':11,'nov':11,'november':11,
+  'aralik':12,'aralık':12,'ara':12,'dec':12,'december':12
+};
+
+function detectPeriodFromFilename(filename) {
+  if (!filename) return null;
+  var s = filename.toLowerCase().replace(/[_\-\s\.]/g, ' ');
+
+  // Try: TR month name + year  e.g. "haziran 2026" or "haz2026"
+  var tokens = s.split(/\s+/);
+  var month = null, year = null;
+  tokens.forEach(function(t) {
+    if (_TR_MONTH_MAP[t]) month = _TR_MONTH_MAP[t];
+    var y = parseInt(t);
+    if (y >= 2020 && y <= 2035) year = y;
+    // e.g. "haz2026"
+    Object.keys(_TR_MONTH_MAP).forEach(function(key) {
+      if (t.startsWith(key) && !month) {
+        var rest = parseInt(t.slice(key.length));
+        if (rest >= 2020 && rest <= 2035) { month = _TR_MONTH_MAP[key]; year = rest; }
+      }
+    });
+  });
+
+  // Try: mm_yyyy or yyyy_mm patterns
+  var mmYYYY = s.match(/\b(0?[1-9]|1[0-2])[_\s\-]?(20[2-3]\d)\b/);
+  if (mmYYYY && !month) { month = parseInt(mmYYYY[1]); year = parseInt(mmYYYY[2]); }
+  var yyyyMM = s.match(/\b(20[2-3]\d)[_\s\-](0?[1-9]|1[0-2])\b/);
+  if (yyyyMM && !month) { month = parseInt(yyyyMM[2]); year = parseInt(yyyyMM[1]); }
+
+  if (month && year) return { month: month, year: year, source: 'dosya adı' };
+  return null;
+}
+
+/* ============================================================
    ANA GİRİŞ NOKTASI
    ============================================================ */
-function processImportFile(file, customers, products, callback) {
+function processImportFile(file, customers, products, filename, callback) {
   if (!file) return;
+  // Support old 4-arg signature without filename
+  if (typeof filename === 'function') { callback = filename; filename = ''; }
+  var filenamePeriod = detectPeriodFromFilename(filename || (file.name || ''));
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
@@ -42,7 +93,7 @@ function processImportFile(file, customers, products, callback) {
       var workbook = XLSX.read(data, { type: 'array' });
       var sheet    = workbook.Sheets[workbook.SheetNames[0]];
       var rawRows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
-      var preview  = _processSheet(rawRows, customers, products);
+      var preview  = _processSheet(rawRows, customers, products, filenamePeriod);
       callback(preview);
     } catch(err) {
       console.error('Import parse error:', err);
@@ -56,7 +107,7 @@ function processImportFile(file, customers, products, callback) {
 /* ============================================================
    SHEET İŞLEME
    ============================================================ */
-function _processSheet(rawRows, customers, products) {
+function _processSheet(rawRows, customers, products, filenamePeriod) {
   // 1. Header satırını bul
   var headerInfo = _detectHeader(rawRows);
   if (!headerInfo) {
@@ -90,9 +141,12 @@ function _processSheet(rawRows, customers, products) {
     rawProduct  = String(rawProduct  || '').trim();
     if (!rawCustomer || !rawProduct) return;
 
-    // Ay normalizasyonu
     var month = _parseMonth(rawMonth);
     var year  = rawYear ? parseInt(rawYear) : null;
+
+    // Detect per-row period; fallback to filenamePeriod
+    var detectedMonth = month || (filenamePeriod ? filenamePeriod.month : null);
+    var detectedYear  = year  || (filenamePeriod ? filenamePeriod.year  : null);
 
     // Müşteri eşleştirme
     var customerResult = _matchEntity('customer', rawCustomer, customers.map(function(c){ return c.name; }), mappings, rawCountry);
@@ -119,6 +173,8 @@ function _processSheet(rawRows, customers, products) {
       euro:             _parseNumber(rawEuro) || 0,
       month:            month,
       year:             year,
+      detectedMonth:    detectedMonth,
+      detectedYear:     detectedYear,
       country:          rawCountry ? String(rawCountry).trim() : null,
       matched:          matched,
       customer_id:      matchedCustomer ? matchedCustomer.id   : null,
@@ -130,13 +186,29 @@ function _processSheet(rawRows, customers, products) {
     });
   });
 
+  // Detect overall period info
+  var uniquePeriods = {};
+  processedRows.forEach(function(r) {
+    if (r.detectedMonth && r.detectedYear) uniquePeriods[r.detectedMonth + '-' + r.detectedYear] = true;
+  });
+  var periodKeys = Object.keys(uniquePeriods);
+  var detectedPeriod = null;
+  if (filenamePeriod) {
+    detectedPeriod = { month: filenamePeriod.month, year: filenamePeriod.year, source: 'dosya adı' };
+  } else if (periodKeys.length === 1) {
+    var parts = periodKeys[0].split('-');
+    detectedPeriod = { month: parseInt(parts[0]), year: parseInt(parts[1]), source: 'dosya içeriği' };
+  }
+
   return {
     rows:          processedRows,
     rowCount:      processedRows.length,
     customerCount: Object.keys(customerSet).length,
     productCount:  Object.keys(productSet).length,
     unmatchedCount: unmatchedCount,
-    colMap:        colMap
+    colMap:        colMap,
+    detectedPeriod: detectedPeriod,
+    multiPeriod:   periodKeys.length > 1,
   };
 }
 

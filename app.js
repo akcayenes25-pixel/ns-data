@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.2.1';
+const APP_VERSION = 'v3.3.0';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,14 @@ const APP_VERSION = 'v3.2.1';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v3.3.0': {
+    date: 'Haziran 2026',
+    items: [
+      '[Eklendi] Dönem seçici: tüm ekranlar artık seçilen ay ve yıla göre filtreli çalışır',
+      '[Eklendi] Yükle: ERP verisi Çıkan veya Çıkacak olarak dönem bazında içe aktarılır',
+      '[İyileştirildi] Ay geçişinde bekleyen çıkacak siparişler onay alınarak sıfırlanır',
+    ]
+  },
   'v3.2.1': {
     date: 'Haziran 2026',
     items: [
@@ -625,6 +633,99 @@ function formatDateTime(date) {
 }
 
 /* ============================================================
+   DÖNEM (PERIOD) YÖNETİMİ — lokal, localStorage
+   ============================================================ */
+var _PERIOD_KEY = 'nsdata_active_period';
+var _TR_MONTHS_LONG = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+function getActivePeriod() {
+  try {
+    var saved = JSON.parse(localStorage.getItem(_PERIOD_KEY));
+    if (saved && saved.month >= 1 && saved.month <= 12 && saved.year >= 2020) return saved;
+  } catch(e) {}
+  var now = new Date();
+  return { month: now.getMonth() + 1, year: now.getFullYear() };
+}
+
+function setActivePeriod(month, year) {
+  localStorage.setItem(_PERIOD_KEY, JSON.stringify({ month: month, year: year }));
+  _updatePeriodDisplay(month, year);
+  emitDataChange('orders', {});
+}
+
+function formatPeriodLabel(month, year) {
+  return _TR_MONTHS_LONG[month - 1] + ' ' + year;
+}
+
+function _updatePeriodDisplay(month, year) {
+  var lbl = document.getElementById('nav-period-label');
+  if (lbl) lbl.textContent = formatPeriodLabel(month, year);
+}
+
+async function changePeriod(newMonth, newYear) {
+  var old = getActivePeriod();
+  if (old.month === newMonth && old.year === newYear) return;
+  var count = await dbCountPlannedForPeriod(old.month, old.year);
+  if (count > 0) {
+    _showPeriodCloseModal(old, { month: newMonth, year: newYear }, count);
+  } else {
+    setActivePeriod(newMonth, newYear);
+  }
+}
+
+function _showPeriodCloseModal(oldPeriod, newPeriod, count) {
+  var existing = document.getElementById('period-close-modal');
+  if (existing) existing.remove();
+  var div = document.createElement('div');
+  div.id = 'period-close-modal';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center';
+  div.innerHTML =
+    '<div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2)">' +
+      '<div style="font-size:17px;font-weight:700;margin-bottom:10px">Dönem Geçişi</div>' +
+      '<div style="font-size:14px;color:#4A5068;margin-bottom:24px">' +
+        '<b>' + formatPeriodLabel(oldPeriod.month, oldPeriod.year) + '</b> döneminde ' +
+        '<b>' + count + '</b> adet bekleyen çıkacak sipariş var.<br><br>' +
+        'Bunlar artık geçmiş döneme ait olduğu için sıfırlanmalı. Sıfırlansın mı?' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+        '<button id="pcm-skip" style="padding:8px 18px;border:1px solid #E2E5EF;border-radius:8px;background:#fff;cursor:pointer;font-size:14px">Hayır, Bırak</button>' +
+        '<button id="pcm-clear" style="padding:8px 18px;border:none;border-radius:8px;background:#DC2626;color:#fff;cursor:pointer;font-size:14px;font-weight:600">Evet, Sıfırla</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(div);
+  document.getElementById('pcm-skip').onclick = function() {
+    div.remove();
+    setActivePeriod(newPeriod.month, newPeriod.year);
+  };
+  document.getElementById('pcm-clear').onclick = async function() {
+    div.remove();
+    await dbClearPlannedForPeriod(oldPeriod.month, oldPeriod.year);
+    setActivePeriod(newPeriod.month, newPeriod.year);
+  };
+}
+
+function initPeriodSelector() {
+  var p = getActivePeriod();
+  _updatePeriodDisplay(p.month, p.year);
+  var prev = document.getElementById('nav-period-prev');
+  var next = document.getElementById('nav-period-next');
+  if (prev) prev.addEventListener('click', function() {
+    var cur = getActivePeriod();
+    var m = cur.month - 1, y = cur.year;
+    if (m < 1) { m = 12; y--; }
+    if (y < 2020) return;
+    changePeriod(m, y);
+  });
+  if (next) next.addEventListener('click', function() {
+    var cur = getActivePeriod();
+    var m = cur.month + 1, y = cur.year;
+    if (m > 12) { m = 1; y++; }
+    if (y > 2035) return;
+    changePeriod(m, y);
+  });
+}
+
+/* ============================================================
    REALTIME EVENT BUS
    ============================================================ */
 function emitDataChange(table, payload) {
@@ -652,6 +753,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkStatus();
   initFilterBanner();
   initChangelog();
+  initPeriodSelector();
 
   // Init screen modules (each screen registers itself)
   var event = new CustomEvent('nsdata:appReady');

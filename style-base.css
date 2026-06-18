@@ -218,6 +218,35 @@ a {
   font-weight: 600;
 }
 
+.nav-period {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(79,70,229,.12);
+  border-radius: 20px;
+  padding: 3px 6px;
+}
+.nav-period-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+  min-width: 100px;
+  text-align: center;
+  white-space: nowrap;
+}
+.nav-period-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+.nav-period-btn:hover { background: rgba(79,70,229,.15); }
+
 .nav-meta {
   display: flex;
   align-items: center;

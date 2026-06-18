@@ -8,6 +8,7 @@
     orders: [], products: [], customers: [],
     productMap: {}, customerMap: {},
     importPreviewData: null,
+    importTaraf: null,
     addRowOpen: false,
   };
 
@@ -78,7 +79,7 @@
     _dbgCallCount.loadAll++;
     var callN = _dbgCallCount.loadAll;
     _dbgLog('LOADALL_START', { call: callN, filtersAtStart: JSON.parse(JSON.stringify(_S.filters)) });
-    var r = await Promise.all([dbGetOrders(), dbGetProducts(), dbGetCustomers(), dbGetCustomerCountries()]);
+    var r = await Promise.all([dbGetOrders(getActivePeriod().month, getActivePeriod().year), dbGetProducts(), dbGetCustomers(), dbGetCustomerCountries()]);
     _state.orders    = _adaptOrders(r[0]);
     _state.products  = _adaptProducts(r[1]);
     _state.customers = r[2];
@@ -1637,10 +1638,40 @@
   }
 
   /* ============================================================ IMPORT */
+  function _showTarafModal() {
+    var existing = document.getElementById('o-taraf-modal');
+    if (existing) { existing.remove(); return; }
+    var div = document.createElement('div');
+    div.id = 'o-taraf-modal';
+    div.className = 'o-taraf-modal';
+    var p = getActivePeriod();
+    div.innerHTML =
+      '<div class="o-taraf-inner">' +
+        '<div class="o-taraf-title">Veriler nereye yüklensin?</div>' +
+        '<div class="o-taraf-period">Dönem: <b>' + formatPeriodLabel(p.month, p.year) + '</b></div>' +
+        '<div class="o-taraf-btns">' +
+          '<button class="o-taraf-btn" data-taraf="cikan">&#x2191; Çıkan<span>Gerçekleşen sevkiyat</span></button>' +
+          '<button class="o-taraf-btn" data-taraf="cikacak">&#x25CB; Çıkacak<span>Planlanan sevkiyat</span></button>' +
+        '</div>' +
+        '<button class="o-taraf-cancel">İptal</button>' +
+      '</div>';
+    document.getElementById('screen-orders').appendChild(div);
+    div.querySelectorAll('.o-taraf-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        _state.importTaraf = btn.getAttribute('data-taraf');
+        div.remove();
+        document.getElementById('o-import-input').click();
+      });
+    });
+    div.querySelector('.o-taraf-cancel').addEventListener('click', function() { div.remove(); });
+  }
+
   function _handleImportFile(file) {
     if (!file || typeof processImportFile !== 'function') return;
-    processImportFile(file, _state.customers, _state.products, function (preview) {
-      _state.importPreviewData = preview; renderImportPreview();
+    var filename = file.name || '';
+    processImportFile(file, _state.customers, _state.products, filename, function (preview) {
+      _state.importPreviewData = preview;
+      renderImportPreview();
     });
   }
 
@@ -1651,58 +1682,148 @@
     if (existing) existing.remove();
     if (!_state.importPreviewData) return;
     var data = _state.importPreviewData;
-    var detailRows = (data.rows || []).slice(0, 100).map(function (row) {
-      var custCell = row.matched
-        ? '<span style="color:green">✓ ' + _esc(_state.customerMap[row.customer_id] ? _state.customerMap[row.customer_id].name : row.customer_name) + '</span>'
-        : '<select class="o-icust" data-ern="' + _esc(row.customer_name) + '" style="font-size:12px;height:28px"><option value="">— Eşleştir —</option>' + _state.customers.map(function (c) { return '<option value="' + c.id + '">' + _esc(c.name) + '</option>'; }).join('') + '</select>';
+    var taraf = _state.importTaraf;
+    var tarafLabel = (taraf === 'cikacak') ? 'Çıkacak' : 'Çıkan';
+    var activePeriod = getActivePeriod();
+    var period = (data.detectedPeriod && data.detectedPeriod.month) ? data.detectedPeriod : activePeriod;
+    var periodSource = (data.detectedPeriod && data.detectedPeriod.source) ? ' (' + data.detectedPeriod.source + ')' : ' (aktif dönem)';
+
+    var colMap = data.colMap || {};
+    var colLabels = { customer:'Müşteri', product:'Ürün', qty:'Adet', euro:'Euro', month:'Ay', year:'Yıl', country:'Ülke' };
+    var colSummary = Object.keys(colMap).filter(function(k){ return colLabels[k]; }).map(function(k) {
+      return '<span class="o-imp-col-tag">' + colLabels[k] + ' ✓</span>';
+    }).join('');
+
+    var detailRows = (data.rows || []).slice(0, 150).map(function (row) {
+      var custCell;
+      if (row.customer_id) {
+        custCell = '<span class="o-imp-ok">✓ ' + _esc(row.customer_name) + '</span>';
+      } else {
+        custCell =
+          '<span class="o-imp-miss">' + _esc(row.customer_name) + '</span> ' +
+          '<button class="o-imp-newcust-btn" data-ern="' + _esc(row.customer_name) + '" data-country="' + _esc(row.country || '') + '">+ Ekle</button>';
+      }
       var prodCell = row.product_id
-        ? '<span style="color:green">✓ ' + _esc(_state.productMap[row.product_id] ? _state.productMap[row.product_id].name : row.product_name) + '</span>'
-        : '<select class="o-iprod" data-ern="' + _esc(row.product_name) + '" style="font-size:12px;height:28px"><option value="">— Eşleştir —</option>' + _state.products.map(function (p) { return '<option value="' + p.id + '">' + _esc(p.name) + '</option>'; }).join('') + '</select>';
-      return '<tr><td style="padding:6px 10px">' + custCell + '</td><td style="padding:6px 10px">' + prodCell + '</td><td style="padding:6px 10px;text-align:right">' + (row.qty || '—') + '</td></tr>';
+        ? '<span class="o-imp-ok">✓ ' + _esc(row.product_name) + '</span>'
+        : '<select class="o-iprod" data-ern="' + _esc(row.product_name) + '" style="font-size:12px;height:28px"><option value="">— Eşleştir —</option>' + _state.products.map(function(p){ return '<option value="' + p.id + '">' + _esc(p.name) + '</option>'; }).join('') + '</select>';
+      var periodCell = (row.detectedMonth && row.detectedYear)
+        ? '<td style="font-size:11px;color:#6C6C70;padding:6px 8px">' + row.detectedMonth + '/' + row.detectedYear + '</td>'
+        : (data.multiPeriod ? '<td>—</td>' : '');
+      return '<tr><td style="padding:6px 10px">' + custCell + '</td><td style="padding:6px 10px">' + prodCell + '</td><td style="padding:6px 10px;text-align:right">' + (row.qty || '—') + '</td><td style="padding:6px 10px;text-align:right;color:#6C6C70">' + (row.euro ? row.euro + ' €' : '—') + '</td>' + periodCell + '</tr>';
     }).join('');
 
     var div = document.createElement('div');
     div.id = 'o-import-preview';
     div.className = 'o-import-preview';
     div.innerHTML =
-      '<div class="o-import-header"><span class="o-import-title">İmport Onay</span><button class="btn btn-secondary" id="o-import-cancel">İptal</button></div>' +
+      '<div class="o-import-header">' +
+        '<span class="o-import-title">Yükleme Önizleme</span>' +
+        '<button class="btn btn-secondary" id="o-import-cancel">İptal</button>' +
+      '</div>' +
+      '<div class="o-imp-meta">' +
+        '<div class="o-imp-meta-row">' +
+          '<div class="o-imp-meta-item"><span class="o-imp-meta-lbl">Dönem</span><span class="o-imp-meta-val">' + formatPeriodLabel(period.month, period.year) + '<span style="font-weight:400;color:#6C6C70"> ' + periodSource + '</span></span></div>' +
+          '<div class="o-imp-meta-item"><span class="o-imp-meta-lbl">Taraf</span><span class="o-imp-meta-val o-imp-taraf-' + taraf + '">' + tarafLabel + '</span></div>' +
+        '</div>' +
+        '<div class="o-imp-col-row">Tespit edilen kolonlar: ' + (colSummary || '—') + '</div>' +
+        '<div class="o-imp-hint">Adet → sisteme yazılır &nbsp;·&nbsp; Euro → bilgi amaçlı &nbsp;·&nbsp; Konteyner = Adet ÷ ürün oranı (otomatik)</div>' +
+      '</div>' +
       '<div class="o-import-summary">' +
         '<div class="o-import-sum-item"><span class="o-import-sum-label">Satır</span><span class="o-import-sum-val">' + (data.rowCount || 0) + '</span></div>' +
         '<div class="o-import-sum-item"><span class="o-import-sum-label">Eşleşmeyen</span><span class="o-import-sum-val" style="color:var(--color-warning)">' + (data.unmatchedCount || 0) + '</span></div>' +
       '</div>' +
-      '<div class="o-import-body"><table class="o-import-table"><thead><tr><th>Müşteri</th><th>Ürün</th><th>Adet</th></tr></thead><tbody>' + detailRows + '</tbody></table></div>' +
-      '<div class="o-import-actions"><button class="btn btn-primary" id="o-import-confirm">Yükle</button></div>';
+      '<div class="o-import-body"><table class="o-import-table">' +
+        '<thead><tr><th>Müşteri</th><th>Ürün</th><th>Adet</th><th>Euro</th>' + (data.multiPeriod ? '<th>Dönem</th>' : '') + '</tr></thead>' +
+        '<tbody>' + detailRows + '</tbody>' +
+      '</table></div>' +
+      '<div id="o-newcust-zone"></div>' +
+      '<div class="o-import-actions"><button class="btn btn-primary" id="o-import-confirm">Onayla ve Yükle</button></div>';
+
     screen.insertBefore(div, screen.querySelector('.o-tw'));
 
-    var cancelBtn = document.getElementById('o-import-cancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', function () { _state.importPreviewData = null; div.remove(); });
-    var confirmBtn = document.getElementById('o-import-confirm');
-    if (confirmBtn) confirmBtn.addEventListener('click', _confirmImport);
+    document.getElementById('o-import-cancel').addEventListener('click', function () {
+      _state.importPreviewData = null;
+      _state.importTaraf = null;
+      div.remove();
+    });
+    document.getElementById('o-import-confirm').addEventListener('click', _confirmImport);
+
+    div.addEventListener('click', function(e) {
+      var btn = e.target.closest('.o-imp-newcust-btn');
+      if (!btn) return;
+      var ern = btn.getAttribute('data-ern');
+      var country = btn.getAttribute('data-country') || '';
+      _showInlineNewCust(btn, ern, country);
+    });
+  }
+
+  function _showInlineNewCust(triggerBtn, erpName, country) {
+    var zone = document.getElementById('o-newcust-zone');
+    if (!zone) return;
+    var existing = document.getElementById('o-newcust-form');
+    if (existing) existing.remove();
+    var form = document.createElement('div');
+    form.id = 'o-newcust-form';
+    form.className = 'o-newcust-form';
+    form.innerHTML =
+      '<div class="o-newcust-title">Yeni Müşteri — <em>' + _esc(erpName) + '</em></div>' +
+      '<div class="o-newcust-fields">' +
+        '<label>Ad<input id="o-nc-name" value="' + _esc(erpName) + '" placeholder="Müşteri adı"/></label>' +
+        '<label>Ülke<input id="o-nc-country" value="' + _esc(country) + '" placeholder="Ülke (opsiyonel)"/></label>' +
+        '<button id="o-nc-save" class="btn btn-primary" style="height:36px">Kaydet</button>' +
+        '<button id="o-nc-cancel" class="btn btn-secondary" style="height:36px">İptal</button>' +
+      '</div>';
+    zone.appendChild(form);
+    document.getElementById('o-nc-cancel').addEventListener('click', function() { form.remove(); });
+    document.getElementById('o-nc-save').addEventListener('click', async function() {
+      var name = (document.getElementById('o-nc-name').value || '').trim();
+      var cntry = (document.getElementById('o-nc-country').value || '').trim().toUpperCase();
+      if (!name) { showToast('Müşteri adı boş olamaz'); return; }
+      var ok = await dbUpsertCustomer({ name: name, active: true });
+      if (!ok) { showToast('Kaydedilemedi'); return; }
+      var newCustomers = await dbGetCustomers();
+      var newCust = newCustomers.find(function(c){ return c.name === name; });
+      if (newCust) {
+        if (cntry) await dbAddCustomerCountry(newCust.id, cntry);
+        var rows = _state.importPreviewData ? _state.importPreviewData.rows : [];
+        rows.forEach(function(r){ if (r.customer_name === erpName && !r.customer_id) r.customer_id = newCust.id; });
+        _state.customers = newCustomers;
+        newCustomers.forEach(function(c){ _state.customerMap[c.id] = c; });
+        triggerBtn.replaceWith(document.createTextNode('✓ ' + name));
+      }
+      form.remove();
+      showToast('Müşteri eklendi');
+    });
   }
 
   async function _confirmImport() {
     if (!_state.importPreviewData) return;
     var rows = _state.importPreviewData.rows || [];
-    document.querySelectorAll('#screen-orders .o-icust').forEach(function (sel) {
-      if (!sel.value) return;
-      var ern = sel.getAttribute('data-ern');
-      var row = rows.find(function (r) { return r.customer_name === ern && !r.customer_id; });
-      if (row) row.customer_id = sel.value;
-    });
+    var taraf = _state.importTaraf || 'cikan';
+    var activePeriod = getActivePeriod();
+    var defaultPeriod = (_state.importPreviewData.detectedPeriod && _state.importPreviewData.detectedPeriod.month)
+      ? _state.importPreviewData.detectedPeriod : activePeriod;
+
     document.querySelectorAll('#screen-orders .o-iprod').forEach(function (sel) {
       if (!sel.value) return;
       var ern = sel.getAttribute('data-ern');
       var row = rows.find(function (r) { return r.product_name === ern && !r.product_id; });
       if (row) row.product_id = sel.value;
     });
+
     var done = 0;
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       if (!row.customer_id || !row.product_id) continue;
-      if (await dbImportOrder(row.customer_id, row.product_id, row.qty)) done++;
+      var month = row.detectedMonth || defaultPeriod.month;
+      var year  = row.detectedYear  || defaultPeriod.year;
+      if (await dbImportOrder(row.customer_id, row.product_id, row.qty || 0, taraf, month, year)) done++;
     }
     showToast(done + ' satır yüklendi');
     _state.importPreviewData = null;
+    _state.importTaraf = null;
+    var preview = document.getElementById('o-import-preview');
+    if (preview) preview.remove();
     await _loadAll(); render(); emitDataChange('orders', {});
   }
 
@@ -1788,10 +1909,11 @@
         '<div class="o-pv-sec" data-zone="cols"><span class="o-pv-lbl">Sütunlar</span><div class="o-pv-zone" id="o-z-cols"></div></div>' +
         '<div class="o-pv-sec"><span class="o-pv-lbl">Değerler</span><div class="o-pv-zone" id="o-z-vals" style="border-style:solid;cursor:default;min-width:auto"></div></div>' +
         '<div style="margin-left:auto;display:flex;gap:6px;padding:0 8px">' +
-          '<button class="o-nav-btn o-nav-btn-sec" id="o-addrow-toggle">+ Satır</button>' +
-          '<label class="o-nav-btn o-nav-btn-pri" style="cursor:pointer">ERP\'den Yükle<input type="file" id="o-import-input" accept=".xlsx,.xls" style="display:none"/></label>' +
+          '<button class="o-nav-btn o-nav-btn-flat" id="o-addrow-toggle">+ Satır</button>' +
+          '<button class="o-nav-btn o-nav-btn-flat" id="o-yukle-btn">&#x2B06; Yükle</button>' +
+          '<input type="file" id="o-import-input" accept=".xlsx,.xls" style="display:none"/>' +
           '<div class="o-dl-wrap" id="o-dl-wrap">' +
-            '<button class="o-nav-btn o-nav-btn-sec" id="o-dl-btn">&#x2B07; İndir</button>' +
+            '<button class="o-nav-btn o-nav-btn-flat" id="o-dl-btn">&#x2B07; İndir</button>' +
             '<div class="o-dl-menu" id="o-dl-menu" style="display:none">' +
               '<button class="o-dl-item" id="o-dl-flat">Düz Veri</button>' +
               '<button class="o-dl-item" id="o-dl-pivot">Tablo Görünümü</button>' +
@@ -1830,9 +1952,16 @@
         '<div class="o-ts" id="o-ts"><table class="o-dt" id="o-dt" style="min-width:600px"><tbody id="o-dt-b"></tbody></table></div>' +
       '</div>';
 
-    // Bind import input
+    // Bind Yükle button → taraf modal → file picker
+    var yukleBtn = document.getElementById('o-yukle-btn');
+    if (yukleBtn) yukleBtn.addEventListener('click', _showTarafModal);
+
+    // Bind import input (opened programmatically after taraf selection)
     var impInp = document.getElementById('o-import-input');
-    if (impInp) impInp.addEventListener('change', function () { if (impInp.files[0]) _handleImportFile(impInp.files[0]); impInp.value = ''; });
+    if (impInp) impInp.addEventListener('change', function () {
+      if (impInp.files[0]) _handleImportFile(impInp.files[0]);
+      impInp.value = '';
+    });
 
     // Bind add row toggle
     var addToggle = document.getElementById('o-addrow-toggle');

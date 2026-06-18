@@ -30,7 +30,7 @@
   async function _loadAll(customerId) {
     _state.customerId = customerId;
     var results = await Promise.all([
-      dbGetOrders(),
+      dbGetOrders(getActivePeriod().month, getActivePeriod().year),
       dbGetProducts(),
       dbGetCustomers(),
       dbGetTargets(),

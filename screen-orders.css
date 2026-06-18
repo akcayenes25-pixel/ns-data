@@ -361,14 +361,68 @@
 
 /* NAV BUTTONS (pivot bar sağına) */
 #screen-orders .o-nav-btn {
-  height: 30px; padding: 0 14px; border-radius: 8px;
+  height: 32px; padding: 0 14px; border-radius: 8px;
   font-size: 12px; font-weight: 600; white-space: nowrap;
-  cursor: pointer; font-family: inherit; border: none;
+  cursor: pointer; font-family: inherit;
 }
-#screen-orders .o-nav-btn-sec { border: 1px solid rgba(255,255,255,.3); color: #fff; background: rgba(255,255,255,.1); }
-#screen-orders .o-nav-btn-sec:hover { background: rgba(255,255,255,.2); }
-#screen-orders .o-nav-btn-pri { background: #007AFF; color: #fff; }
-#screen-orders .o-nav-btn-pri:hover { background: #0066D6; }
+#screen-orders .o-nav-btn-flat {
+  background: rgba(255,255,255,.13);
+  border: 1px solid rgba(255,255,255,.22);
+  color: #fff;
+}
+#screen-orders .o-nav-btn-flat:hover { background: rgba(255,255,255,.22); }
+
+/* Taraf modal */
+#screen-orders .o-taraf-modal {
+  position: absolute; inset: 0; background: rgba(15,17,23,.55);
+  z-index: 800; display: flex; align-items: flex-start; justify-content: flex-end;
+  padding: 56px 20px 0;
+}
+#screen-orders .o-taraf-inner {
+  background: #fff; border-radius: 12px; padding: 24px 28px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18); min-width: 280px;
+}
+#screen-orders .o-taraf-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+#screen-orders .o-taraf-period { font-size: 12px; color: #4A5068; margin-bottom: 18px; }
+#screen-orders .o-taraf-btns { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+#screen-orders .o-taraf-btn {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 12px 16px; border-radius: 8px; border: 1.5px solid #E2E5EF;
+  background: #fff; cursor: pointer; font-size: 14px; font-weight: 700; gap: 2px;
+  font-family: inherit; text-align: left;
+}
+#screen-orders .o-taraf-btn span { font-size: 11px; font-weight: 400; color: #6C6C70; }
+#screen-orders .o-taraf-btn:hover { border-color: var(--color-accent); background: #EEF2FF; }
+#screen-orders .o-taraf-cancel {
+  font-size: 12px; color: #6C6C70; background: none; border: none;
+  cursor: pointer; padding: 0; font-family: inherit;
+}
+
+/* Import meta info bar */
+#screen-orders .o-imp-meta { padding: 12px 20px; background: #F8F9FC; border-bottom: 1px solid #E2E5EF; display: flex; flex-direction: column; gap: 6px; }
+#screen-orders .o-imp-meta-row { display: flex; gap: 28px; flex-wrap: wrap; }
+#screen-orders .o-imp-meta-item { display: flex; flex-direction: column; gap: 2px; }
+#screen-orders .o-imp-meta-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #6C6C70; letter-spacing: .04em; }
+#screen-orders .o-imp-meta-val { font-size: 14px; font-weight: 700; }
+#screen-orders .o-imp-taraf-cikan { color: var(--color-positive); }
+#screen-orders .o-imp-taraf-cikacak { color: var(--color-accent); }
+#screen-orders .o-imp-col-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11px; color: #4A5068; }
+#screen-orders .o-imp-col-tag { background: #EEF2FF; color: var(--color-accent); border-radius: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+#screen-orders .o-imp-hint { font-size: 11px; color: #9CA3AF; }
+#screen-orders .o-imp-ok { color: var(--color-positive); font-size: 13px; }
+#screen-orders .o-imp-miss { color: var(--color-warning); font-size: 13px; }
+#screen-orders .o-imp-newcust-btn {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; margin-left: 6px;
+  background: #EEF2FF; border: 1px solid var(--color-accent); color: var(--color-accent); font-weight: 600; font-family: inherit;
+}
+
+/* Inline new customer form */
+#screen-orders .o-newcust-form { padding: 14px 20px; background: #FAFAFA; border-bottom: 1px solid #E2E5EF; }
+#screen-orders .o-newcust-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: #0F1117; }
+#screen-orders .o-newcust-title em { font-style: normal; color: var(--color-accent); }
+#screen-orders .o-newcust-fields { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+#screen-orders .o-newcust-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: #4A5068; }
+#screen-orders .o-newcust-fields input { height: 36px; padding: 0 10px; border: 1px solid #E2E5EF; border-radius: 6px; font-size: 13px; width: 180px; font-family: inherit; }
 
 /* IMPORT PREVIEW */
 #screen-orders .o-import-preview { background: #fff; border-bottom: 1px solid #D1D1D6; }

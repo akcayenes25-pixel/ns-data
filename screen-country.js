@@ -27,7 +27,7 @@
   async function _loadAll(countryId) {
     _state.countryId = countryId;
     var results = await Promise.all([
-      dbGetOrders(), dbGetProducts(), dbGetCustomers(), dbGetTargets()
+      dbGetOrders(getActivePeriod().month, getActivePeriod().year), dbGetProducts(), dbGetCustomers(), dbGetTargets()
     ]);
     _state.orders    = results[0];
     _state.products  = results[1];

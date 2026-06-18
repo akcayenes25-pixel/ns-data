@@ -151,9 +151,11 @@ async function dbUpsertTargetByKey(target) {
 }
 
 /* ORDERS */
-async function dbGetOrders() {
+async function dbGetOrders(month, year) {
   try {
-    var res = await _client.from('orders').select('*');
+    var q = _client.from('orders').select('*');
+    if (month && year) { q = q.eq('month', month).eq('year', year); }
+    var res = await q;
     if (res.error) throw res.error;
     return res.data || [];
   } catch (err) { console.error('dbGetOrders:', err); return []; }
@@ -171,21 +173,55 @@ async function dbUpsertOrder(order) {
   } catch (err) { console.error('dbUpsertOrder:', err); return false; }
 }
 
-async function dbImportOrder(customerId, productId, shippedQty) {
-  if (!customerId || !productId) return false;
+async function dbImportOrder(customerId, productId, qty, taraf, month, year) {
+  if (!customerId || !productId || !month || !year) return false;
+  var field = (taraf === 'cikacak') ? 'planned_qty' : 'shipped_qty';
   try {
-    var existing = await _client.from('orders').select('id, planned_qty, note').eq('customer_id', customerId).eq('product_id', productId).maybeSingle();
+    var existing = await _client.from('orders').select('id')
+      .eq('customer_id', customerId).eq('product_id', productId)
+      .eq('month', month).eq('year', year)
+      .maybeSingle();
     if (existing.error) throw existing.error;
     var ts = new Date().toISOString();
+    var payload = { updated_at: ts, updated_by: 'import' };
+    payload[field] = qty;
     if (existing.data) {
-      var res = await _client.from('orders').update({ shipped_qty: shippedQty, updated_at: ts, updated_by: 'import' }).eq('id', existing.data.id);
+      var res = await _client.from('orders').update(payload).eq('id', existing.data.id);
       if (res.error) throw res.error;
     } else {
-      var res = await _client.from('orders').insert({ customer_id: customerId, product_id: productId, shipped_qty: shippedQty, updated_at: ts, updated_by: 'import' });
+      payload.customer_id  = customerId;
+      payload.product_id   = productId;
+      payload.month        = month;
+      payload.year         = year;
+      payload.shipped_qty  = (taraf === 'cikacak') ? 0 : qty;
+      payload.planned_qty  = (taraf === 'cikacak') ? qty : 0;
+      var res = await _client.from('orders').insert(payload);
       if (res.error) throw res.error;
     }
     return true;
   } catch (err) { console.error('dbImportOrder:', err); return false; }
+}
+
+async function dbCountPlannedForPeriod(month, year) {
+  try {
+    var res = await _client.from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('month', month).eq('year', year)
+      .gt('planned_qty', 0);
+    if (res.error) throw res.error;
+    return res.count || 0;
+  } catch (err) { return 0; }
+}
+
+async function dbClearPlannedForPeriod(month, year) {
+  try {
+    var res = await _client.from('orders')
+      .update({ planned_qty: 0, updated_at: new Date().toISOString(), updated_by: 'period-close' })
+      .eq('month', month).eq('year', year)
+      .gt('planned_qty', 0);
+    if (res.error) throw res.error;
+    return true;
+  } catch (err) { console.error('dbClearPlannedForPeriod:', err); return false; }
 }
 
 /* LIMITS */
