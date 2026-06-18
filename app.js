@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.1.0';
+const APP_VERSION = 'v3.1.2';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,20 @@ const APP_VERSION = 'v3.1.0';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v3.1.2': {
+    date: 'Haziran 2026',
+    items: [
+      '[Düzeltildi] Ok tuşu navigasyonu: satır ve tablo sınırında durur, önceki satıra atlamaz',
+      '[Düzeltildi] Hücre editörü scroll sırasında kayıyor ve viewport dışına taşıyordu',
+      '[İyileştirildi] Sağ/aşağı ok sınırında toplam kolonları ve Genel Toplam görünür hale gelir',
+    ]
+  },
+  'v3.1.1': {
+    date: 'Haziran 2026',
+    items: [
+      '[İyileştirildi] Hedefler filtre menüleri artık yalnızca mevcut filtreyle eşleşen değerleri gösteriyor',
+    ]
+  },
   'v3.1.0': {
     date: 'Haziran 2026',
     items: [
