@@ -543,6 +543,14 @@
     });
     var html2 = '';
     sortedVals.forEach(function (val) {
+      // Gizleme kontrolleri — filtOrders bos satirlari yakalamaz (showEmpty modunda orders'tan gelmiyor)
+      if (dim === 'ulke' && _S.hiddenCountries.length && _S.hiddenCountries.indexOf(val) !== -1) return;
+      if (dim === 'urun' && _S.hiddenProducts.length && _S.hiddenProducts.indexOf(val) !== -1) return;
+      if (!isTarafDim(dim) && _S.hiddenRows.length) {
+        var _nonTarafCtx = rowContext.filter(function(c){ return !isTarafDim(c.dim); });
+        var _potKey = _nonTarafCtx.map(function(c){ return c.val; }).concat([val]).join('|');
+        if (_S.hiddenRows.some(function(r){ return r.key === _potKey; })) return;
+      }
       var groupOrders = orders.filter(function (o) { return dv(o, dim) === val; });
       if (!_S.showEmpty) {
         var _gTot = 0;

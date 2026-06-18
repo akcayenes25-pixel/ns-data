@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.2.0';
+const APP_VERSION = 'v3.2.1';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,12 +19,12 @@ const APP_VERSION = 'v3.2.0';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
-  'v3.2.0': {
+  'v3.2.1': {
     date: 'Haziran 2026',
     items: [
       '[Düzeltildi] Satır gizleme artık tüm müşteriyi değil yalnızca o ülke satırını kaldırıyor',
       '[Eklendi] Sağ tık menüsü: satır, müşteri, ülke ve ürün bazında gizleme seçenekleri',
-      '[İyileştirildi] Pivot yapısı değiştiğinde gizlenmiş satır/ülke/ürünler otomatik sıfırlanıyor',
+      '[Düzeltildi] Sipariş verisi olmayan boş satırlar da artık doğru gizleniyor',
     ]
   },
   'v3.1.5': {
