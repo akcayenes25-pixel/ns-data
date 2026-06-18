@@ -27,7 +27,9 @@
     search: '',
     collapsed: {},
     sort: { key: null, dir: 'none' },
-    hiddenRows: [],
+    hiddenRows: [],      // [{key: 'ulke|musteriId|...', mId: musteriId}] — pivot config'e gore key degisir
+    hiddenCountries: [], // ['Gürcistan', 'Fas', ...]
+    hiddenProducts: [],  // [product_id, ...]
   };
 
   /* ============================================================ CONSTANTS */
@@ -234,8 +236,13 @@
       if (f.ulke.length    && !f.ulke.includes(o.ulke))     return false;
       if (f.musteri.length && !f.musteri.includes(o.musteri)) return false;
       if (f.urun.length    && !f.urun.includes(o.urun))     return false;
-      var rowKey = o.musteri + '|' + o.urun;
-      if (_S.hiddenRows.indexOf(rowKey) !== -1) return false;
+      // Gizleme kontrolleri
+      if (_S.hiddenCountries.length && _S.hiddenCountries.indexOf(o.ulke) !== -1) return false;
+      if (_S.hiddenProducts.length && _S.hiddenProducts.indexOf(o.urun) !== -1) return false;
+      if (_S.hiddenRows.length) {
+        var rowContextKey = _S.rows.filter(function(d){ return !isTarafDim(d); }).map(function(d){ return dv(o, d) || ''; }).join('|');
+        if (rowContextKey && _S.hiddenRows.some(function(r){ return r.key === rowContextKey; })) return false;
+      }
       if (_S.search) {
         var q  = _S.search.toLowerCase();
         var cn = dvLabel('musteri', o.musteri).toLowerCase();
@@ -329,7 +336,7 @@
     var bothTarefs = cols.includes('cikan') && cols.includes('cikacak');
 
     function colDimVals(dim) {
-      if (dim === 'urun') return _state.products.filter(function(p){ return p.active !== false; }).map(function(p){ return p.id; });
+      if (dim === 'urun') return _state.products.filter(function(p){ return p.active !== false && _S.hiddenProducts.indexOf(p.id) === -1; }).map(function(p){ return p.id; });
       return dimVals(dim, orders);
     }
 
@@ -542,14 +549,6 @@
         groupOrders.forEach(function (o) { _gTot += (o.cikan || 0) + (o.cikacak || 0); });
         if (_gTot === 0) return;
       }
-      // Check hiddenRows for musteri+urun combination
-      if (dim === 'urun') {
-        var musteriCtx = rowContext.find(function(r){ return r.dim === 'musteri'; });
-        if (musteriCtx) {
-          var rkey = musteriCtx.val + '|' + val;
-          if (_S.hiddenRows.indexOf(rkey) !== -1) return;
-        }
-      }
       var groupKey = rowContext.map(function (c) { return c.val; }).join('|') + '|' + val;
       var label = dvLabel(dim, val);
       var newContext = rowContext.concat([{ dim: dim, val: val }]);
@@ -643,6 +642,9 @@
       if (c.type === 'name') return;
       var bg = BAND_BG[c.bi || 0];
       var bl = c.isFirstInLeaf ? 'border-left:2px solid #000;' : '';
+      // Product ID for this column (for context menu Urun Gizle)
+      var urunInLeaf = (c.leaf && c.leaf.keys) ? c.leaf.keys.find(function(k){ return k.dim === 'urun'; }) : null;
+      var colProdAttr = urunInLeaf ? ' data-colprod="' + _esc(urunInLeaf.val) + '"' : '';
 
       if (c.type === 'total') {
         var taraf = tarafCtx ? tarafCtx.val : null;
@@ -692,28 +694,30 @@
         if (c.valK === 'cnt') {
           var cntRaw = rawQty ? (prod2.ratio ? Math.round(rawQty / prod2.ratio * 10000) / 10000 : rawQty) : 0;
           var cntFmt = cntRaw ? Number(cntRaw).toLocaleString('de-DE', {maximumFractionDigits:3}) : '-';
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="container" data-raw="' + (cntRaw || '') + '">' + cntFmt + '</span></td>';
+          cells += '<td' + colProdAttr + ' style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="container" data-raw="' + (cntRaw || '') + '">' + cntFmt + '</span></td>';
         } else if (c.valK === 'qty') {
           var adetRaw = rawQty || 0;
           var adetFmt = adetRaw ? Number(adetRaw).toLocaleString('de-DE', {maximumFractionDigits:1}) : '-';
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="adet" data-raw="' + (adetRaw || '') + '">' + adetFmt + '</span></td>';
+          cells += '<td' + colProdAttr + ' style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="adet" data-raw="' + (adetRaw || '') + '">' + adetFmt + '</span></td>';
         } else if (c.valK === 'eur') {
           var euroRaw = Math.round(rawQty * prod2.price);
           var euroFmt = euroRaw ? Math.round(euroRaw).toLocaleString('de-DE') + ' €' : '-';
-          cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="euro" data-raw="' + (euroRaw || '') + '">' + euroFmt + '</span></td>';
+          cells += '<td' + colProdAttr + ' style="background:' + bgNow + ';' + bl + '"><span class="o-ce" ' + oidAttr + ' data-field="' + tarafNow + '" data-source="euro" data-raw="' + (euroRaw || '') + '">' + euroFmt + '</span></td>';
         }
       } else {
-        cells += '<td style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(val, c.valK) + '</span></td>';
+        cells += '<td' + colProdAttr + ' style="background:' + bgNow + ';' + bl + '"><span class="o-cv">' + fmtVal(val, c.valK) + '</span></td>';
       }
     });
 
     var rowCls = tarafCtx ? 'dr taraf-' + tarafCtx.val : 'dr';
-    var musteriCtx = rowContext.find(function(r){ return r.dim === 'musteri'; });
-    var urunCtx = rowContext.find(function(r){ return r.dim === 'urun'; });
-    var rowKey = (musteriCtx ? musteriCtx.val : '') + '|' + (urunCtx ? urunCtx.val : '');
-    var xBtn = '<button class="o-row-hide-btn" data-rkey="' + _esc(rowKey) + '">×</button>';
-    // Insert X button as very first child of entire row (before all cells)
-    return '<tr class="' + rowCls + '"><td class="o-row-hide-td">' + xBtn + '</td>' + cells + '</tr>';
+    var musteriCtx2 = rowContext.find(function(r){ return r.dim === 'musteri'; });
+    var ulkeCtx2 = rowContext.find(function(r){ return r.dim === 'ulke'; });
+    // rowKey: tum non-taraf context degerlerini birlestirir — pivot config'e gore degisir
+    var rowKey = rowContext.filter(function(c){ return !isTarafDim(c.dim); }).map(function(c){ return c.val; }).join('|');
+    var mId = musteriCtx2 ? musteriCtx2.val : '';
+    var ulkeVal2 = ulkeCtx2 ? ulkeCtx2.val : '';
+    var xBtn = '<button class="o-row-hide-btn" data-rkey="' + _esc(rowKey) + '" data-mid="' + _esc(mId) + '">×</button>';
+    return '<tr class="' + rowCls + '" data-rowkey="' + _esc(rowKey) + '" data-mid="' + _esc(mId) + '" data-ulke="' + _esc(ulkeVal2) + '"><td class="o-row-hide-td">' + xBtn + '</td>' + cells + '</tr>';
   }
 
   /* ============================================================ AGG ROWS */
@@ -1125,35 +1129,11 @@
       b.onclick = function(e) {
         e.stopPropagation();
         var rkey = b.dataset.rkey;
+        var mId = b.dataset.mid || '';
         if (!rkey) return;
-        var musteriId = rkey.split('|')[0];
-
-        // Add this row to hiddenRows
-        if (_S.hiddenRows.indexOf(rkey) === -1) {
-          _S.hiddenRows.push(rkey);
-        }
-
-        // Count remaining visible rows for this customer after hiding this one
-        var remainingRows = document.querySelectorAll('#screen-orders .o-row-hide-btn');
-        var otherVisibleRows = Array.from(remainingRows).filter(function(btn) {
-          var otherRkey = btn.dataset.rkey;
-          return otherRkey && otherRkey !== rkey && otherRkey.startsWith(musteriId + '|') && _S.hiddenRows.indexOf(otherRkey) === -1;
-        });
-
-        if (otherVisibleRows.length === 0) {
-          // Last row — remove customer from filter entirely
-          _S.filters.musteri = _S.filters.musteri.filter(function(x){ return x !== musteriId; });
-          _S.hiddenRows = _S.hiddenRows.filter(function(r){ return !r.startsWith(musteriId + '|'); });
-        }
-
-        _dbgLog('ROW_X_CLICK', {
-          rowKey: rkey, musteriId: musteriId,
-          otherVisible: otherVisibleRows.length,
-          customerRemoved: otherVisibleRows.length === 0,
-          filtersMusteri: _S.filters.musteri.slice(),
-          hiddenRows: _S.hiddenRows.slice()
-        });
-
+        if (_S.hiddenRows.some(function(r){ return r.key === rkey; })) return;
+        _S.hiddenRows.push({ key: rkey, mId: mId });
+        _dbgLog('ROW_X_CLICK', { rowKey: rkey, mId: mId, hiddenRows: _S.hiddenRows.map(function(r){ return r.key; }) });
         var tr = b.closest('tr');
         if (tr) {
           tr.style.transition = 'opacity 0.2s';
@@ -1265,6 +1245,7 @@
         _S.cols = _S.cols.filter(function (d) { return d !== dim; });
         if (to === 'rows') { if (isTarafDim(dim)) _S.rows = addTarafToAxis(_S.rows, dim); else _S.rows.push(dim); }
         if (to === 'cols') { if (isTarafDim(dim)) _S.cols = addTarafToAxis(_S.cols, dim); else _S.cols.push(dim); }
+        _S.hiddenRows = []; _S.hiddenCountries = []; _S.hiddenProducts = [];
         _sel = null; clearShine(); render();
       });
     });
@@ -1275,6 +1256,7 @@
         var dim = b.dataset.dim;
         _S.rows = _S.rows.filter(function (d) { return d !== dim; });
         _S.cols = _S.cols.filter(function (d) { return d !== dim; });
+        _S.hiddenRows = []; _S.hiddenCountries = []; _S.hiddenProducts = [];
         _sel = null; clearShine(); render();
       });
     });
@@ -1431,8 +1413,6 @@
     if (stTop) stTop.onclick = function () { if (_S.form !== 'tabular') { _S.stTop = !_S.stTop; _dbgLog('OPT_CLICK', { opt: 'stTop', value: _S.stTop }); render(); } };
     var gt = document.getElementById('o-opt-gt');
     if (gt) gt.onclick = function () { _S.gtShow = !_S.gtShow; _dbgLog('OPT_CLICK', { opt: 'gtShow', value: _S.gtShow }); render(); };
-    var blank = document.getElementById('o-opt-blank');
-    if (blank) blank.onclick = function () { _S.blankRow = !_S.blankRow; _dbgLog('OPT_CLICK', { opt: 'blankRow', value: _S.blankRow }); render(); };
     var empty = document.getElementById('o-opt-empty');
     if (empty) empty.onclick = function () { _S.showEmpty = !_S.showEmpty; _dbgLog('OPT_CLICK', { opt: 'showEmpty', value: _S.showEmpty, filtersMusteri: _S.filters.musteri.slice(), stateOrders: _state.orders.length }); render(); };
 
@@ -1561,7 +1541,7 @@
         // If removing a customer, also clear their hiddenRows and search input
         if (key === 'musteri') {
           var beforeHidden = _S.hiddenRows.slice();
-          _S.hiddenRows = _S.hiddenRows.filter(function(r){ return !r.startsWith(val + '|'); });
+          _S.hiddenRows = _S.hiddenRows.filter(function(r){ return r.mId !== val; });
           var searchInp = document.getElementById('o-cust-search-inp');
           if (searchInp) searchInp.value = '';
           var sug = document.getElementById('o-cust-sug');
@@ -1569,8 +1549,7 @@
           _dbgLog('CHIP_X_CLICK', {
             key: key, val: val, valName: dvLabel(key, val),
             filtersBefore: before, filtersAfter: _S.filters[key].slice(),
-            hiddenRows: beforeHidden, hiddenRowsForThisCustomer: beforeHidden.filter(function(r){ return r.startsWith(val + '|'); }),
-            hiddenRowsAfterClear: _S.hiddenRows.slice()
+            hiddenRowsCleared: beforeHidden.filter(function(r){ return r.mId === val; }).map(function(r){ return r.key; })
           });
         } else {
           _dbgLog('CHIP_X_CLICK', {
@@ -1747,7 +1726,9 @@
     });
     document.addEventListener('nsdata:filterCleared', function () {
       _dbgLog('FILTER_CLEARED', { filtersBefore: JSON.parse(JSON.stringify(_S.filters)), hiddenRowsBefore: _S.hiddenRows.slice() });
-      _S.filters = { ulke: [], musteri: [], urun: [] }; _S.search = ''; render();
+      _S.filters = { ulke: [], musteri: [], urun: [] }; _S.search = '';
+      _S.hiddenRows = []; _S.hiddenCountries = []; _S.hiddenProducts = [];
+      render();
     });
     document.addEventListener('click', function (e) {
       if (_sel && !e.target.closest('#screen-orders .o-pv')) {
@@ -1887,6 +1868,8 @@
         _S.filters.musteri = [];
         _S.filters.urun = [];
         _S.hiddenRows = [];
+        _S.hiddenCountries = [];
+        _S.hiddenProducts = [];
         renderFL();
         renderData();
       };
@@ -1928,6 +1911,98 @@
     window._nsdata_getFilteredOrders = function() { return filtOrders(); };
     window._nsdata_getState = function() { return _state; };
     window._nsdata_renderData = function() { renderData(); };
+
+    // ============================================================
+    // SAG TIK CONTEXT MENU
+    // ============================================================
+    (function _initContextMenu() {
+      var existing = document.getElementById('o-ctx-menu');
+      if (existing) existing.remove();
+
+      var menu = document.createElement('div');
+      menu.id = 'o-ctx-menu';
+      menu.innerHTML =
+        '<div class="o-ctx-item" data-action="row">Satır Gizle</div>' +
+        '<div class="o-ctx-item" data-action="musteri">Müşteri Gizle</div>' +
+        '<div class="o-ctx-item o-ctx-sep" data-action="ulke">Ülke Gizle</div>' +
+        '<div class="o-ctx-item" data-action="urun">Ürün Gizle</div>';
+      document.body.appendChild(menu);
+
+      var _ctxData = {};
+
+      var ts2 = document.getElementById('o-ts');
+      if (ts2) {
+        ts2.addEventListener('contextmenu', function(e) {
+          var tr = e.target.closest('tr[data-rowkey]');
+          if (!tr) return;
+          e.preventDefault();
+
+          var td = e.target.closest('td');
+          var colProd = (td && td.dataset.colprod) ? td.dataset.colprod : '';
+
+          _ctxData = {
+            rowkey: tr.dataset.rowkey || '',
+            mId: tr.dataset.mid || '',
+            ulke: tr.dataset.ulke || '',
+            colProd: colProd,
+          };
+
+          // Ulke ve urun secenekleri sadece ilgili data varsa aktif
+          menu.querySelectorAll('[data-action="ulke"]').forEach(function(el){
+            el.classList.toggle('o-ctx-dim', !_ctxData.ulke);
+          });
+          menu.querySelectorAll('[data-action="urun"]').forEach(function(el){
+            el.classList.toggle('o-ctx-dim', !_ctxData.colProd);
+          });
+
+          // Ekrandan tasma olmamasi icin pozisyon ayari
+          var x = e.clientX, y = e.clientY;
+          menu.style.display = 'block';
+          if (x + menu.offsetWidth > window.innerWidth) x = window.innerWidth - menu.offsetWidth - 4;
+          if (y + menu.offsetHeight > window.innerHeight) y = window.innerHeight - menu.offsetHeight - 4;
+          menu.style.left = x + 'px';
+          menu.style.top  = y + 'px';
+        });
+      }
+
+      menu.addEventListener('click', function(e) {
+        var item = e.target.closest('.o-ctx-item');
+        if (!item || item.classList.contains('o-ctx-dim')) return;
+        var action = item.dataset.action;
+        menu.style.display = 'none';
+
+        if (action === 'row') {
+          if (!_ctxData.rowkey) return;
+          if (_S.hiddenRows.some(function(r){ return r.key === _ctxData.rowkey; })) return;
+          _S.hiddenRows.push({ key: _ctxData.rowkey, mId: _ctxData.mId });
+          renderFL(); renderData();
+
+        } else if (action === 'musteri') {
+          if (!_ctxData.mId) return;
+          _S.filters.musteri = _S.filters.musteri.filter(function(x){ return x !== _ctxData.mId; });
+          _S.hiddenRows = _S.hiddenRows.filter(function(r){ return r.mId !== _ctxData.mId; });
+          renderFL(); renderData();
+
+        } else if (action === 'ulke') {
+          if (!_ctxData.ulke) return;
+          if (_S.hiddenCountries.indexOf(_ctxData.ulke) === -1) _S.hiddenCountries.push(_ctxData.ulke);
+          renderData();
+
+        } else if (action === 'urun') {
+          if (!_ctxData.colProd) return;
+          if (_S.hiddenProducts.indexOf(_ctxData.colProd) === -1) _S.hiddenProducts.push(_ctxData.colProd);
+          render(); // Schema yeniden kurulmali (kolon sayisi degisiyor)
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (menu && !menu.contains(e.target)) menu.style.display = 'none';
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') menu.style.display = 'none';
+      });
+    })();
 
     // ============================================================
     // OVERLAY CELL EDITOR

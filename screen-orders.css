@@ -502,3 +502,39 @@
 #screen-orders .o-dt td.th-n,
 #screen-orders .o-ht th.th-n { text-align: center !important; }
 #screen-orders .nc { justify-content: center !important; }
+
+/* ============================================================ CONTEXT MENU */
+#o-ctx-menu {
+  position: fixed;
+  display: none;
+  background: #FFFFFF;
+  border: 1px solid #E2E5EF;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  z-index: 99999;
+  min-width: 160px;
+  padding: 4px 0;
+  font-family: Inter, sans-serif;
+}
+.o-ctx-item {
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #0F1117;
+  user-select: none;
+  transition: background 0.1s;
+}
+.o-ctx-item:hover:not(.o-ctx-dim) {
+  background: #F0EFFF;
+  color: #4F46E5;
+}
+.o-ctx-item.o-ctx-dim {
+  color: #C4C8D4;
+  cursor: default;
+}
+.o-ctx-sep {
+  border-top: 1px solid #E2E5EF;
+  margin-top: 4px;
+  padding-top: 13px;
+}

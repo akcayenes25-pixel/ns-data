@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.1.4';
+const APP_VERSION = 'v3.2.0';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,10 +19,19 @@ const APP_VERSION = 'v3.1.4';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
-  'v3.1.4': {
+  'v3.2.0': {
     date: 'Haziran 2026',
     items: [
-      '[Düzeltildi] Boş Satır Ekle tuşu kaldırıldı, yerine Boş Satır Gizle/Göster toggle eklendi',
+      '[Düzeltildi] Satır gizleme artık tüm müşteriyi değil yalnızca o ülke satırını kaldırıyor',
+      '[Eklendi] Sağ tık menüsü: satır, müşteri, ülke ve ürün bazında gizleme seçenekleri',
+      '[İyileştirildi] Pivot yapısı değiştiğinde gizlenmiş satır/ülke/ürünler otomatik sıfırlanıyor',
+    ]
+  },
+  'v3.1.5': {
+    date: 'Haziran 2026',
+    items: [
+      '[Eklendi] Boş Satır Gizle/Göster tuşu: tıklayınca miktarı sıfır olan satırlar gizlenir',
+      '[Düzeltildi] Eski Boş Satır Ekle tuşu kaldırıldı',
       '[İyileştirildi] Kullanıcı boş satırları kapattıysa müşteri seçimi tekrar açmaz',
     ]
   },
