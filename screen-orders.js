@@ -1053,7 +1053,7 @@
             _S.filters.musteri.unshift(id);
             added++;
           }
-          if (!_state.orders.some(function(o){ return o.musteri === id; })) _S.showEmpty = true;
+          if (!_state.orders.some(function(o){ return o.musteri === id; }) && !_S.showEmpty) _S.showEmpty = true;
         });
         if (added === 0) showToast(ulke + ' musterileri zaten secili');
         sug.style.display = 'none';
@@ -1073,7 +1073,7 @@
       if (!_S.filters.musteri.includes(id)) {
         _S.filters.musteri.unshift(id);
       }
-      if (!_state.orders.some(function(o){ return o.musteri === id; })) _S.showEmpty = true;
+      if (!_state.orders.some(function(o){ return o.musteri === id; }) && !_S.showEmpty) _S.showEmpty = true;
       _dbgLog('MUSTERI_EKLENDI', { sonrakiFiltre: _S.filters.musteri.slice(), stateOrdersCount: _state.orders.length, showEmptyAuto: !_state.orders.length });
       sug.style.display = 'none';
       inp.value = '';
@@ -1406,10 +1406,12 @@
     if (repeat) { repeat.classList.toggle('dim', _S.form === 'compact'); repeat.classList.toggle('on', _S.repeat && _S.form !== 'compact'); }
     var stTop = document.getElementById('o-opt-st-top');
     if (stTop) { stTop.classList.toggle('dim', _S.form === 'tabular'); stTop.classList.toggle('on', _S.stTop && _S.form !== 'tabular'); }
-    ['st', 'gt', 'blank', 'empty'].forEach(function (k) {
+    ['st', 'gt', 'empty'].forEach(function (k) {
       var el = document.getElementById('o-opt-' + k);
-      if (el) el.classList.toggle('on', k === 'st' ? _S.stShow : k === 'gt' ? _S.gtShow : k === 'blank' ? _S.blankRow : _S.showEmpty);
+      if (el) el.classList.toggle('on', k === 'st' ? _S.stShow : k === 'gt' ? _S.gtShow : _S.showEmpty);
     });
+    var emptyBtn = document.getElementById('o-opt-empty');
+    if (emptyBtn) emptyBtn.textContent = _S.showEmpty ? 'Gizle' : 'Göster';
   }
 
   function bindOpts() {
@@ -1814,8 +1816,7 @@
         '<div class="o-opts-g"><span class="o-opts-lbl">Etiket</span><button class="o-ob" id="o-opt-repeat">Tekrarla</button></div>' +
         '<div class="o-opts-g"><span class="o-opts-lbl">Alt Top.</span><button class="o-ob on" id="o-opt-st">Göster</button><button class="o-ob" id="o-opt-st-top">Üstte</button></div>' +
         '<div class="o-opts-g"><span class="o-opts-lbl">Genel Top.</span><button class="o-ob on" id="o-opt-gt">Göster</button></div>' +
-        '<div class="o-opts-g"><span class="o-opts-lbl">Boş Satır</span><button class="o-ob" id="o-opt-blank">Ekle</button></div>' +
-        '<div class="o-opts-g"><span class="o-opts-lbl">Siparişsiz</span><button class="o-ob" id="o-opt-empty">Göster</button></div>' +
+        '<div class="o-opts-g"><span class="o-opts-lbl">Boş Satır</span><button class="o-ob" id="o-opt-empty">Göster</button></div>' +
         '<div class="o-opts-g o-views-wrap"><button class="o-ob" id="o-views-btn">⊞ Görünümler</button><div class="o-views-menu" id="o-views-menu" style="display:none"></div></div>' +
         '<div class="o-opts-g"><button class="o-ob" id="o-btn-pool-all">⬡ Havuza At</button></div>' +
         '<div class="o-opts-g"><button class="o-ob o-ob-danger" id="o-btn-reset-data">✕ Sıfırla</button></div>' +

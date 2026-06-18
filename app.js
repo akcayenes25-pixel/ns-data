@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.1.3';
+const APP_VERSION = 'v3.1.4';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,6 +19,13 @@ const APP_VERSION = 'v3.1.3';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
+  'v3.1.4': {
+    date: 'Haziran 2026',
+    items: [
+      '[Düzeltildi] Boş Satır Ekle tuşu kaldırıldı, yerine Boş Satır Gizle/Göster toggle eklendi',
+      '[İyileştirildi] Kullanıcı boş satırları kapattıysa müşteri seçimi tekrar açmaz',
+    ]
+  },
   'v3.1.3': {
     date: 'Haziran 2026',
     items: [
