@@ -218,13 +218,13 @@ function _processSheet(rawRows, customers, products, filenamePeriod) {
 function _detectHeader(rows) {
   // Her satır için header skoru hesapla
   var COL_PATTERNS = {
-    customer: /^(cari|müşteri|musteri|customer|client|firm)/i,
-    product:  /^(ürün|urun|product|ürn|mal|item)/i,
-    qty:      /^(adet|miktar|qty|quantity|satiş\s?adt|satis\s?adt|units)/i,
-    euro:     /^(euro|eur|tutar|satiş\s?eur|satis\s?eur|amount|fiyat)/i,
-    month:    /^(ay|month|mon)/i,
-    year:     /^(yil|yıl|year|yr)/i,
-    country:  /^(ülke|ulke|country|market)/i,
+    customer: /(cari|müşteri|musteri|customer|client|firm)/i,
+    product:  /(ürün|urun|product|ürn|item|mal adı|mal adi)/i,
+    qty:      /(adet|miktar|qty|quantity|\badt\b|adt\/|satiş\s?adt|satis\s?adt|units|m2\b|satis\s?miktari|satış\s?miktarı)/i,
+    euro:     /(euro|eur|tutar|ciro|satiş\s?eur|satis\s?eur|amount|fiyat)/i,
+    month:    /(\bay\b|month|monthname|mon\b)/i,
+    year:     /(yil|yıl|\byear\b|\byr\b)/i,
+    country:  /(ülke|ulke|country|market)/i,
   };
 
   for (var i = 0; i < Math.min(rows.length, 10); i++) {
@@ -414,10 +414,22 @@ function _getCell(row, colIdx) {
 function _parseMonth(val) {
   if (!val) return null;
   if (typeof val === 'number') return (val >= 1 && val <= 12) ? val : null;
-  var TR_MONTHS = { 'ocak':1,'şubat':2,'subat':2,'mart':3,'nisan':4,'mayıs':5,'mayis':5,
-    'haziran':6,'temmuz':7,'ağustos':8,'agustos':8,'eylül':9,'eylul':9,'ekim':10,'kasım':11,'kasim':11,'aralık':12,'aralik':12 };
+  var ALL_MONTHS = {
+    'ocak':1,'oca':1,'jan':1,'january':1,
+    'şubat':2,'subat':2,'feb':2,'february':2,
+    'mart':3,'mar':3,'march':3,
+    'nisan':4,'nis':4,'apr':4,'april':4,
+    'mayıs':5,'mayis':5,'may':5,
+    'haziran':6,'haz':6,'jun':6,'june':6,
+    'temmuz':7,'tem':7,'jul':7,'july':7,
+    'ağustos':8,'agustos':8,'agu':8,'aug':8,'august':8,
+    'eylül':9,'eylul':9,'eyl':9,'sep':9,'september':9,
+    'ekim':10,'eki':10,'oct':10,'october':10,
+    'kasım':11,'kasim':11,'kas':11,'nov':11,'november':11,
+    'aralık':12,'aralik':12,'ara':12,'dec':12,'december':12
+  };
   var s = String(val).toLowerCase().trim();
-  return TR_MONTHS[s] || parseInt(s) || null;
+  return ALL_MONTHS[s] || parseInt(s) || null;
 }
 
 function _parseNumber(val) {
