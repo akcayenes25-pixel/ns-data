@@ -216,16 +216,21 @@ function _processSheet(rawRows, customers, products, filenamePeriod) {
    HEADER TESPİTİ — semantik analiz
    ============================================================ */
 function _detectHeader(rows) {
-  // Her satır için header skoru hesapla
-  var COL_PATTERNS = {
+  // Bug 9 fix: two-pass euro detection.
+  // Pass 1 (strong): tutar/ciro/eur/euro/amount — real revenue totals.
+  // Pass 2 (weak):   fiyat — only fills euro if pass 1 found nothing.
+  // Prevents "Birim Fiyat" (unit price) from stealing the euro column
+  // when a "Satış Tutarı" column appears later in the same header row.
+  var COL_STRONG = {
     customer: /(cari|müşteri|musteri|customer|client|firm)/i,
     product:  /(ürün|urun|product|ürn|item|mal adı|mal adi)/i,
     qty:      /(adet|miktar|qty|quantity|\badt\b|adt\/|satiş\s?adt|satis\s?adt|units|m2\b|satis\s?miktari|satış\s?miktarı)/i,
-    euro:     /(euro|eur|tutar|ciro|satiş\s?eur|satis\s?eur|amount|fiyat)/i,
-    month:    /(\bay\b|month|monthname|mon\b)/i,
+    euro:     /(euro|eur|tutar|ciro|satiş\s?eur|satis\s?eur|amount)/i,
+    month:    /(ay\b|month|monthname|mon\b)/i,
     year:     /(yil|yıl|\byear\b|\byr\b)/i,
     country:  /(ülke|ulke|country|market)/i,
   };
+  var _WEAK_EURO = /fiyat/i;
 
   for (var i = 0; i < Math.min(rows.length, 10); i++) {
     var row = rows[i];
@@ -234,16 +239,27 @@ function _detectHeader(rows) {
     var colMap = {};
     var score  = 0;
 
+    // Pass 1: strong patterns
     row.forEach(function(cell, idx) {
       if (!cell) return;
       var s = String(cell).trim();
-      Object.keys(COL_PATTERNS).forEach(function(key) {
-        if (COL_PATTERNS[key].test(s) && colMap[key] === undefined) {
+      Object.keys(COL_STRONG).forEach(function(key) {
+        if (COL_STRONG[key].test(s) && colMap[key] === undefined) {
           colMap[key] = idx;
           score++;
         }
       });
     });
+
+    // Pass 2: fiyat fallback — only if euro not yet found by strong pass
+    if (colMap.euro === undefined) {
+      row.forEach(function(cell, idx) {
+        if (!cell) return;
+        if (_WEAK_EURO.test(String(cell).trim()) && colMap.euro === undefined) {
+          colMap.euro = idx;
+        }
+      });
+    }
 
     // Müşteri + ürün + (adet veya euro) → header
     if (colMap.customer !== undefined && colMap.product !== undefined &&
@@ -255,6 +271,7 @@ function _detectHeader(rows) {
   // Fallback: içerik analizi — kolon tipini veriden çıkar
   return _detectHeaderByContent(rows);
 }
+
 
 function _detectHeaderByContent(rows) {
   // İlk gerçek veri satırını bul (boş olmayan, filtre metni olmayan)
@@ -302,7 +319,7 @@ function _detectHeaderByContent(rows) {
 function _matchEntity(type, erpName, nsNames, mappings, contextHint) {
   if (!erpName || !nsNames.length) return { match: null, score: 0, alternatives: [] };
 
-  // 1. Exact match (trim + case-insensitive) — skor hesaplamaya gerek yok
+  // 1. Exact match (trim + case-insensitive)
   var erpTrimmed = erpName.trim();
   var exactMatch = nsNames.find(function(n) {
     return n.trim().toLowerCase() === erpTrimmed.toLowerCase();
@@ -321,13 +338,20 @@ function _matchEntity(type, erpName, nsNames, mappings, contextHint) {
 
   scores.sort(function(a, b) { return b.score - a.score; });
 
-  var best  = scores[0];
-  var alts  = scores.slice(1, 4).filter(function(s){ return s.score > 0.3; });
+  var best = scores[0];
+  var alts = scores.slice(1, 4).filter(function(s){ return s.score > 0.3; });
 
-  // Eşik: 0.45 üzeri otomatik kabul
+  // Bug 8 fix: tie-guard.
+  // If top two candidates are within TIE_MARGIN of each other, refuse to auto-accept
+  // even if the winner is above the 0.45 threshold. Forces manual selection in preview.
+  var TIE_MARGIN = 0.08;
+  var second = scores[1];
+  var isTie = second && best.score >= 0.45 && (best.score - second.score) < TIE_MARGIN;
+
   return {
-    match:        best.score >= 0.45 ? best.name : null,
+    match:        (!isTie && best.score >= 0.45) ? best.name : null,
     score:        best.score,
+    ambiguous:    isTie,   // caller can use this to show a warning in preview
     alternatives: alts
   };
 }
@@ -339,7 +363,6 @@ function _calcMatchScore(type, erpName, nsName, mappings, contextHint) {
   if (mappings[type] && mappings[type][erpName]) {
     var mem = mappings[type][erpName];
     if (mem.name === nsName) {
-      // Kullanıcı onaylamış, güven oranı × 0.7 ağırlık
       score += mem.confidence * 0.7;
     }
   }
@@ -366,10 +389,28 @@ function _calcMatchScore(type, erpName, nsName, mappings, contextHint) {
     score += 0.15;
   }
 
-  // 6. Bağlam ipucu (ülke) — ileride kullanılabilir
-  // contextHint ile ülke bazlı boost eklenebilir
+  // 6. Bug 13 fix: country context boost.
+  // If the ERP row has a country code and nsName contains that country's name,
+  // boost its score to disambiguate customers who trade under the same name
+  // in different countries (e.g. "SOCOREG MAROC" vs "SOCOREG ALGERIE").
+  if (contextHint && type === 'customer') {
+    var COUNTRY_FRAGS = {
+      'MA': ['maroc','morocco','marocco'],
+      'DZ': ['algerie','algerian','algeria','alger'],
+      'TN': ['tunisie','tunisia','tunis'],
+      'LY': ['libye','libya'],
+      'EG': ['egypt','egypte'],
+      'MR': ['mauritanie','mauritania'],
+      'SN': ['senegal'],
+    };
+    var frags = COUNTRY_FRAGS[String(contextHint).trim().toUpperCase()] || [];
+    var nsNormLow = _normalize(nsName);
+    if (frags.some(function(f){ return nsNormLow.includes(f); })) {
+      score += 0.25;
+    }
+  }
 
-  return Math.min(score, 1.0);
+  return Math.min(score, 1.5); // allow >1.0 so country boost can separate ties
 }
 
 /* ============================================================
@@ -446,8 +487,33 @@ function _parseMonth(val) {
 
 function _parseNumber(val) {
   if (val === null || val === undefined || val === '') return null;
-  if (typeof val === 'number') return val;
-  var n = parseFloat(String(val).replace(/[^\d.,-]/g, '').replace(',', '.'));
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  // Strip currency symbols and whitespace, keep digits . , -
+  var s = String(val).trim().replace(/[^\d.,\-]/g, '');
+  if (!s || s === '-') return null;
+  var lastDot   = s.lastIndexOf('.');
+  var lastComma = s.lastIndexOf(',');
+  if (lastComma > lastDot) {
+    // EU format "1.234,56" — dots=thousands, comma=decimal
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > lastComma) {
+    if (lastComma !== -1) {
+      // US format "1,234.56" — commas=thousands
+      s = s.replace(/,/g, '');
+    } else {
+      // Only dots: multiple dots = EU thousands ("1.234.567")
+      var dotCount = (s.match(/\./g) || []).length;
+      if (dotCount > 1) {
+        s = s.replace(/\./g, '');
+      } else {
+        // Single dot — if exactly 3 digits after dot = thousands ("12.500" -> 12500)
+        var afterDot = s.slice(lastDot + 1);
+        if (afterDot.length === 3) { s = s.replace('.', ''); }
+        // else decimal: "1234.56", "1.2" — keep as-is
+      }
+    }
+  }
+  var n = parseFloat(s);
   return isNaN(n) ? null : n;
 }
 

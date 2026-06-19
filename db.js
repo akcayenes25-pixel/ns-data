@@ -173,33 +173,111 @@ async function dbUpsertOrder(order) {
   } catch (err) { console.error('dbUpsertOrder:', err); return false; }
 }
 
-async function dbImportOrder(customerId, productId, qty, taraf, month, year) {
-  if (!customerId || !productId || !month || !year) return false;
+/* dbBatchImportOrders — replaces old single-row dbImportOrder.
+   Fixes:
+     Bug 1  — destination_country now carried through SELECT + INSERT
+     Bug 2  — concurrent updates + one batch INSERT (not N*2 serial calls)
+     Bug 10 — zero-qty groups filtered by caller before this is called
+     Bug 11 — caller aggregates/sums duplicate file rows before calling this
+
+   groups: array of { customer_id, product_id, country, month, year, qty }
+           Groups with qty<=0 must already be filtered by caller.
+   taraf:  'cikan' | 'cikacak'
+   Returns: { done, inserted, updated, failed }
+*/
+async function dbBatchImportOrders(groups, taraf) {
+  if (!groups || !groups.length) return { done:0, inserted:0, updated:0, failed:0 };
   var field = (taraf === 'cikacak') ? 'planned_qty' : 'shipped_qty';
+
+  // Collect unique month+year pairs
+  var periods = {};
+  groups.forEach(function(g) { periods[g.month + '-' + g.year] = true; });
+  var periodKeys = Object.keys(periods);
+
   try {
-    var existing = await _client.from('orders').select('id')
-      .eq('customer_id', customerId).eq('product_id', productId)
-      .eq('month', month).eq('year', year)
-      .maybeSingle();
-    if (existing.error) throw existing.error;
-    var ts = new Date().toISOString();
-    var payload = { updated_at: ts, updated_by: 'import' };
-    payload[field] = qty;
-    if (existing.data) {
-      var res = await _client.from('orders').update(payload).eq('id', existing.data.id);
+    // CALL 1: fetch all existing orders for these periods (batch, not per-row)
+    var existingAll = [];
+    for (var pi = 0; pi < periodKeys.length; pi++) {
+      var parts = periodKeys[pi].split('-');
+      var res = await _client.from('orders')
+        .select('id,customer_id,product_id,destination_country,month,year')
+        .eq('month', parseInt(parts[0])).eq('year', parseInt(parts[1]));
       if (res.error) throw res.error;
-    } else {
-      payload.customer_id  = customerId;
-      payload.product_id   = productId;
-      payload.month        = month;
-      payload.year         = year;
-      payload.shipped_qty  = (taraf === 'cikacak') ? 0 : qty;
-      payload.planned_qty  = (taraf === 'cikacak') ? qty : 0;
-      var res = await _client.from('orders').insert(payload);
-      if (res.error) throw res.error;
+      if (res.data) existingAll = existingAll.concat(res.data);
     }
-    return true;
-  } catch (err) { console.error('dbImportOrder:', err); return false; }
+
+    // Build lookup map: composite key -> existing row id
+    var existingMap = {};
+    existingAll.forEach(function(o) {
+      var country = o.destination_country ? String(o.destination_country).trim().toUpperCase() : '';
+      var key = [o.customer_id, o.product_id, country, o.month, o.year].join('|||');
+      existingMap[key] = o.id;
+    });
+
+    // Split into UPDATE vs INSERT lists
+    var toUpdate = [];
+    var toInsert = [];
+    var ts = new Date().toISOString();
+
+    groups.forEach(function(g) {
+      var country = g.country ? String(g.country).trim().toUpperCase() : '';
+      var key = [g.customer_id, g.product_id, country, g.month, g.year].join('|||');
+      var existingId = existingMap[key];
+
+      if (existingId) {
+        // Only set the taraf field — other taraf stays untouched in DB (Bug 10 protection)
+        var upd = { id: existingId, updated_at: ts, updated_by: 'import' };
+        upd[field] = g.qty;
+        toUpdate.push(upd);
+      } else {
+        toInsert.push({
+          customer_id:         g.customer_id,
+          product_id:          g.product_id,
+          destination_country: g.country ? String(g.country).trim().toUpperCase() : null,
+          month:               g.month,
+          year:                g.year,
+          shipped_qty:         (taraf === 'cikacak') ? 0 : g.qty,
+          planned_qty:         (taraf === 'cikacak') ? g.qty : 0,
+          updated_at:          ts,
+          updated_by:          'import'
+        });
+      }
+    });
+
+    var updatedCount  = 0;
+    var insertedCount = 0;
+    var failedCount   = 0;
+
+    // CALL 2a: concurrent UPDATE (each row different value, fire in parallel)
+    if (toUpdate.length > 0) {
+      var updateResults = await Promise.allSettled(toUpdate.map(function(u) {
+        var payload = { updated_at: u.updated_at, updated_by: u.updated_by };
+        payload[field] = u[field];
+        return _client.from('orders').update(payload).eq('id', u.id);
+      }));
+      updateResults.forEach(function(r) {
+        if (r.status === 'fulfilled' && !r.value.error) { updatedCount++; }
+        else { failedCount++; console.error('dbBatchImportOrders update fail:', r.reason || (r.value && r.value.error)); }
+      });
+    }
+
+    // CALL 2b: batch INSERT (one call for all new rows)
+    if (toInsert.length > 0) {
+      var insRes = await _client.from('orders').insert(toInsert);
+      if (insRes.error) {
+        console.error('dbBatchImportOrders insert fail:', insRes.error);
+        failedCount += toInsert.length;
+      } else {
+        insertedCount = toInsert.length;
+      }
+    }
+
+    return { done: updatedCount + insertedCount, inserted: insertedCount, updated: updatedCount, failed: failedCount };
+
+  } catch (err) {
+    console.error('dbBatchImportOrders:', err);
+    return { done: 0, inserted: 0, updated: 0, failed: groups.length };
+  }
 }
 
 async function dbCountPlannedForPeriod(month, year) {

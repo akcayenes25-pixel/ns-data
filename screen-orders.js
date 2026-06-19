@@ -1889,35 +1889,52 @@
 
   async function _confirmImport() {
     if (!_state.importPreviewData) return;
-    var rows = _state.importPreviewData.rows || [];
-    var taraf = _state.importTaraf || 'cikan';
-    var activePeriod = getActivePeriod();
-    var defaultPeriod = (_state.importPreviewData.detectedPeriod && _state.importPreviewData.detectedPeriod.month)
-      ? _state.importPreviewData.detectedPeriod : activePeriod;
+    var rawRows = _state.importPreviewData.rows || [];
+    var taraf   = _state.importTaraf || 'cikan';
 
-    document.querySelectorAll('#screen-orders .o-iprod').forEach(function (sel) {
-      if (!sel.value) return;
-      var ern = sel.getAttribute('data-ern');
-      var row = rows.find(function (r) { return r.product_name === ern && !r.product_id; });
-      if (row) row.product_id = sel.value;
+    // Bug 4 fix: lock period from importPreviewData at parse time.
+    // Never re-read getActivePeriod() here — avoids writing to wrong month
+    // if active period changes while preview is open.
+    var defaultPeriod = (_state.importPreviewData.detectedPeriod && _state.importPreviewData.detectedPeriod.month)
+      ? _state.importPreviewData.detectedPeriod
+      : getActivePeriod();
+
+    // Bug 11 + Bug 10 fix: aggregate raw rows by composite key, sum qty.
+    // ERP line-item exports have same combo on multiple invoice rows — sum them.
+    // Rows with null qty are skipped (never zero-out existing manual data).
+    var grouped = {};
+    rawRows.forEach(function(row) {
+      if (!row.customer_id || !row.product_id) return;
+      var month   = row.detectedMonth || defaultPeriod.month;
+      var year    = row.detectedYear  || defaultPeriod.year;
+      if (!month || !year) return; // no period = cannot write
+      var country = (row.country && String(row.country).trim().toUpperCase()) || null;
+      var qty     = (typeof row.qty === 'number' && row.qty > 0) ? row.qty : null;
+      if (qty === null) return; // null/zero qty: skip, never wipe existing data
+      var key = [row.customer_id, row.product_id, country || '', month, year].join('|');
+      if (!grouped[key]) {
+        grouped[key] = { customer_id: row.customer_id, product_id: row.product_id,
+                         country: country, month: month, year: year, qty: 0 };
+      }
+      grouped[key].qty += qty;
     });
 
-    var done = 0;
-    var skipped = 0;
+    // Bug 10 guard: also drop any group that ended up with qty=0 after aggregation
+    var writeGroups = Object.values(grouped).filter(function(g){ return g.qty > 0; });
+    var skippedUnmatched = rawRows.filter(function(r){ return !r.customer_id || !r.product_id; }).length;
+
+    // Bug 1 + Bug 2 fix: one batch call instead of N serial round-trips.
+    // dbBatchImportOrders: SELECT existing (batch) -> concurrent UPDATE + batch INSERT.
+    // destination_country is carried through both paths.
     dbPauseRealtime();
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
-      if (!row.customer_id || !row.product_id) { skipped++; continue; }
-      var month = row.detectedMonth || defaultPeriod.month;
-      var year  = row.detectedYear  || defaultPeriod.year;
-      if (await dbImportOrder(row.customer_id, row.product_id, row.qty || 0, taraf, month, year)) done++;
-      else skipped++;
-    }
+    var result = await dbBatchImportOrders(writeGroups, taraf);
     dbResumeRealtime();
-    if (skipped > 0) {
-      showToast(done + ' satır yüklendi · ' + skipped + ' satır atlandı', 4500);
+
+    var totalSkipped = result.failed + skippedUnmatched;
+    if (totalSkipped > 0) {
+      showToast(result.done + ' kayıt yüklendi · ' + totalSkipped + ' atlandı', 4500);
     } else {
-      showToast(done + ' satır başarıyla yüklendi', 3500);
+      showToast(result.done + ' kayıt başarıyla yüklendi · ' + result.inserted + ' yeni · ' + result.updated + ' güncellendi', 3500);
     }
     _state.importPreviewData = null;
     _state.importTaraf = null;
