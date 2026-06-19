@@ -1710,7 +1710,26 @@
       var periodCell = (row.detectedMonth && row.detectedYear)
         ? '<td style="font-size:11px;color:#6C6C70;padding:6px 8px">' + row.detectedMonth + '/' + row.detectedYear + '</td>'
         : (data.multiPeriod ? '<td>—</td>' : '');
-      return '<tr><td style="padding:6px 10px">' + custCell + '</td><td style="padding:6px 10px">' + prodCell + '</td><td style="padding:6px 10px;text-align:right">' + (row.qty || '—') + '</td><td style="padding:6px 10px;text-align:right;color:#6C6C70">' + (row.euro ? row.euro + ' €' : '—') + '</td>' + periodCell + '</tr>';
+      var countryNorm = row.country ? (CountryNormalizer.normalize(String(row.country).trim()) || String(row.country).trim().toUpperCase()) : null;
+      var countryCell = '<td style="padding:6px 10px;font-size:12px;color:#4A5068">' + _esc(countryNorm || '—') + '</td>';
+
+      // Status cell
+      var statusCell;
+      if (!row.customer_id && !row.product_id) {
+        statusCell = '<td class="o-imp-status o-imp-status-err">✗ Müşteri + ürün eşleşmedi</td>';
+      } else if (!row.customer_id) {
+        statusCell = '<td class="o-imp-status o-imp-status-err">✗ Müşteri eşleşmedi</td>';
+      } else if (!row.product_id) {
+        statusCell = '<td class="o-imp-status o-imp-status-err">✗ Ürün eşleşmedi</td>';
+      } else if (!row.qty || row.qty <= 0) {
+        statusCell = '<td class="o-imp-status o-imp-status-warn">⚠ Qty sıfır/boş</td>';
+      } else if (!row.detectedMonth && !row.detectedYear && !(data.detectedPeriod && data.detectedPeriod.month)) {
+        statusCell = '<td class="o-imp-status o-imp-status-warn">⚠ Dönem yok</td>';
+      } else {
+        statusCell = '<td class="o-imp-status o-imp-status-ok">✓ Yazılacak</td>';
+      }
+
+      return '<tr><td style="padding:6px 10px">' + custCell + '</td><td style="padding:6px 10px">' + prodCell + '</td>' + countryCell + '<td style="padding:6px 10px;text-align:right">' + (row.qty || '—') + '</td><td style="padding:6px 10px;text-align:right;color:#6C6C70">' + (row.euro ? row.euro + ' €' : '—') + '</td>' + periodCell + statusCell + '</tr>';
     }).join('');
 
     var div = document.createElement('div');
@@ -1734,7 +1753,7 @@
         '<div class="o-import-sum-item"><span class="o-import-sum-label">Eşleşmeyen</span><span class="o-import-sum-val" style="color:var(--color-warning)">' + (data.unmatchedCount || 0) + '</span></div>' +
       '</div>' +
       '<div class="o-import-body"><table class="o-import-table">' +
-        '<thead><tr><th>Müşteri</th><th>Ürün</th><th>Adet</th><th>Euro</th>' + (data.multiPeriod ? '<th>Dönem</th>' : '') + '</tr></thead>' +
+        '<thead><tr><th>Müşteri</th><th>Ürün</th><th>Ülke</th><th>Adet</th><th>Euro</th>' + (data.multiPeriod ? '<th>Dönem</th>' : '') + '<th>Durum</th></tr></thead>' +
         '<tbody>' + detailRows + '</tbody>' +
       '</table></div>' +
       '<div id="o-newcust-zone"></div>' +
@@ -1893,54 +1912,247 @@
     var taraf   = _state.importTaraf || 'cikan';
 
     // Bug 4 fix: lock period from importPreviewData at parse time.
-    // Never re-read getActivePeriod() here — avoids writing to wrong month
-    // if active period changes while preview is open.
     var defaultPeriod = (_state.importPreviewData.detectedPeriod && _state.importPreviewData.detectedPeriod.month)
       ? _state.importPreviewData.detectedPeriod
       : getActivePeriod();
 
-    // Bug 11 + Bug 10 fix: aggregate raw rows by composite key, sum qty.
-    // ERP line-item exports have same combo on multiple invoice rows — sum them.
-    // Rows with null qty are skipped (never zero-out existing manual data).
+    // Build per-row log before aggregation
+    var importLog = rawRows.map(function(row) {
+      var month   = row.detectedMonth || defaultPeriod.month;
+      var year    = row.detectedYear  || defaultPeriod.year;
+      var country = (row.country && CountryNormalizer.normalize(String(row.country).trim())) || null;
+      var qty     = (typeof row.qty === 'number' && row.qty > 0) ? row.qty : null;
+
+      var stage, reason, status;
+      if (!row.customer_id && !row.product_id) {
+        stage = 'eşleştirme'; status = 'atlandı';
+        reason = 'Müşteri ve ürün sisteme eşleştirilemedi. ERP müşteri: "' + (row.customer_name || '—') + '" (skor: ' + (row.customer_score || 0).toFixed(2) + '), ERP ürün: "' + (row.product_name || '—') + '" (skor: ' + (row.product_score || 0).toFixed(2) + ').';
+      } else if (!row.customer_id) {
+        stage = 'eşleştirme'; status = 'atlandı';
+        reason = 'Müşteri sisteme eşleştirilemedi. ERP değer: "' + (row.customer_name || '—') + '", en yüksek skor: ' + (row.customer_score || 0).toFixed(2) + '. Alternatifler: ' + (row.customer_alts ? row.customer_alts.slice(0,3).map(function(a){ return '"' + a.name + '" (' + a.score.toFixed(2) + ')'; }).join(', ') : 'yok') + '.';
+      } else if (!row.product_id) {
+        stage = 'eşleştirme'; status = 'atlandı';
+        reason = 'Ürün sisteme eşleştirilemedi. ERP değer: "' + (row.product_name || '—') + '", en yüksek skor: ' + (row.product_score || 0).toFixed(2) + '. Alternatifler: ' + (row.product_alts ? row.product_alts.slice(0,3).map(function(a){ return '"' + a.name + '" (' + a.score.toFixed(2) + ')'; }).join(', ') : 'yok') + '.';
+      } else if (qty === null) {
+        stage = 'parsing'; status = 'atlandı';
+        reason = 'Adet değeri sıfır, negatif veya boş (' + (row.qty === 0 ? '0' : row.qty === null || row.qty === undefined ? 'boş' : row.qty) + '). Mevcut veriyi silmemek için atlandı.';
+      } else if (!month || !year) {
+        stage = 'parsing'; status = 'atlandı';
+        reason = 'Dönem (ay/yıl) tespit edilemedi. Satırda ay: "' + (row.detectedMonth || '—') + '", yıl: "' + (row.detectedYear || '—') + '". Varsayılan dönem de mevcut değil.';
+      } else {
+        stage = 'aggregation'; status = 'bekliyor';
+        reason = null;
+      }
+
+      return {
+        status:        status,
+        stage:         stage,
+        reason:        reason,
+        erp_musteri:   row.customer_name  || '—',
+        erp_urun:      row.product_name   || '—',
+        erp_ulke:      row.country        || '—',
+        erp_qty:       row.qty,
+        erp_euro:      row.euro,
+        erp_ay:        row.detectedMonth  || '—',
+        erp_yil:       row.detectedYear   || '—',
+        sistem_musteri_id: row.customer_id || null,
+        sistem_urun_id:    row.product_id  || null,
+        sistem_ulke:       country         || '—',
+        sistem_ay:         month           || '—',
+        sistem_yil:        year            || '—',
+        musteri_skor:  row.customer_score,
+        urun_skor:     row.product_score,
+        musteri_alts:  row.customer_alts,
+        urun_alts:     row.product_alts,
+      };
+    });
+
+    // Bug 11 + Bug 10 fix: aggregate
     var grouped = {};
-    rawRows.forEach(function(row) {
+    var keyToLogIdx = {};
+    rawRows.forEach(function(row, idx) {
       if (!row.customer_id || !row.product_id) return;
       var month   = row.detectedMonth || defaultPeriod.month;
       var year    = row.detectedYear  || defaultPeriod.year;
-      if (!month || !year) return; // no period = cannot write
+      if (!month || !year) return;
       var country = (row.country && CountryNormalizer.normalize(String(row.country).trim())) || null;
       var qty     = (typeof row.qty === 'number' && row.qty > 0) ? row.qty : null;
-      if (qty === null) return; // null/zero qty: skip, never wipe existing data
+      if (qty === null) return;
       var key = [row.customer_id, row.product_id, country || '', month, year].join('|');
       if (!grouped[key]) {
         grouped[key] = { customer_id: row.customer_id, product_id: row.product_id,
-                         country: country, month: month, year: year, qty: 0 };
+                         country: country, month: month, year: year, qty: 0, logIdxs: [] };
       }
       grouped[key].qty += qty;
+      grouped[key].logIdxs.push(idx);
     });
 
-    // Bug 10 guard: also drop any group that ended up with qty=0 after aggregation
     var writeGroups = Object.values(grouped).filter(function(g){ return g.qty > 0; });
     var skippedUnmatched = rawRows.filter(function(r){ return !r.customer_id || !r.product_id; }).length;
 
-    // Bug 1 + Bug 2 fix: one batch call instead of N serial round-trips.
-    // dbBatchImportOrders: SELECT existing (batch) -> concurrent UPDATE + batch INSERT.
-    // destination_country is carried through both paths.
     dbPauseRealtime();
     var result = await dbBatchImportOrders(writeGroups, taraf);
     dbResumeRealtime();
 
-    var totalSkipped = result.failed + skippedUnmatched;
-    if (totalSkipped > 0) {
-      showToast(result.done + ' kayıt yüklendi · ' + totalSkipped + ' atlandı', 4500);
-    } else {
-      showToast(result.done + ' kayıt başarıyla yüklendi · ' + result.inserted + ' yeni · ' + result.updated + ' güncellendi', 3500);
-    }
+    // Update log with DB results
+    (result.successGroups || []).forEach(function(sg) {
+      var key = [sg.group.customer_id, sg.group.product_id, sg.group.destination_country || sg.group.country || '', sg.group.month, sg.group.year].join('|');
+      var grp = grouped[key] || Object.values(grouped).find(function(g){
+        return g.customer_id === sg.group.customer_id && g.product_id === sg.group.product_id && g.month === sg.group.month && g.year === sg.group.year;
+      });
+      if (grp && grp.logIdxs) {
+        grp.logIdxs.forEach(function(i) {
+          importLog[i].status = sg.action === 'inserted' ? 'eklendi' : 'güncellendi';
+          importLog[i].db_action = sg.action;
+          importLog[i].reason = null;
+        });
+      }
+    });
+    (result.failedGroups || []).forEach(function(fg) {
+      var key = [fg.group.customer_id, fg.group.product_id, fg.group.destination_country || fg.group.country || '', fg.group.month, fg.group.year].join('|');
+      var grp = grouped[key] || Object.values(grouped).find(function(g){
+        return g.customer_id === fg.group.customer_id && g.product_id === fg.group.product_id && g.month === fg.group.month && g.year === fg.group.year;
+      });
+      if (grp && grp.logIdxs) {
+        grp.logIdxs.forEach(function(i) {
+          importLog[i].status = 'hata';
+          importLog[i].stage = 'db';
+          importLog[i].reason = 'Veritabanına yazılamadı: ' + (fg.error || 'bilinmeyen hata');
+        });
+      }
+    });
+
+    // Store log and show result modal
+    _state.lastImportLog = importLog;
+    _state.lastImportResult = result;
+    _state.lastImportTaraf = taraf;
+
     _state.importPreviewData = null;
     _state.importTaraf = null;
     var preview = document.getElementById('o-import-preview');
     if (preview) preview.remove();
+
+    _showImportResultModal(importLog, result, taraf);
     await _loadAll(); render(); emitDataChange('orders', {});
+  }
+
+  function _showImportResultModal(log, result, taraf) {
+    var existing = document.getElementById('o-import-result-modal');
+    if (existing) existing.remove();
+
+    var tarafLabel = taraf === 'cikacak' ? 'Çıkacak' : 'Çıkan';
+
+    // Breakdown counts
+    var countOk      = log.filter(function(r){ return r.status === 'eklendi' || r.status === 'güncellendi'; }).length;
+    var countEklendi = log.filter(function(r){ return r.status === 'eklendi'; }).length;
+    var countGuncellendi = log.filter(function(r){ return r.status === 'güncellendi'; }).length;
+    var countMusteriMiss = log.filter(function(r){ return r.status === 'atlandı' && r.stage === 'eşleştirme' && !r.sistem_musteri_id && r.sistem_urun_id; }).length;
+    var countUrunMiss    = log.filter(function(r){ return r.status === 'atlandı' && r.stage === 'eşleştirme' && r.sistem_musteri_id && !r.sistem_urun_id; }).length;
+    var countIkisiMiss   = log.filter(function(r){ return r.status === 'atlandı' && r.stage === 'eşleştirme' && !r.sistem_musteri_id && !r.sistem_urun_id; }).length;
+    var countQty         = log.filter(function(r){ return r.status === 'atlandı' && r.stage === 'parsing' && r.reason && r.reason.indexOf('Adet') === 0; }).length;
+    var countDonem       = log.filter(function(r){ return r.status === 'atlandı' && r.stage === 'parsing' && r.reason && r.reason.indexOf('Dönem') === 0; }).length;
+    var countHata        = log.filter(function(r){ return r.status === 'hata'; }).length;
+    var countAtlandi     = log.filter(function(r){ return r.status === 'atlandı'; }).length;
+
+    // Simple view HTML
+    var simpleHtml =
+      '<div class="o-irs-grid">' +
+        '<div class="o-irs-card o-irs-card-ok"><div class="o-irs-card-val">' + countOk + '</div><div class="o-irs-card-lbl">Yazıldı</div>' +
+          '<div class="o-irs-card-sub">' + countEklendi + ' yeni · ' + countGuncellendi + ' güncellendi</div></div>' +
+        '<div class="o-irs-card o-irs-card-warn"><div class="o-irs-card-val">' + countAtlandi + '</div><div class="o-irs-card-lbl">Atlandı</div>' +
+          '<div class="o-irs-card-sub">' +
+            (countMusteriMiss ? countMusteriMiss + ' müşteri eşleşmedi · ' : '') +
+            (countUrunMiss ? countUrunMiss + ' ürün eşleşmedi · ' : '') +
+            (countIkisiMiss ? countIkisiMiss + ' ikisi de eşleşmedi · ' : '') +
+            (countQty ? countQty + ' qty sıfır · ' : '') +
+            (countDonem ? countDonem + ' dönem yok · ' : '') +
+          '</div></div>' +
+        (countHata ? '<div class="o-irs-card o-irs-card-err"><div class="o-irs-card-val">' + countHata + '</div><div class="o-irs-card-lbl">DB Hatası</div></div>' : '') +
+      '</div>';
+
+    // Detail view HTML
+    var detailRows = log.map(function(r, i) {
+      var statusCls = r.status === 'eklendi' || r.status === 'güncellendi' ? 'o-imp-status-ok' :
+                      r.status === 'hata' ? 'o-imp-status-err' : 'o-imp-status-warn';
+      var statusLabel = r.status === 'eklendi' ? '✓ Eklendi' : r.status === 'güncellendi' ? '✓ Güncellendi' :
+                        r.status === 'hata' ? '✗ Hata' : '⚠ Atlandı';
+      return '<tr>' +
+        '<td class="o-ird-cell">' + (i+1) + '</td>' +
+        '<td class="o-ird-cell">' + _esc(r.erp_musteri) + '</td>' +
+        '<td class="o-ird-cell">' + _esc(r.erp_urun) + '</td>' +
+        '<td class="o-ird-cell">' + _esc(r.erp_ulke) + '</td>' +
+        '<td class="o-ird-cell" style="text-align:right">' + (r.erp_qty !== null && r.erp_qty !== undefined ? r.erp_qty : '—') + '</td>' +
+        '<td class="o-ird-cell" style="color:#6C6C70">' + r.erp_ay + '/' + r.erp_yil + '</td>' +
+        '<td class="o-ird-cell" style="color:#4A5068">' + _esc(r.sistem_ulke) + '</td>' +
+        '<td class="o-ird-cell"><span class="o-imp-status ' + statusCls + '">' + statusLabel + '</span></td>' +
+        '<td class="o-ird-cell o-ird-reason">' + _esc(r.reason || '') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var detailHtml =
+      '<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">' +
+        '<button class="btn btn-secondary o-ird-copy-btn" id="o-ird-copy">📋 Tümünü Kopyala (AI için)</button>' +
+        '<span style="font-size:11px;color:#9CA3AF">JSON formatında, yapay zekaya yapıştırabilirsiniz</span>' +
+      '</div>' +
+      '<div class="o-ird-table-wrap"><table class="o-import-table o-ird-table">' +
+        '<thead><tr><th>#</th><th>ERP Müşteri</th><th>ERP Ürün</th><th>ERP Ülke</th><th>Qty</th><th>Dönem</th><th>Sistem Ülke</th><th>Durum</th><th>Sebep</th></tr></thead>' +
+        '<tbody>' + detailRows + '</tbody>' +
+      '</table></div>';
+
+    var overlay = document.createElement('div');
+    overlay.id = 'o-import-result-modal';
+    overlay.className = 'o-irm-overlay';
+    overlay.innerHTML =
+      '<div class="o-irm-modal">' +
+        '<div class="o-irm-header">' +
+          '<div>' +
+            '<span class="o-irm-title">Yükleme Sonucu</span>' +
+            '<span class="o-irm-taraf o-imp-taraf-' + taraf + '">' + tarafLabel + '</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center">' +
+            '<button class="o-irm-tab' + (true ? ' o-irm-tab-active' : '') + '" id="o-irm-tab-simple">Basit</button>' +
+            '<button class="o-irm-tab" id="o-irm-tab-detail">Detaylı</button>' +
+            '<button class="btn btn-secondary" id="o-irm-close">Kapat</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="o-irm-body" id="o-irm-body">' +
+          '<div id="o-irm-simple">' + simpleHtml + '</div>' +
+          '<div id="o-irm-detail" style="display:none">' + detailHtml + '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('o-irm-close').addEventListener('click', function(){ overlay.remove(); });
+    overlay.addEventListener('click', function(e){ if (e.target === overlay) overlay.remove(); });
+
+    document.getElementById('o-irm-tab-simple').addEventListener('click', function() {
+      document.getElementById('o-irm-simple').style.display = '';
+      document.getElementById('o-irm-detail').style.display = 'none';
+      document.getElementById('o-irm-tab-simple').classList.add('o-irm-tab-active');
+      document.getElementById('o-irm-tab-detail').classList.remove('o-irm-tab-active');
+    });
+    document.getElementById('o-irm-tab-detail').addEventListener('click', function() {
+      document.getElementById('o-irm-simple').style.display = 'none';
+      document.getElementById('o-irm-detail').style.display = '';
+      document.getElementById('o-irm-tab-simple').classList.remove('o-irm-tab-active');
+      document.getElementById('o-irm-tab-detail').classList.add('o-irm-tab-active');
+    });
+
+    var copyBtn = document.getElementById('o-ird-copy');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function() {
+        var payload = JSON.stringify({
+          taraf: taraf,
+          ozet: { yazildi: countOk, eklendi: countEklendi, guncellendi: countGuncellendi, atlandi: countAtlandi, hata: countHata },
+          satirlar: log
+        }, null, 2);
+        navigator.clipboard.writeText(payload).then(function(){
+          copyBtn.textContent = '✓ Kopyalandı';
+          setTimeout(function(){ copyBtn.textContent = '📋 Tümünü Kopyala (AI için)'; }, 2000);
+        });
+      });
+    }
   }
 
   /* ============================================================ GLOBAL EVENTS */

@@ -247,6 +247,8 @@ async function dbBatchImportOrders(groups, taraf) {
     var updatedCount  = 0;
     var insertedCount = 0;
     var failedCount   = 0;
+    var successGroups = [];
+    var failedGroups  = [];
 
     // CALL 2a: concurrent UPDATE (each row different value, fire in parallel)
     if (toUpdate.length > 0) {
@@ -255,9 +257,16 @@ async function dbBatchImportOrders(groups, taraf) {
         payload[field] = u[field];
         return _client.from('orders').update(payload).eq('id', u.id);
       }));
-      updateResults.forEach(function(r) {
-        if (r.status === 'fulfilled' && !r.value.error) { updatedCount++; }
-        else { failedCount++; console.error('dbBatchImportOrders update fail:', r.reason || (r.value && r.value.error)); }
+      updateResults.forEach(function(r, i) {
+        if (r.status === 'fulfilled' && !r.value.error) {
+          updatedCount++;
+          successGroups.push({ group: toUpdate[i], action: 'updated' });
+        } else {
+          failedCount++;
+          var errMsg = (r.reason && r.reason.message) || (r.value && r.value.error && r.value.error.message) || 'DB güncelleme hatası';
+          failedGroups.push({ group: toUpdate[i], action: 'update_failed', error: errMsg });
+          console.error('dbBatchImportOrders update fail:', r.reason || (r.value && r.value.error));
+        }
       });
     }
 
@@ -267,12 +276,16 @@ async function dbBatchImportOrders(groups, taraf) {
       if (insRes.error) {
         console.error('dbBatchImportOrders insert fail:', insRes.error);
         failedCount += toInsert.length;
+        toInsert.forEach(function(g) {
+          failedGroups.push({ group: g, action: 'insert_failed', error: insRes.error.message || 'DB ekleme hatası' });
+        });
       } else {
         insertedCount = toInsert.length;
+        toInsert.forEach(function(g) { successGroups.push({ group: g, action: 'inserted' }); });
       }
     }
 
-    return { done: updatedCount + insertedCount, inserted: insertedCount, updated: updatedCount, failed: failedCount };
+    return { done: updatedCount + insertedCount, inserted: insertedCount, updated: updatedCount, failed: failedCount, successGroups: successGroups, failedGroups: failedGroups };
 
   } catch (err) {
     console.error('dbBatchImportOrders:', err);

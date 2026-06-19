@@ -592,3 +592,40 @@
   margin-top: 4px;
   padding-top: 13px;
 }
+
+/* ── Import Status Tags ──────────────────────────────────────── */
+#screen-orders .o-imp-status { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+#screen-orders .o-imp-status-ok   { background: #D1FAE5; color: #065F46; }
+#screen-orders .o-imp-status-warn { background: #FEF3C7; color: #92400E; }
+#screen-orders .o-imp-status-err  { background: #FEE2E2; color: #991B1B; }
+
+/* ── Import Result Modal ─────────────────────────────────────── */
+.o-irm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+.o-irm-modal { background: #fff; border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,.22); width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.o-irm-header { padding: 16px 20px; border-bottom: 1px solid #E2E5EF; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+.o-irm-title { font-size: 16px; font-weight: 800; margin-right: 10px; }
+.o-irm-taraf { font-size: 13px; font-weight: 700; }
+.o-irm-tab { background: #F2F2F7; border: none; border-radius: 6px; padding: 5px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: #4A5068; }
+.o-irm-tab-active { background: #4F46E5; color: #fff; }
+.o-irm-body { overflow-y: auto; flex: 1; padding: 20px; }
+
+/* Simple view cards */
+.o-irs-grid { display: flex; gap: 16px; flex-wrap: wrap; }
+.o-irs-card { flex: 1; min-width: 160px; border-radius: 10px; padding: 16px 20px; }
+.o-irs-card-ok   { background: #D1FAE5; }
+.o-irs-card-warn { background: #FEF3C7; }
+.o-irs-card-err  { background: #FEE2E2; }
+.o-irs-card-val  { font-size: 36px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.o-irs-card-ok .o-irs-card-val   { color: #065F46; }
+.o-irs-card-warn .o-irs-card-val { color: #92400E; }
+.o-irs-card-err .o-irs-card-val  { color: #991B1B; }
+.o-irs-card-lbl  { font-size: 13px; font-weight: 700; }
+.o-irs-card-sub  { font-size: 11px; margin-top: 6px; opacity: .75; }
+
+/* Detail view table */
+.o-ird-table-wrap { overflow-x: auto; max-height: 480px; overflow-y: auto; border: 1px solid #E2E5EF; border-radius: 8px; }
+.o-ird-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.o-ird-table th { background: #F2F2F7; padding: 7px 10px; font-size: 11px; font-weight: 700; color: #6C6C70; text-align: left; border-bottom: 1px solid #D1D1D6; position: sticky; top: 0; z-index: 1; }
+.o-ird-cell { padding: 6px 10px; border-bottom: 1px solid #F2F2F7; vertical-align: top; }
+.o-ird-reason { font-size: 11px; color: #4A5068; max-width: 280px; }
+.o-ird-copy-btn { font-size: 12px; }
