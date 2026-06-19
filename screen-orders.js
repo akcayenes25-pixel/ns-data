@@ -1848,7 +1848,7 @@
     });
   }
 
-
+  async function _confirmImport() {
     if (!_state.importPreviewData) return;
     var rows = _state.importPreviewData.rows || [];
     var taraf = _state.importTaraf || 'cikan';
