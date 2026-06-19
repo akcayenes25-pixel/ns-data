@@ -449,7 +449,7 @@ a {
   bottom: calc(var(--footer-height) + var(--space-4));
   left: 50%;
   transform: translateX(-50%);
-  z-index: 300;
+  z-index: 100000;
   background: var(--color-text-primary);
   color: #FFFFFF;
   padding: var(--space-3) var(--space-6);

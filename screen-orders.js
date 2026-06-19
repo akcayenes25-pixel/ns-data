@@ -1788,20 +1788,40 @@
       var name = (document.getElementById('o-nc-name').value || '').trim();
       var cntry = (document.getElementById('o-nc-country').value || '').trim().toUpperCase();
       if (!name) { showToast('Müşteri adı boş olamaz'); return; }
-      var ok = await dbUpsertCustomer({ name: name, active: true });
-      if (!ok) { showToast('Kaydedilemedi'); return; }
-      var newCustomers = await dbGetCustomers();
-      var newCust = newCustomers.find(function(c){ return c.name === name; });
-      if (newCust) {
-        if (cntry) await dbAddCustomerCountry(newCust.id, cntry);
-        var rows = _state.importPreviewData ? _state.importPreviewData.rows : [];
-        rows.forEach(function(r){ if (r.customer_name === erpName && !r.customer_id) r.customer_id = newCust.id; });
+
+      // Dedup: aynı isim (trim + case-insensitive) zaten varsa onu kullan
+      var lower = name.toLowerCase();
+      var existingCust = (_state.customers || []).find(function(c){ return (c.name || '').trim().toLowerCase() === lower; });
+
+      var custToUse;
+      if (existingCust) {
+        custToUse = existingCust;
+        if (cntry) await dbAddCustomerCountry(existingCust.id, cntry);
+        showToast(name + ' zaten kayıtlı, mevcut müşteri kullanıldı');
+      } else {
+        var ok = await dbUpsertCustomer({ name: name, active: true });
+        if (!ok) { showToast('Kaydedilemedi'); return; }
+        var newCustomers = await dbGetCustomers();
+        custToUse = newCustomers.find(function(c){ return (c.name || '').trim().toLowerCase() === lower; });
+        if (custToUse && cntry) await dbAddCustomerCountry(custToUse.id, cntry);
         _state.customers = newCustomers;
         newCustomers.forEach(function(c){ _state.customerMap[c.id] = c; });
-        triggerBtn.replaceWith(document.createTextNode('✓ ' + name));
+        showToast('Müşteri eklendi: ' + name);
       }
-      form.remove();
-      showToast('Müşteri eklendi');
+
+      if (custToUse) {
+        // Bu ERP adıyla eşleşen TÜM satırları bağla
+        var rows = _state.importPreviewData ? _state.importPreviewData.rows : [];
+        rows.forEach(function(r){
+          if (!r.customer_id && (r.customer_name || '').trim().toLowerCase() === (erpName || '').trim().toLowerCase()) {
+            r.customer_id = custToUse.id;
+          }
+        });
+        form.remove();
+        renderImportPreview(); // tüm eşleşen satırlar yeşile döner
+      } else {
+        form.remove();
+      }
     });
   }
 
@@ -1832,19 +1852,38 @@
       var price = parseFloat(document.getElementById('o-np-price').value) || 0;
       var ratio = parseFloat(document.getElementById('o-np-ratio').value) || 1;
       if (!name) { showToast('Ürün adı boş olamaz'); return; }
-      var ok = await dbUpsertProduct({ name: name, avg_price_eur: price, container_ratio: ratio, active: true });
-      if (!ok) { showToast('Kaydedilemedi'); return; }
-      var newProducts = await dbGetProducts();
-      var newProd = newProducts.find(function(p){ return p.name === name; });
-      if (newProd) {
-        var rows = _state.importPreviewData ? _state.importPreviewData.rows : [];
-        rows.forEach(function(r){ if (r.product_name === erpName && !r.product_id) r.product_id = newProd.id; });
+
+      // Dedup: aynı isim (trim + case-insensitive) zaten varsa onu kullan
+      var lower = name.toLowerCase();
+      var existingProd = (_state.products || []).find(function(p){ return (p.name || '').trim().toLowerCase() === lower; });
+
+      var prodToUse;
+      if (existingProd) {
+        prodToUse = existingProd;
+        showToast(name + ' zaten kayıtlı, mevcut ürün kullanıldı');
+      } else {
+        var ok = await dbUpsertProduct({ name: name, avg_price_eur: price, container_ratio: ratio, active: true });
+        if (!ok) { showToast('Kaydedilemedi'); return; }
+        var newProducts = await dbGetProducts();
+        prodToUse = newProducts.find(function(p){ return (p.name || '').trim().toLowerCase() === lower; });
         _state.products = newProducts;
         newProducts.forEach(function(p){ _state.productMap[p.id] = p; });
-        triggerBtn.replaceWith(document.createTextNode('✓ ' + name));
+        showToast('Ürün eklendi: ' + name);
       }
-      form.remove();
-      showToast('Ürün eklendi');
+
+      if (prodToUse) {
+        // Bu ERP adıyla eşleşen TÜM satırları bağla
+        var rows = _state.importPreviewData ? _state.importPreviewData.rows : [];
+        rows.forEach(function(r){
+          if (!r.product_id && (r.product_name || '').trim().toLowerCase() === (erpName || '').trim().toLowerCase()) {
+            r.product_id = prodToUse.id;
+          }
+        });
+        form.remove();
+        renderImportPreview(); // tüm eşleşen satırlar yeşile döner
+      } else {
+        form.remove();
+      }
     });
   }
 
@@ -1864,14 +1903,20 @@
     });
 
     var done = 0;
+    var skipped = 0;
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
-      if (!row.customer_id || !row.product_id) continue;
+      if (!row.customer_id || !row.product_id) { skipped++; continue; }
       var month = row.detectedMonth || defaultPeriod.month;
       var year  = row.detectedYear  || defaultPeriod.year;
       if (await dbImportOrder(row.customer_id, row.product_id, row.qty || 0, taraf, month, year)) done++;
+      else skipped++;
     }
-    showToast(done + ' satır yüklendi');
+    if (skipped > 0) {
+      showToast(done + ' satır yüklendi · ' + skipped + ' satır eşleşmediği için atlandı', 4500);
+    } else {
+      showToast(done + ' satır başarıyla yüklendi', 3500);
+    }
     _state.importPreviewData = null;
     _state.importTaraf = null;
     var preview = document.getElementById('o-import-preview');
