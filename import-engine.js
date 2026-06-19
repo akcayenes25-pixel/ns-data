@@ -302,6 +302,18 @@ function _detectHeaderByContent(rows) {
 function _matchEntity(type, erpName, nsNames, mappings, contextHint) {
   if (!erpName || !nsNames.length) return { match: null, score: 0, alternatives: [] };
 
+  // 1. Exact match (trim + case-insensitive) — skor hesaplamaya gerek yok
+  var erpTrimmed = erpName.trim();
+  var exactMatch = nsNames.find(function(n) {
+    return n.trim().toLowerCase() === erpTrimmed.toLowerCase();
+  });
+  if (exactMatch) return { match: exactMatch, score: 1.0, alternatives: [] };
+
+  // 2. Normalized exact match
+  var erpNorm = _normalize(erpTrimmed);
+  var normMatch = nsNames.find(function(n) { return _normalize(n) === erpNorm; });
+  if (normMatch) return { match: normMatch, score: 0.98, alternatives: [] };
+
   var scores = nsNames.map(function(nsName) {
     var score = _calcMatchScore(type, erpName, nsName, mappings, contextHint);
     return { name: nsName, score: score };

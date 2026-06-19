@@ -1705,7 +1705,8 @@
       }
       var prodCell = row.product_id
         ? '<span class="o-imp-ok">✓ ' + _esc(row.product_name) + '</span>'
-        : '<select class="o-iprod" data-ern="' + _esc(row.product_name) + '" style="font-size:12px;height:28px"><option value="">— Eşleştir —</option>' + _state.products.map(function(p){ return '<option value="' + p.id + '">' + _esc(p.name) + '</option>'; }).join('') + '</select>';
+        : '<span class="o-imp-miss">' + _esc(row.product_name) + '</span> ' +
+          '<button class="o-imp-newprod-btn" data-ern="' + _esc(row.product_name) + '" data-euro="' + (row.euro || 0) + '" data-qty="' + (row.qty || 0) + '">+ Ekle</button>';
       var periodCell = (row.detectedMonth && row.detectedYear)
         ? '<td style="font-size:11px;color:#6C6C70;padding:6px 8px">' + row.detectedMonth + '/' + row.detectedYear + '</td>'
         : (data.multiPeriod ? '<td>—</td>' : '');
@@ -1749,11 +1750,19 @@
     document.getElementById('o-import-confirm').addEventListener('click', _confirmImport);
 
     div.addEventListener('click', function(e) {
-      var btn = e.target.closest('.o-imp-newcust-btn');
-      if (!btn) return;
-      var ern = btn.getAttribute('data-ern');
-      var country = btn.getAttribute('data-country') || '';
-      _showInlineNewCust(btn, ern, country);
+      var custBtn = e.target.closest('.o-imp-newcust-btn');
+      if (custBtn) {
+        var ern = custBtn.getAttribute('data-ern');
+        var country = custBtn.getAttribute('data-country') || '';
+        _showInlineNewCust(custBtn, ern, country);
+      }
+      var prodBtn = e.target.closest('.o-imp-newprod-btn');
+      if (prodBtn) {
+        var ern = prodBtn.getAttribute('data-ern');
+        var euro = parseFloat(prodBtn.getAttribute('data-euro')) || 0;
+        var qty  = parseFloat(prodBtn.getAttribute('data-qty'))  || 0;
+        _showInlineNewProd(prodBtn, ern, euro, qty);
+      }
     });
   }
 
@@ -1796,7 +1805,50 @@
     });
   }
 
-  async function _confirmImport() {
+  function _showInlineNewProd(triggerBtn, erpName, totalEuro, totalQty) {
+    var zone = document.getElementById('o-newcust-zone');
+    if (!zone) return;
+    var existing = document.getElementById('o-newprod-form');
+    if (existing) existing.remove();
+    // Calculate avg price from import data
+    var calcPrice = (totalQty > 0 && totalEuro > 0) ? (totalEuro / totalQty).toFixed(4) : '0';
+    var form = document.createElement('div');
+    form.id = 'o-newprod-form';
+    form.className = 'o-newcust-form';
+    form.innerHTML =
+      '<div class="o-newcust-title">Yeni Ürün — <em>' + _esc(erpName) + '</em></div>' +
+      '<div class="o-newcust-fields">' +
+        '<label>Ad<input id="o-np-name" value="' + _esc(erpName) + '" placeholder="Ürün adı"/></label>' +
+        '<label>Ort. Fiyat (€/adet)<input id="o-np-price" value="' + calcPrice + '" placeholder="0.0000" type="number" step="0.0001" style="width:120px"/></label>' +
+        '<label>Konteyner Oranı<input id="o-np-ratio" value="1" placeholder="1" type="number" step="0.0001" style="width:100px"/></label>' +
+        '<button id="o-np-save" class="btn btn-primary" style="height:36px">Kaydet</button>' +
+        '<button id="o-np-cancel" class="btn btn-secondary" style="height:36px">İptal</button>' +
+      '</div>' +
+      '<div style="font-size:11px;color:#6C6C70;margin-top:6px">Fiyat importtaki Euro ÷ Adet hesabından geldi. Konteyner oranı = 1 konteyner kaç adet.</div>';
+    zone.appendChild(form);
+    document.getElementById('o-np-cancel').addEventListener('click', function() { form.remove(); });
+    document.getElementById('o-np-save').addEventListener('click', async function() {
+      var name  = (document.getElementById('o-np-name').value || '').trim();
+      var price = parseFloat(document.getElementById('o-np-price').value) || 0;
+      var ratio = parseFloat(document.getElementById('o-np-ratio').value) || 1;
+      if (!name) { showToast('Ürün adı boş olamaz'); return; }
+      var ok = await dbUpsertProduct({ name: name, avg_price_eur: price, container_ratio: ratio, active: true });
+      if (!ok) { showToast('Kaydedilemedi'); return; }
+      var newProducts = await dbGetProducts();
+      var newProd = newProducts.find(function(p){ return p.name === name; });
+      if (newProd) {
+        var rows = _state.importPreviewData ? _state.importPreviewData.rows : [];
+        rows.forEach(function(r){ if (r.product_name === erpName && !r.product_id) r.product_id = newProd.id; });
+        _state.products = newProducts;
+        newProducts.forEach(function(p){ _state.productMap[p.id] = p; });
+        triggerBtn.replaceWith(document.createTextNode('✓ ' + name));
+      }
+      form.remove();
+      showToast('Ürün eklendi');
+    });
+  }
+
+
     if (!_state.importPreviewData) return;
     var rows = _state.importPreviewData.rows || [];
     var taraf = _state.importTaraf || 'cikan';
