@@ -1904,6 +1904,7 @@
 
     var done = 0;
     var skipped = 0;
+    dbPauseRealtime();
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       if (!row.customer_id || !row.product_id) { skipped++; continue; }
@@ -1912,8 +1913,9 @@
       if (await dbImportOrder(row.customer_id, row.product_id, row.qty || 0, taraf, month, year)) done++;
       else skipped++;
     }
+    dbResumeRealtime();
     if (skipped > 0) {
-      showToast(done + ' satır yüklendi · ' + skipped + ' satır eşleşmediği için atlandı', 4500);
+      showToast(done + ' satır yüklendi · ' + skipped + ' satır atlandı', 4500);
     } else {
       showToast(done + ' satır başarıyla yüklendi', 3500);
     }
