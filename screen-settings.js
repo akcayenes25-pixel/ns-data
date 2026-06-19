@@ -50,7 +50,6 @@
     _bindScreenEvents();
   }
 
-  /* ============================================================
   function _buildProductSection() {
     var tableHTML = ProductManager.buildSettingsHTML(_state.products);
     return '<div class="settings-section">' +
