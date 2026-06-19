@@ -2,7 +2,7 @@
 /* Bootstrap, navigation, clock, network status, toast, changelog */
 /* No business logic here — only app shell management */
 
-const APP_VERSION = 'v3.3.2';
+const APP_VERSION = 'v3.3.3';
 
 /* =============================================================
    CHANGELOG KURALLARI — bu yorum konuşma silinse bile koddan okunabilsin
@@ -19,7 +19,7 @@ const APP_VERSION = 'v3.3.2';
      - Dinamik tarih kullanılmaz, elle yazılır
    ============================================================= */
 const CHANGELOG = {
-  'v3.3.2': {
+  'v3.3.3': {
     date: 'Haziran 2026',
     items: [
       '[Düzeltildi] Yükle: Türkçe ülke isimleri (Cezayir, Tunus vb.) artık doğru normalize edilerek veritabanına yazılıyor',

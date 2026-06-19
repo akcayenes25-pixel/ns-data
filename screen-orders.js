@@ -146,8 +146,10 @@
         musteri: o.customer_id,
         urun:    o.product_id,
         ulke:    o.destination_country || '',
-        cikan:   parseFloat(o.shipped_qty) || 0,
-        cikacak: parseFloat(o.planned_qty) || 0,
+        cikan:       parseFloat(o.shipped_qty) || 0,
+        cikacak:     parseFloat(o.planned_qty) || 0,
+        cikan_eur:   parseFloat(o.shipped_euro) || 0,
+        cikacak_eur: parseFloat(o.planned_euro) || 0,
         note:    o.note || '',
         _dbId:   o.id,
         _customerId: o.customer_id,
@@ -214,12 +216,19 @@
     orders.forEach(function (o) {
       var p = prd(o.urun);
       var ratio = p.ratio || 0, price = p.price || 0;
-      var val = 0;
-      if (!taraf || taraf === 'cikan')   val += o.cikan || 0;
-      if (!taraf || taraf === 'cikacak') val += o.cikacak || 0;
+      var val = 0, euroVal = 0;
+      if (!taraf || taraf === 'cikan') {
+        val += o.cikan || 0;
+        euroVal += o.cikan_eur || 0;
+      }
+      if (!taraf || taraf === 'cikacak') {
+        val += o.cikacak || 0;
+        euroVal += o.cikacak_eur || 0;
+      }
       qty += val;
       cnt += ratio ? val / ratio : 0;
-      eur += val * price;
+      // Use stored ERP euro if available, otherwise fall back to qty * avg_price
+      eur += euroVal > 0 ? euroVal : (val * price);
     });
     return { qty: Math.round(qty * 100) / 100, cnt: Math.round(cnt * 1000) / 1000, eur: Math.round(eur) };
   }
@@ -1981,9 +1990,10 @@
       var key = [row.customer_id, row.product_id, country || '', month, year].join('|');
       if (!grouped[key]) {
         grouped[key] = { customer_id: row.customer_id, product_id: row.product_id,
-                         country: country, month: month, year: year, qty: 0, logIdxs: [] };
+                         country: country, month: month, year: year, qty: 0, euro: 0, logIdxs: [] };
       }
       grouped[key].qty += qty;
+      grouped[key].euro += (typeof row.euro === 'number' && row.euro > 0) ? row.euro : 0;
       grouped[key].logIdxs.push(idx);
     });
 

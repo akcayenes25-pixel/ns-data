@@ -187,7 +187,8 @@ async function dbUpsertOrder(order) {
 */
 async function dbBatchImportOrders(groups, taraf) {
   if (!groups || !groups.length) return { done:0, inserted:0, updated:0, failed:0 };
-  var field = (taraf === 'cikacak') ? 'planned_qty' : 'shipped_qty';
+  var field      = (taraf === 'cikacak') ? 'planned_qty'  : 'shipped_qty';
+  var euroField  = (taraf === 'cikacak') ? 'planned_euro' : 'shipped_euro';
 
   // Collect unique month+year pairs
   var periods = {};
@@ -228,6 +229,7 @@ async function dbBatchImportOrders(groups, taraf) {
         // Only set the taraf field — other taraf stays untouched in DB (Bug 10 protection)
         var upd = { id: existingId, updated_at: ts, updated_by: 'import' };
         upd[field] = g.qty;
+        upd[euroField] = g.euro || 0;
         toUpdate.push(upd);
       } else {
         toInsert.push({
@@ -238,6 +240,8 @@ async function dbBatchImportOrders(groups, taraf) {
           year:                g.year,
           shipped_qty:         (taraf === 'cikacak') ? 0 : g.qty,
           planned_qty:         (taraf === 'cikacak') ? g.qty : 0,
+          shipped_euro:        (taraf === 'cikacak') ? 0 : (g.euro || 0),
+          planned_euro:        (taraf === 'cikacak') ? (g.euro || 0) : 0,
           updated_at:          ts,
           updated_by:          'import'
         });
@@ -255,6 +259,7 @@ async function dbBatchImportOrders(groups, taraf) {
       var updateResults = await Promise.allSettled(toUpdate.map(function(u) {
         var payload = { updated_at: u.updated_at, updated_by: u.updated_by };
         payload[field] = u[field];
+        payload[euroField] = u[euroField] || 0;
         return _client.from('orders').update(payload).eq('id', u.id);
       }));
       updateResults.forEach(function(r, i) {
