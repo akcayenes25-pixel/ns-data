@@ -1908,7 +1908,7 @@
       var month   = row.detectedMonth || defaultPeriod.month;
       var year    = row.detectedYear  || defaultPeriod.year;
       if (!month || !year) return; // no period = cannot write
-      var country = (row.country && String(row.country).trim().toUpperCase()) || null;
+      var country = (row.country && CountryNormalizer.normalize(String(row.country).trim())) || null;
       var qty     = (typeof row.qty === 'number' && row.qty > 0) ? row.qty : null;
       if (qty === null) return; // null/zero qty: skip, never wipe existing data
       var key = [row.customer_id, row.product_id, country || '', month, year].join('|');
